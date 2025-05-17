@@ -38,4 +38,9 @@ setup(
             "gitwise=gitwise.cli:app",
         ],
     },
+    license="MIT",
+    project_urls={
+        "Bug Reports": "https://github.com/PayasPandey11/gitwise/issues",
+        "Source": "https://github.com/PayasPandey11/gitwise",
+    },
 ) 
