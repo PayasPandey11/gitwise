@@ -40,9 +40,10 @@ app = typer.Typer(
 
     Usage:
     - Use gitwise-specific commands for enhanced features
-    - Use 'gitwise git <command>' for regular git commands
+    - Use any git command directly (e.g., gitwise checkout, gitwise status)
     - All git commands are supported through passthrough
-    """
+    """,
+    add_completion=False
 )
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -90,8 +91,8 @@ def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list",
         typer.echo("\nExamples:")
         typer.echo("  gitwise commit              # Create a smart commit")
         typer.echo("  gitwise push                # Push changes with PR option")
-        typer.echo("  gitwise git status          # Regular git status")
-        typer.echo("  gitwise git checkout -b new # Regular git checkout")
+        typer.echo("  gitwise status              # Regular git status")
+        typer.echo("  gitwise checkout -b new     # Regular git checkout")
         raise typer.Exit()
     
     if ctx.invoked_subcommand is None:
@@ -118,6 +119,23 @@ def git(ctx: typer.Context):
     
     result = subprocess.run(["git"] + ctx.args)
     raise typer.Exit(code=result.returncode)
+
+def run_git_command(command: str, args: list) -> None:
+    """Run a git command with the given arguments."""
+    result = subprocess.run(["git", command] + args)
+    raise typer.Exit(code=result.returncode)
+
+# Add a catch-all command for unknown commands
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def catch_all(ctx: typer.Context):
+    """Pass through to git command."""
+    if not ctx.args:
+        typer.echo("Please provide a git command.")
+        raise typer.Exit(1)
+    
+    command = ctx.args[0]
+    args = ctx.args[1:]
+    run_git_command(command, args)
 
 if __name__ == "__main__":
     app() 
