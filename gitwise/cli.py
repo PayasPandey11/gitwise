@@ -65,7 +65,7 @@ def add(ctx: typer.Context):
 
 @app.command()
 def commit() -> None:
-    """Generate a smart commit message for staged changes on the branch."""
+    """Create a commit with an AI-generated message."""
     commit_command()
 
 @app.command()

@@ -78,4 +78,14 @@ def get_commit_history() -> List[Dict[str, str]]:
         
         return commits
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error getting commit history: {e.stderr}") 
+        raise RuntimeError(f"Error getting commit history: {e.stderr}")
+
+def get_changed_files() -> List[str]:
+    """Get list of changed files."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    return [f for f in result.stdout.splitlines() if f] 
