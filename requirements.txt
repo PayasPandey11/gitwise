@@ -1,5 +1,13 @@
+# Core dependencies
 typer[all]
 transformers
 torch
 gitpython
-openai 
+openai
+
+# Development dependencies
+pytest
+flake8
+mypy
+black
+isort 
