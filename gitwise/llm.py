@@ -2,7 +2,10 @@ import os
 from typing import List, Dict, Tuple
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY")
+)
 
 def generate_commit_message(diff: str, guidance: str = None) -> str:
     """Generate a commit message based on the diff.
@@ -33,7 +36,7 @@ Follow these rules:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"""Analyze these code changes and create a meaningful commit message.
@@ -45,7 +48,11 @@ Here are the changes to analyze:
 {diff}"""}
             ],
             temperature=0.7,
-            max_tokens=100
+            max_tokens=100,
+            extra_headers={
+                "HTTP-Referer": "https://github.com/yourusername/gitwise",  # Update with your repo URL
+                "X-Title": "gitwise",  # Your project name
+            }
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -86,7 +93,7 @@ Follow these rules:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"""Analyze these commits and create a PR description.
@@ -99,7 +106,11 @@ Here are the commits to analyze:
 {commit_text}"""}
             ],
             temperature=0.7,
-            max_tokens=500
+            max_tokens=500,
+            extra_headers={
+                "HTTP-Referer": "https://github.com/yourusername/gitwise",  # Update with your repo URL
+                "X-Title": "gitwise",  # Your project name
+            }
         )
         
         # Split the response into title and description
