@@ -48,9 +48,20 @@ app = typer.Typer(
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def add(ctx: typer.Context):
-    """Pass through to git add."""
+    """Stage changes and optionally create a commit."""
+    # First, run git add with the provided arguments
     result = subprocess.run(["git", "add"] + ctx.args)
-    raise typer.Exit(code=result.returncode)
+    if result.returncode != 0:
+        raise typer.Exit(code=result.returncode)
+    
+    # Check if there are any staged changes
+    result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
+    if result.returncode == 1:  # There are staged changes
+        # Ask if user wants to commit
+        if typer.confirm("Would you like to create a commit for these changes?", default=True):
+            commit_command()
+    else:
+        typer.echo("No changes staged.")
 
 @app.command()
 def commit() -> None:
