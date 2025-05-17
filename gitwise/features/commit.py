@@ -119,46 +119,83 @@ def analyze_changes(changed_files: List[str], staged_diff: str) -> List[Dict[str
         - description: Suggested commit description
         - diff: The diff for these files
     """
-    # Group files by directory and type
-    groups = {}
+    # Get individual file diffs
+    file_diffs = {}
     for file in changed_files:
-        dir_name = os.path.dirname(file)
-        if not dir_name:
-            dir_name = "root"
-            
-        if dir_name not in groups:
-            groups[dir_name] = []
-        groups[dir_name].append(file)
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--cached", file],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            file_diffs[file] = result.stdout
+        except subprocess.CalledProcessError:
+            continue
     
-    # Analyze each group
-    suggestions = []
-    for dir_name, files in groups.items():
-        # Get diff for these files
-        file_diffs = []
-        for file in files:
-            try:
-                result = subprocess.run(
-                    ["git", "diff", "--cached", file],
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                file_diffs.append(result.stdout)
-            except subprocess.CalledProcessError:
-                continue
-        
-        if not file_diffs:
+    if not file_diffs:
+        return []
+    
+    # Analyze each file's changes
+    file_analyses = {}
+    for file, diff in file_diffs.items():
+        # Generate a commit message for this file to understand its changes
+        commit_message = generate_commit_message(diff)
+        file_analyses[file] = {
+            "diff": diff,
+            "message": commit_message,
+            "type": commit_message.split(":")[0].strip() if ":" in commit_message else "chore",
+            "description": commit_message.split(":", 1)[1].strip() if ":" in commit_message else commit_message
+        }
+    
+    # Group files based on their changes
+    groups = []
+    processed_files = set()
+    
+    for file, analysis in file_analyses.items():
+        if file in processed_files:
             continue
             
-        # Generate commit message for this group
-        group_diff = "\n".join(file_diffs)
-        commit_message = generate_commit_message(group_diff)
+        # Start a new group with this file
+        current_group = {
+            "files": [file],
+            "type": analysis["type"],
+            "description": analysis["description"],
+            "diff": analysis["diff"]
+        }
+        processed_files.add(file)
+        
+        # Look for related files
+        for other_file, other_analysis in file_analyses.items():
+            if other_file in processed_files:
+                continue
+                
+            # Check if files are related based on:
+            # 1. Same commit type
+            # 2. Similar descriptions
+            # 3. Related file paths
+            if (other_analysis["type"] == analysis["type"] and
+                other_analysis["description"].lower() == analysis["description"].lower()):
+                current_group["files"].append(other_file)
+                current_group["diff"] += "\n" + other_analysis["diff"]
+                processed_files.add(other_file)
+        
+        groups.append(current_group)
+    
+    # Generate final commit messages for each group
+    suggestions = []
+    for group in groups:
+        if len(group["files"]) > 1:
+            # For multiple files, generate a new message that encompasses all changes
+            group_message = generate_commit_message(group["diff"])
+            group["type"] = group_message.split(":")[0].strip() if ":" in group_message else group["type"]
+            group["description"] = group_message.split(":", 1)[1].strip() if ":" in group_message else group["description"]
         
         suggestions.append({
-            "files": files,
-            "type": commit_message.split(":")[0].strip(),
-            "description": commit_message.split(":", 1)[1].strip() if ":" in commit_message else commit_message,
-            "diff": group_diff
+            "files": group["files"],
+            "type": group["type"],
+            "description": group["description"],
+            "diff": group["diff"]
         })
     
     return suggestions
