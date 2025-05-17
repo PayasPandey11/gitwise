@@ -15,14 +15,17 @@ def pr_command() -> None:
             typer.echo("Cannot create PR from main branch. Please switch to a feature branch.")
             return
             
-        # Check if we have any unpushed commits
+        # Check if we have any commits compared to main
         result = subprocess.run(
-            ["git", "log", "@{push}.."],
+            ["git", "log", "main..HEAD"],
             capture_output=True,
             text=True
         )
         if not result.stdout.strip():
-            typer.echo("No unpushed commits found. Please commit your changes first.")
+            typer.echo("No commits found between current branch and main.")
+            typer.echo("This could be because:")
+            typer.echo("1. Your branch is up to date with main")
+            typer.echo("2. Your branch is not based on main")
             return
         
         # Get commit history since last common ancestor with main
@@ -32,8 +35,7 @@ def pr_command() -> None:
             typer.echo("No commits found between current branch and main.")
             typer.echo("This could be because:")
             typer.echo("1. Your branch is up to date with main")
-            typer.echo("2. Your branch hasn't been pushed to remote")
-            typer.echo("3. Your branch is not based on main")
+            typer.echo("2. Your branch is not based on main")
             return
             
         typer.echo(f"Found {len(commits)} commits to analyze...")
