@@ -27,25 +27,35 @@ def commit_command() -> None:
         action = typer.prompt(
             "What would you like to do?",
             type=str,
-            default="use",
+            default="u",
             show_choices=True,
             show_default=True,
-            prompt_suffix="\n[use/edit/regenerate/abort] "
-        )
+            prompt_suffix="\n[u]se/[e]dit/[r]egenerate/[a]bort "
+        ).lower()
 
-        if action not in ["use", "edit", "regenerate", "abort"]:
-            typer.echo("Invalid option. Please choose from: use, edit, regenerate, abort")
+        if action not in ["u", "e", "r", "a"]:
+            typer.echo("Invalid option. Please choose from: u, e, r, a")
             continue
 
-        if action == "abort":
+        if action == "a":
             typer.echo("Aborted. No commit made.")
             return
 
-        if action == "regenerate":
-            typer.echo("Regenerating commit message...")
+        if action == "r":
+            guidance = typer.prompt(
+                "Enter guidance for the commit message (optional)",
+                default="",
+                show_default=False
+            )
+            if guidance:
+                typer.echo("Regenerating commit message with guidance...")
+                commit_message = generate_commit_message(staged_diff, guidance)
+            else:
+                typer.echo("Regenerating commit message...")
+                commit_message = generate_commit_message(staged_diff)
             continue
 
-        if action == "edit":
+        if action == "e":
             with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
                 tf.write(commit_message)
                 tf.flush()
@@ -58,22 +68,32 @@ def commit_command() -> None:
             action = typer.prompt(
                 "What would you like to do?",
                 type=str,
-                default="use",
+                default="u",
                 show_choices=True,
                 show_default=True,
-                prompt_suffix="\n[use/edit/regenerate/abort] "
-            )
-            if action not in ["use", "edit", "regenerate", "abort"]:
-                typer.echo("Invalid option. Please choose from: use, edit, regenerate, abort")
+                prompt_suffix="\n[u]se/[e]dit/[r]egenerate/[a]bort "
+            ).lower()
+            if action not in ["u", "e", "r", "a"]:
+                typer.echo("Invalid option. Please choose from: u, e, r, a")
                 continue
-            if action == "abort":
+            if action == "a":
                 typer.echo("Aborted. No commit made.")
                 return
-            if action == "regenerate":
-                typer.echo("Regenerating commit message...")
+            if action == "r":
+                guidance = typer.prompt(
+                    "Enter guidance for the commit message (optional)",
+                    default="",
+                    show_default=False
+                )
+                if guidance:
+                    typer.echo("Regenerating commit message with guidance...")
+                    commit_message = generate_commit_message(staged_diff, guidance)
+                else:
+                    typer.echo("Regenerating commit message...")
+                    commit_message = generate_commit_message(staged_diff)
                 continue
 
-        # If we get here, action is "use"
+        # If we get here, action is "u"
         break
 
     try:
