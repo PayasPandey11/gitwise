@@ -5,9 +5,35 @@ import os
 
 app = typer.Typer(help="gitwise: AI-powered git assistant")
 
-def placeholder_llm(diff: str) -> str:
-    # Simulate LLM output
-    return "feat: add new feature (placeholder message)"
+# --- LLM Integration ---
+def bitnet_llm(diff: str) -> str:
+    """Generate a commit message using BitNet via Hugging Face transformers."""
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    model_id = "microsoft/bitnet-b1.58-2B-4T"
+    # Cache model and tokenizer
+    if not hasattr(bitnet_llm, "model"):
+        typer.echo("Loading BitNet model (first run may take a while)...")
+        bitnet_llm.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        bitnet_llm.model = AutoModelForCausalLM.from_pretrained(
+            model_id, torch_dtype=torch.bfloat16
+        )
+        bitnet_llm.model.eval()
+    tokenizer = bitnet_llm.tokenizer
+    model = bitnet_llm.model
+    # Prompt template
+    prompt = (
+        "You are an expert software engineer. "
+        "Write a concise, conventional commit message for the following git diff.\n"
+        "Diff:\n" + diff + "\nCommit message:"
+    )
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=32)
+    # Decode only the new tokens
+    response = tokenizer.decode(outputs[0][inputs['input_ids'].shape[-1]:], skip_special_tokens=True)
+    # Clean up response
+    return response.strip().split("\n")[0]
 
 @app.command()
 def commit():
@@ -28,8 +54,8 @@ def commit():
 
     typer.echo("Analyzing staged changes:\n")
     typer.echo(staged_diff[:1000] + ("\n... (truncated) ..." if len(staged_diff) > 1000 else ""))
-    # Simulate LLM commit message generation
-    commit_message = placeholder_llm(staged_diff)
+    # Generate commit message using BitNet LLM
+    commit_message = bitnet_llm(staged_diff)
     typer.echo(f"\nSuggested commit message:\n{commit_message}\n")
 
     # Allow user to edit the commit message
