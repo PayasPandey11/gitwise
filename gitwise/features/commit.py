@@ -215,7 +215,7 @@ def suggest_commit_groups() -> Optional[List[Dict[str, any]]]:
 
     return analyze_changes(changed_files, staged_diff)
 
-def commit_command() -> None:
+def commit_command(group: bool = False) -> None:
     """Main logic for the commit command: gets staged diff, generates commit message, allows editing, and commits."""
     try:
         staged_diff = get_staged_diff()
@@ -228,39 +228,40 @@ def commit_command() -> None:
         raise typer.Exit(code=0)
 
     # Check if changes should be grouped
-    suggestions = suggest_commit_groups()
-    if suggestions and len(suggestions) > 1:
-        typer.echo("\nI notice your changes might be better organized into multiple commits:")
-        for i, group in enumerate(suggestions, 1):
-            typer.echo(f"\nGroup {i}:")
-            typer.echo(f"Files: {', '.join(group['files'])}")
-            typer.echo(f"Suggested commit: {group['type']}: {group['description']}")
-        
-        if typer.confirm("\nWould you like to commit these changes separately?", default=True):
-            # First, unstage all files
-            all_files = [f for group in suggestions for f in group['files']]
-            unstage_files(all_files)
+    if group:
+        suggestions = suggest_commit_groups()
+        if suggestions and len(suggestions) > 1:
+            typer.echo("\nI notice your changes might be better organized into multiple commits:")
+            for i, group in enumerate(suggestions, 1):
+                typer.echo(f"\nGroup {i}:")
+                typer.echo(f"Files: {', '.join(group['files'])}")
+                typer.echo(f"Suggested commit: {group['type']}: {group['description']}")
             
-            # Then commit each group
-            for group in suggestions:
-                typer.echo(f"\nCommitting group: {', '.join(group['files'])}")
-                typer.echo(f"Suggested message: {group['type']}: {group['description']}")
+            if typer.confirm("\nWould you like to commit these changes separately?", default=True):
+                # First, unstage all files
+                all_files = [f for group in suggestions for f in group['files']]
+                unstage_files(all_files)
                 
-                if typer.confirm("Proceed with this commit?", default=True):
-                    try:
-                        # Stage only the files for this group
-                        stage_files(group['files'])
-                        run_git_commit(f"{group['type']}: {group['description']}")
-                        typer.echo("Commit created successfully.")
-                    except RuntimeError as e:
-                        typer.echo(str(e))
-                        if not typer.confirm("Continue with remaining groups?", default=True):
-                            raise typer.Exit(code=1)
-            
-            # Ask about pushing after all commits
-            if typer.confirm("\nWould you like to push these changes?", default=False):
-                push_command()
-            return
+                # Then commit each group
+                for group in suggestions:
+                    typer.echo(f"\nCommitting group: {', '.join(group['files'])}")
+                    typer.echo(f"Suggested message: {group['type']}: {group['description']}")
+                    
+                    if typer.confirm("Proceed with this commit?", default=True):
+                        try:
+                            # Stage only the files for this group
+                            stage_files(group['files'])
+                            run_git_commit(f"{group['type']}: {group['description']}")
+                            typer.echo("Commit created successfully.")
+                        except RuntimeError as e:
+                            typer.echo(str(e))
+                            if not typer.confirm("Continue with remaining groups?", default=True):
+                                raise typer.Exit(code=1)
+                
+                # Ask about pushing after all commits
+                if typer.confirm("\nWould you like to push these changes?", default=False):
+                    push_command()
+                return
 
     # If no grouping or user chose not to group, proceed with single commit
     typer.echo("Analyzing staged changes:\n")
