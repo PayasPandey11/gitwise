@@ -6,12 +6,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="gitwise",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Payas Pandey",
+    author_email="rpayaspandey@gmail.com",
     description="An AI-powered Git assistant for better commit messages and PR descriptions",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/gitwise",
+    url="https://github.com/PayasPandey11/gitwise",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",

@@ -2,6 +2,13 @@
 
 An AI-powered Git assistant that helps you write better commit messages and pull request descriptions.
 
+## Author
+
+**Payas Pandey**  
+- GitHub: [@PayasPandey11](https://github.com/PayasPandey11)
+- LinkedIn: [payaspandey](https://www.linkedin.com/in/payaspandey/)
+- Email: rpayaspandey@gmail.com
+
 ## Features
 
 - 🤖 AI-powered commit message generation
