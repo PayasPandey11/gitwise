@@ -48,7 +48,7 @@ app = typer.Typer(
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def add(ctx: typer.Context):
-    """Stage changes (git add passthrough)."""
+    """Pass through to git add."""
     result = subprocess.run(["git", "add"] + ctx.args)
     raise typer.Exit(code=result.returncode)
 
@@ -135,7 +135,24 @@ def catch_all(ctx: typer.Context):
     
     command = ctx.args[0]
     args = ctx.args[1:]
-    run_git_command(command, args)
+    
+    # If it's a gitwise command, run it
+    if command in GITWISE_COMMANDS:
+        GITWISE_COMMANDS[command]()
+    else:
+        # Otherwise pass through to git
+        run_git_command(command, args)
 
 if __name__ == "__main__":
+    # Get the command name from sys.argv
+    if len(sys.argv) > 1:
+        cmd_name = sys.argv[1]
+        # If it's not a known command, pass it to git
+        if cmd_name not in ["commit", "push", "pr", "changelog", "add", "git", "--help", "-h"]:
+            # Remove the command name from sys.argv
+            sys.argv.pop(1)
+            # Run the git command
+            result = subprocess.run(["git", cmd_name] + sys.argv[1:])
+            sys.exit(result.returncode)
+    
     app() 
