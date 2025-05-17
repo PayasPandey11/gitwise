@@ -1,5 +1,6 @@
 import typer
 from gitwise.gitutils import get_current_branch, run_git_push
+from gitwise.features.pr import pr_command
 
 def push_command(target_branch: str = None) -> None:
     """Handle the push command logic.
@@ -26,6 +27,16 @@ def push_command(target_branch: str = None) -> None:
         typer.echo("Changes pushed successfully.")
         if output:
             typer.echo(output)
+            
+        # Ask if user wants to create a PR
+        if current_branch != "main":
+            create_pr = typer.confirm(
+                "Would you like to create a pull request?",
+                default=True
+            )
+            if create_pr:
+                typer.echo("\nCreating pull request...")
+                pr_command()
             
     except RuntimeError as e:
         typer.echo(str(e))
