@@ -8,10 +8,12 @@ if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exis
     # Running as a script from gitwise/ directory
     from features.commit import commit_command
     from features.push import push_command
+    from features.pr import pr_command
 else:
     # Running as a module from parent directory
     from gitwise.features.commit import commit_command
     from gitwise.features.push import push_command
+    from gitwise.features.pr import pr_command
 
 app = typer.Typer(help="gitwise: AI-powered git assistant")
 
@@ -37,8 +39,8 @@ def push(target_branch: str = None) -> None:
 
 @app.command()
 def pr() -> None:
-    """Generate a PR message for the current branch."""
-    typer.echo("PR message generation coming soon!")
+    """Create a pull request with an AI-generated title and description."""
+    pr_command()
 
 @app.command()
 def changelog() -> None:

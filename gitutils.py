@@ -1,4 +1,5 @@
 import subprocess
+from typing import List, Dict
 
 def get_current_branch() -> str:
     """Get the name of the current branch."""
@@ -46,4 +47,44 @@ def run_git_push(target_branch: str = None) -> None:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to push changes: {e.stderr}") 
+        raise RuntimeError(f"Failed to push changes: {e.stderr}")
+
+def get_commit_history() -> List[Dict[str, str]]:
+    """Get commit history since last common ancestor with main branch.
+    
+    Returns:
+        List of dictionaries containing commit hash, author, date, and message.
+    """
+    try:
+        # Get the last common ancestor with main
+        result = subprocess.run(
+            ["git", "merge-base", "HEAD", "main"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        base_commit = result.stdout.strip()
+        
+        # Get commit history since then
+        result = subprocess.run(
+            ["git", "log", f"{base_commit}..HEAD", "--pretty=format:%H|%an|%ad|%s"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        commits = []
+        for line in result.stdout.strip().split('\n'):
+            if not line:
+                continue
+            hash_, author, date, message = line.split('|', 3)
+            commits.append({
+                'hash': hash_,
+                'author': author,
+                'date': date,
+                'message': message
+            })
+        
+        return commits
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error getting commit history: {e.stderr}") 
