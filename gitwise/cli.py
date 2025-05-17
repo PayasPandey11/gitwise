@@ -2,6 +2,7 @@ import typer
 import sys
 import os
 import subprocess
+from typing import Optional
 
 # Support running from both the package and directly as a script
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
@@ -15,11 +16,38 @@ else:
     from gitwise.features.push import push_command
     from gitwise.features.pr import pr_command
 
-app = typer.Typer(help="gitwise: AI-powered git assistant")
+# Define command categories
+GITWISE_COMMANDS = {
+    "commit": "Generate a smart commit message for staged changes",
+    "push": "Push changes with option to create PR",
+    "pr": "Create a pull request with AI-generated description",
+    "changelog": "Generate a changelog from commit history (coming soon)"
+}
+
+GIT_PASSTHROUGH_COMMANDS = {
+    "add": "Stage changes (git add passthrough)",
+    "git": "Pass through any git command"
+}
+
+app = typer.Typer(
+    help="""gitwise: AI-powered git assistant
+
+    Smart Features:
+    - Generate conventional commit messages using AI
+    - Create PRs with AI-generated descriptions
+    - Push changes with PR creation option
+    - Coming soon: Changelog generation
+
+    Usage:
+    - Use gitwise-specific commands for enhanced features
+    - Use 'gitwise git <command>' for regular git commands
+    - All git commands are supported through passthrough
+    """
+)
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def add(ctx: typer.Context):
-    """Pass through to git add."""
+    """Stage changes (git add passthrough)."""
     result = subprocess.run(["git", "add"] + ctx.args)
     raise typer.Exit(code=result.returncode)
 
@@ -30,7 +58,7 @@ def commit() -> None:
 
 @app.command()
 def push(target_branch: str = None) -> None:
-    """Push changes to remote repository.
+    """Push changes to remote repository with option to create PR.
     
     Args:
         target_branch: Optional target branch to push to. If not provided, will prompt user.
@@ -44,12 +72,28 @@ def pr() -> None:
 
 @app.command()
 def changelog() -> None:
-    """Generate a changelog from commit history."""
+    """Generate a changelog from commit history (coming soon)."""
     typer.echo("Changelog generation coming soon!")
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
+def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):
     """gitwise: AI-powered git assistant with smart commit messages, PR descriptions, and more."""
+    if list_commands:
+        typer.echo("\nGitwise-specific commands:")
+        for cmd, desc in GITWISE_COMMANDS.items():
+            typer.echo(f"  {cmd:<10} {desc}")
+        
+        typer.echo("\nGit passthrough commands:")
+        for cmd, desc in GIT_PASSTHROUGH_COMMANDS.items():
+            typer.echo(f"  {cmd:<10} {desc}")
+        
+        typer.echo("\nExamples:")
+        typer.echo("  gitwise commit              # Create a smart commit")
+        typer.echo("  gitwise push                # Push changes with PR option")
+        typer.echo("  gitwise git status          # Regular git status")
+        typer.echo("  gitwise git checkout -b new # Regular git checkout")
+        raise typer.Exit()
+    
     if ctx.invoked_subcommand is None:
         # If no command is provided, show help
         typer.echo(ctx.get_help())
@@ -57,9 +101,19 @@ def main(ctx: typer.Context):
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def git(ctx: typer.Context):
-    """Pass through to git command."""
+    """Pass through to git command.
+    
+    Examples:
+        gitwise git status
+        gitwise git checkout -b feature/new
+        gitwise git log --oneline
+    """
     if not ctx.args:
         typer.echo("Please provide a git command.")
+        typer.echo("\nExamples:")
+        typer.echo("  gitwise git status")
+        typer.echo("  gitwise git checkout -b feature/new")
+        typer.echo("  gitwise git log --oneline")
         raise typer.Exit(1)
     
     result = subprocess.run(["git"] + ctx.args)
