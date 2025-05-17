@@ -8,14 +8,37 @@ def pr_command() -> None:
     try:
         # Get current branch
         current_branch = get_current_branch()
+        typer.echo(f"Current branch: {current_branch}")
+        
+        # Check if we're on main
+        if current_branch == "main":
+            typer.echo("Cannot create PR from main branch. Please switch to a feature branch.")
+            return
+            
+        # Check if we have any commits compared to main
+        result = subprocess.run(
+            ["git", "log", "main..HEAD"],
+            capture_output=True,
+            text=True
+        )
+        if not result.stdout.strip():
+            typer.echo("No commits found between current branch and main.")
+            typer.echo("This could be because:")
+            typer.echo("1. Your branch is up to date with main")
+            typer.echo("2. Your branch is not based on main")
+            return
         
         # Get commit history since last common ancestor with main
         commits = get_commit_history()
         
         if not commits:
-            typer.echo("No commits found to create PR from.")
+            typer.echo("No commits found between current branch and main.")
+            typer.echo("This could be because:")
+            typer.echo("1. Your branch is up to date with main")
+            typer.echo("2. Your branch is not based on main")
             return
             
+        typer.echo(f"Found {len(commits)} commits to analyze...")
         typer.echo("Analyzing commits for PR description...")
         pr_title, pr_description = generate_pr_description(commits)
         
