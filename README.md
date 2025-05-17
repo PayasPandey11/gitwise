@@ -1,40 +1,103 @@
 # gitwise
 
-AI-powered git assistant for generating smart commit messages, PR descriptions, and changelogs using open-source LLMs (offline support for privacy).
+AI-powered git assistant for generating smart commit messages, PR descriptions, and changelogs using OpenAI's GPT models.
 
 ## Features
-- **Smart Commit Message Generator**: Analyzes staged changes and generates concise, conventional commit messages using an LLM.
-- **Modular CLI**: Easily extensible Typer-based CLI.
-- **Offline LLM Support**: Uses open-source models (e.g., Zephyr-7B-Beta) for privacy.
+- **Smart Commit Message Generator**: Analyzes staged changes and generates concise, conventional commit messages using GPT.
+- **Git Command Passthrough**: Seamlessly use git commands through gitwise (e.g., `gitwise add .`)
+- **Smart Push**: Push changes to the same or different branch with interactive prompts
+- **PR Description Generator**: Coming soon!
+- **Changelog Generator**: Coming soon!
 
 ## Installation
+
+### From PyPI (Coming Soon)
 ```sh
-pip install -r requirements.txt
+pip install gitwise
+```
+
+### From Source
+```sh
+# Clone the repository
+git clone https://github.com/yourusername/gitwise.git
+cd gitwise
+
+# Install the package
+pip install -e .
+```
+
+## Configuration
+Set your OpenAI API key as an environment variable:
+```sh
+export OPENAI_API_KEY='your-api-key-here'
 ```
 
 ## Usage
-From the root of your git repository:
+
+### Basic Git Commands
+Use `gitwise` just like `git`:
 ```sh
-python -m gitwise.cli commit
+# Stage changes
+gitwise add .
+
+# Check status
+gitwise status
+
+# View diff
+gitwise diff
 ```
 
-## Project Structure
+### Smart Commit
+Generate and commit with an AI-powered message:
+```sh
+# Stage your changes first
+gitwise add .
+
+# Generate and commit with a smart message
+gitwise commit
 ```
-gitwise/
-├── cli.py                # Typer CLI entry point
-├── llm.py                # LLM (Zephyr, etc.) inference logic
-├── gitutils.py           # Git-related utilities (diff, commit, etc.)
-├── features/
-│   └── commit.py         # Commit message generation logic
-└── README.md
+The commit process will:
+1. Analyze your staged changes
+2. Generate a commit message
+3. Allow you to edit the message if needed
+4. Create the commit
+5. Optionally push the changes
+
+### Smart Push
+Push changes to remote repository:
+```sh
+# Push to the same branch
+gitwise push
+
+# Push to a specific branch
+gitwise push feature/new-feature
 ```
 
-## Example
+The push process will:
+1. Show your current branch
+2. Ask if you want to push to the same branch
+3. If not, prompt for the target branch name
+4. Push the changes
+
+## Example Workflow
 ```sh
-# Stage your changes
-$ git add .
-# Generate a commit message
-$ python -m gitwise.cli commit
+# Stage changes
+$ gitwise add .
+
+# Generate and commit with a smart message
+$ gitwise commit
+Analyzing staged changes...
+Suggested commit message:
+feat: add user authentication
+
+Would you like to edit the commit message? [y/N]: n
+Use this commit message? [Y/n]: y
+Commit created successfully.
+
+Would you like to push these changes? [y/N]: y
+Push to the same branch (main)? [Y/n]: n
+Enter the target branch name [main]: feature/auth
+Changes pushed successfully.
 ```
 
 ## License
