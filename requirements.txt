@@ -1,4 +1,5 @@
 typer[all]
 transformers
 torch
-gitpython 
+gitpython
+openai 
