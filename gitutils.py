@@ -15,4 +15,11 @@ def run_git_commit(message: str) -> None:
     try:
         subprocess.run(["git", "commit", "-m", message], check=True)
     except subprocess.CalledProcessError:
-        raise RuntimeError("Error running git commit.") 
+        raise RuntimeError("Error running git commit.")
+
+def run_git_push() -> None:
+    """Run git push command."""
+    result = subprocess.run(["git", "push"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to push changes: {result.stderr}")
+    return result.stdout.strip() 

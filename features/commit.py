@@ -2,7 +2,7 @@ import typer
 import tempfile
 import os
 from gitwise.llm import generate_commit_message
-from gitwise.gitutils import get_staged_diff, run_git_commit
+from gitwise.gitutils import get_staged_diff, run_git_commit, run_git_push
 
 def commit_command() -> None:
     """Main logic for the commit command: gets staged diff, generates commit message, allows editing, and commits."""
@@ -39,6 +39,18 @@ def commit_command() -> None:
         try:
             run_git_commit(final_message)
             typer.echo("Commit created successfully.")
+            
+            # Ask about pushing
+            push = typer.confirm("Would you like to push these changes?", default=False)
+            if push:
+                try:
+                    output = run_git_push()
+                    typer.echo("Changes pushed successfully.")
+                    if output:
+                        typer.echo(output)
+                except RuntimeError as e:
+                    typer.echo(str(e))
+                    raise typer.Exit(code=1)
         except RuntimeError as e:
             typer.echo(str(e))
             raise typer.Exit(code=1)
