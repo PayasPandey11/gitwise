@@ -59,7 +59,11 @@ def add(ctx: typer.Context):
     if result.returncode == 1:  # There are staged changes
         # Ask if user wants to commit
         if typer.confirm("Would you like to create a commit for these changes?", default=True):
-            commit_command()
+            # Ask about smart grouping
+            if typer.confirm("Would you like to use smart commit grouping?", default=False):
+                commit_command(group=True)
+            else:
+                commit_command(group=False)
     else:
         typer.echo("No changes staged.")
 
