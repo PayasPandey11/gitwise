@@ -18,41 +18,44 @@ An AI-powered Git assistant that helps you write better commit messages and pull
 - Git
 - OpenRouter API key (get one at [openrouter.ai](https://openrouter.ai))
 
-### Installation
+### Installation & Setup (Recommended: Using Makefile)
 
-#### Manual Installation
+**All Makefile commands must be run from the project root directory.**
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/gitwise.git
-cd gitwise
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/gitwise.git
+   cd gitwise
+   ```
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
 
-3. Install dependencies:
+3. **Install dependencies and the package in development mode:**
+   ```bash
+   make install
+   ```
+
+4. **(Recommended) Install development dependencies:**
+   ```bash
+   make dev-deps
+   ```
+
+5. **Set up your OpenRouter API key:**
+   ```bash
+   export OPENROUTER_API_KEY='your-api-key-here'  # On Windows: set OPENROUTER_API_KEY=your-api-key-here
+   ```
+
+### Manual Installation (Alternative)
+
+If you prefer not to use the Makefile:
+
 ```bash
 pip install -r requirements.txt
-```
-
-4. Set up your OpenRouter API key:
-```bash
-export OPENROUTER_API_KEY='your-api-key-here'  # On Windows: set OPENROUTER_API_KEY=your-api-key-here
-```
-
-5. Install the package in development mode:
-```bash
 pip install -e .
-```
-
-#### Using PyPI (Coming Soon)
-
-```bash
-pip install gitwise
 ```
 
 ## Usage
@@ -77,23 +80,34 @@ gitwise log
 ### Examples
 
 1. Stage and commit changes:
-```bash
-gitwise add .
-# Review the generated commit message
+   ```bash
+   gitwise add .
+   # Review the generated commit message
 gitwise commit
-```
+   ```
 
 2. Generate a PR description:
-```bash
-gitwise pr
-```
+   ```bash
+   gitwise pr
+   ```
 
 3. Use standard Git commands:
-```bash
-gitwise status
-gitwise log
-gitwise branch
-```
+   ```bash
+   gitwise status
+   gitwise log
+   gitwise branch
+   ```
+
+## Makefile Commands
+
+- `make install` — Install the package in editable mode (dev setup)
+- `make dev-deps` — Install development dependencies (pytest, flake8, mypy, black, isort)
+- `make test` — Run tests (if any are present)
+- `make lint` — Run code linters (flake8, mypy)
+- `make format` — Format code (black, isort)
+- `make clean` — Remove build/test artifacts
+
+**Note:** Always run these commands from the project root (where the Makefile is located).
 
 ## Configuration
 
@@ -117,7 +131,20 @@ gitwise/
 ### Running Tests
 
 ```bash
-pytest
+make test
+```
+
+### Linting & Formatting
+
+```bash
+make lint
+make format
+```
+
+### Cleaning Up
+
+```bash
+make clean
 ```
 
 ### Contributing
@@ -126,6 +153,12 @@ pytest
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
+
+## Troubleshooting
+
+- **Makefile errors:** Ensure you are in the project root directory when running `make` commands.
+- **ModuleNotFoundError:** Make sure you have run `make install` or `pip install -e .` in your virtual environment.
+- **API Key issues:** Double-check that `OPENROUTER_API_KEY` is set in your environment.
 
 ## License
 
