@@ -1,5 +1,7 @@
 # GitWise 🤖
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 An AI-powered Git assistant that helps you write better commit messages and pull request descriptions.
 
 ## Author
@@ -169,4 +171,4 @@ make clean
 
 ## License
 
-MIT License - see LICENSE file for details 
+MIT License - see LICENSE file for details
