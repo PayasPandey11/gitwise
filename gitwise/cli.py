@@ -131,11 +131,6 @@ def git(ctx: typer.Context):
     result = subprocess.run(["git"] + ctx.args)
     raise typer.Exit(code=result.returncode)
 
-def run_git_command(command: str, args: list) -> None:
-    """Run a git command with the given arguments."""
-    result = subprocess.run(["git", command] + args)
-    raise typer.Exit(code=result.returncode)
-
 # Add a catch-all command for unknown commands
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def catch_all(ctx: typer.Context):
@@ -149,21 +144,18 @@ def catch_all(ctx: typer.Context):
     
     # If it's a gitwise command, run it
     if command in GITWISE_COMMANDS:
-        GITWISE_COMMANDS[command]()
+        if command == "commit":
+            commit_command()
+        elif command == "push":
+            push_command()
+        elif command == "pr":
+            pr_command()
+        elif command == "changelog":
+            typer.echo("Changelog generation coming soon!")
     else:
         # Otherwise pass through to git
-        run_git_command(command, args)
+        result = subprocess.run(["git", command] + args)
+        raise typer.Exit(code=result.returncode)
 
 if __name__ == "__main__":
-    # Get the command name from sys.argv
-    if len(sys.argv) > 1:
-        cmd_name = sys.argv[1]
-        # If it's not a known command, pass it to git
-        if cmd_name not in ["commit", "push", "pr", "changelog", "add", "git", "--help", "-h"]:
-            # Remove the command name from sys.argv
-            sys.argv.pop(1)
-            # Run the git command
-            result = subprocess.run(["git", cmd_name] + sys.argv[1:])
-            sys.exit(result.returncode)
-    
     app() 
