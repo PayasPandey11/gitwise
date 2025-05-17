@@ -2,7 +2,8 @@ import typer
 import tempfile
 import os
 from gitwise.llm import generate_commit_message
-from gitwise.gitutils import get_staged_diff, run_git_commit, run_git_push, get_current_branch
+from gitwise.gitutils import get_staged_diff, run_git_commit
+from gitwise.features.push import push_command
 
 def commit_command() -> None:
     """Main logic for the commit command: gets staged diff, generates commit message, allows editing, and commits."""
@@ -43,27 +44,7 @@ def commit_command() -> None:
             # Ask about pushing
             push = typer.confirm("Would you like to push these changes?", default=False)
             if push:
-                try:
-                    current_branch = get_current_branch()
-                    push_same_branch = typer.confirm(
-                        f"Push to the same branch ({current_branch})?",
-                        default=True
-                    )
-                    
-                    target_branch = None
-                    if not push_same_branch:
-                        target_branch = typer.prompt(
-                            "Enter the target branch name",
-                            default=current_branch
-                        )
-                    
-                    output = run_git_push(target_branch)
-                    typer.echo("Changes pushed successfully.")
-                    if output:
-                        typer.echo(output)
-                except RuntimeError as e:
-                    typer.echo(str(e))
-                    raise typer.Exit(code=1)
+                push_command()
         except RuntimeError as e:
             typer.echo(str(e))
             raise typer.Exit(code=1)

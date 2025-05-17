@@ -7,9 +7,11 @@ import subprocess
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
     # Running as a script from gitwise/ directory
     from features.commit import commit_command
+    from features.push import push_command
 else:
     # Running as a module from parent directory
     from gitwise.features.commit import commit_command
+    from gitwise.features.push import push_command
 
 app = typer.Typer(help="gitwise: AI-powered git assistant")
 
@@ -23,6 +25,15 @@ def add(ctx: typer.Context):
 def commit() -> None:
     """Generate a smart commit message for staged changes."""
     commit_command()
+
+@app.command()
+def push(target_branch: str = None) -> None:
+    """Push changes to remote repository.
+    
+    Args:
+        target_branch: Optional target branch to push to. If not provided, will prompt user.
+    """
+    push_command(target_branch)
 
 @app.command()
 def pr() -> None:
