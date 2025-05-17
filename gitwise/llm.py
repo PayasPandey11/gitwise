@@ -50,7 +50,7 @@ Here are the changes to analyze:
             temperature=0.7,
             max_tokens=100,
             extra_headers={
-                "HTTP-Referer": "https://github.com/yourusername/gitwise",  # Update with your repo URL
+                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
                 "X-Title": "gitwise",  # Your project name
             }
         )
@@ -108,7 +108,7 @@ Here are the commits to analyze:
             temperature=0.7,
             max_tokens=500,
             extra_headers={
-                "HTTP-Referer": "https://github.com/yourusername/gitwise",  # Update with your repo URL
+                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
                 "X-Title": "gitwise",  # Your project name
             }
         )

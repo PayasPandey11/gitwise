@@ -50,24 +50,15 @@ def run_git_push(target_branch: str = None) -> None:
         raise RuntimeError(f"Failed to push changes: {e.stderr}")
 
 def get_commit_history() -> List[Dict[str, str]]:
-    """Get commit history since last common ancestor with main branch.
+    """Get commit history of commits that haven't been merged into main yet.
     
     Returns:
         List of dictionaries containing commit hash, author, date, and message.
     """
     try:
-        # Get the last common ancestor with main
+        # Get commits that are in the current branch but not in main
         result = subprocess.run(
-            ["git", "merge-base", "HEAD", "main"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        base_commit = result.stdout.strip()
-        
-        # Get commit history since then
-        result = subprocess.run(
-            ["git", "log", f"{base_commit}..HEAD", "--pretty=format:%H|%an|%ad|%s"],
+            ["git", "log", "main..HEAD", "--pretty=format:%H|%an|%ad|%s"],
             capture_output=True,
             text=True,
             check=True
