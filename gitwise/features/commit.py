@@ -1,11 +1,11 @@
 import typer
 import tempfile
 import os
+import subprocess
 from typing import Optional, List, Dict, Tuple
 from gitwise.llm import generate_commit_message
 from gitwise.gitutils import get_staged_diff, run_git_commit, get_changed_files
 from gitwise.features.push import push_command
-import subprocess
 
 COMMIT_TYPES = {
     "feat": "A new feature",
@@ -94,6 +94,20 @@ def build_commit_message_interactive() -> str:
         message += f"\n\nBREAKING CHANGE: {breaking_changes}"
     
     return message
+
+def stage_files(files: List[str]) -> None:
+    """Stage specific files."""
+    try:
+        subprocess.run(["git", "add"] + files, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error staging files: {e.stderr}")
+
+def unstage_files(files: List[str]) -> None:
+    """Unstage specific files."""
+    try:
+        subprocess.run(["git", "reset"] + files, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error unstaging files: {e.stderr}")
 
 def analyze_changes(changed_files: List[str], staged_diff: str) -> List[Dict[str, any]]:
     """Analyze changes and suggest logical groupings.
@@ -186,12 +200,19 @@ def commit_command() -> None:
             typer.echo(f"Suggested commit: {group['type']}: {group['description']}")
         
         if typer.confirm("\nWould you like to commit these changes separately?", default=True):
+            # First, unstage all files
+            all_files = [f for group in suggestions for f in group['files']]
+            unstage_files(all_files)
+            
+            # Then commit each group
             for group in suggestions:
                 typer.echo(f"\nCommitting group: {', '.join(group['files'])}")
                 typer.echo(f"Suggested message: {group['type']}: {group['description']}")
                 
                 if typer.confirm("Proceed with this commit?", default=True):
                     try:
+                        # Stage only the files for this group
+                        stage_files(group['files'])
                         run_git_commit(f"{group['type']}: {group['description']}")
                         typer.echo("Commit created successfully.")
                     except RuntimeError as e:
