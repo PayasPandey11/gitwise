@@ -64,9 +64,16 @@ def add(ctx: typer.Context):
         typer.echo("No changes staged.")
 
 @app.command()
-def commit() -> None:
+def commit(
+    group: bool = typer.Option(
+        False,
+        "--group",
+        "-g",
+        help="Group related changes into separate commits"
+    )
+) -> None:
     """Create a commit with an AI-generated message."""
-    commit_command()
+    commit_command(group=group)
 
 @app.command()
 def push(target_branch: str = None) -> None:

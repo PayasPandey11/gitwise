@@ -18,6 +18,7 @@ An AI-powered Git assistant that helps you write better commit messages and pull
 - 🔄 Seamless Git command integration
 - 🎯 Conventional commit format support
 - 🚀 Easy to use CLI interface
+- 📦 Smart commit grouping for related changes
 
 ## Quick Start
 
@@ -33,7 +34,7 @@ An AI-powered Git assistant that helps you write better commit messages and pull
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/gitwise.git
+   git clone https://github.com/PayasPandey11/gitwise.git
    cd gitwise
    ```
 
@@ -78,6 +79,9 @@ gitwise add .
 # Generate a commit message for staged changes
 gitwise commit
 
+# Generate a commit message with smart grouping of related changes
+gitwise commit --group
+
 # Generate a PR description from commit history
 gitwise pr
 
@@ -92,20 +96,46 @@ gitwise log
    ```bash
    gitwise add .
    # Review the generated commit message
-gitwise commit
+   gitwise commit
    ```
 
-2. Generate a PR description:
+2. Stage and commit with smart grouping:
+   ```bash
+   gitwise add .
+   # GitWise will analyze changes and suggest logical groupings
+   gitwise commit --group
+   ```
+
+3. Generate a PR description:
    ```bash
    gitwise pr
    ```
 
-3. Use standard Git commands:
+4. Use standard Git commands:
    ```bash
    gitwise status
    gitwise log
    gitwise branch
    ```
+
+### Smart Commit Grouping
+
+GitWise can intelligently group related changes into separate commits. This is useful when you have multiple changes that should be committed separately for better organization and history tracking.
+
+```bash
+# Stage all changes
+gitwise add .
+
+# Commit with smart grouping
+gitwise commit --group
+```
+
+The grouping feature:
+- Analyzes changes in each file
+- Groups related changes together
+- Suggests appropriate commit messages for each group
+- Lets you review and confirm each group
+- Maintains atomic commits for better history
 
 ## Makefile Commands
 
