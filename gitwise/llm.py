@@ -18,7 +18,13 @@ Follow these rules:
 3. Keep it concise but descriptive
 4. Focus on the "why" not the "what"
 5. Use present tense
-6. Don't end with a period"""
+6. Don't end with a period
+7. Group related changes together in a single commit message
+8. If changes are part of a larger feature or refactor, mention the overall goal
+9. Avoid splitting related changes into multiple commits
+10. If changes are part of a feature implementation, use a consistent scope
+11. For CLI changes, use 'cli' as the scope
+12. For feature implementations, use the feature name as the scope"""
 
     if guidance:
         system_prompt += f"\n\nAdditional guidance: {guidance}"
@@ -28,7 +34,12 @@ Follow these rules:
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Here are the changes to analyze:\n\n{diff}"}
+                {"role": "user", "content": f"""Analyze these changes and create a meaningful commit message that groups related changes together.
+Focus on the overall purpose and impact of the changes rather than individual file modifications.
+
+Here are the changes to analyze:
+
+{diff}"""}
             ],
             temperature=0.7,
             max_tokens=100
