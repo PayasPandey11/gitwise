@@ -47,5 +47,23 @@ def changelog() -> None:
     """Generate a changelog from commit history."""
     typer.echo("Changelog generation coming soon!")
 
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """gitwise: AI-powered git assistant with smart commit messages, PR descriptions, and more."""
+    if ctx.invoked_subcommand is None:
+        # If no command is provided, show help
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def git(ctx: typer.Context):
+    """Pass through to git command."""
+    if not ctx.args:
+        typer.echo("Please provide a git command.")
+        raise typer.Exit(1)
+    
+    result = subprocess.run(["git"] + ctx.args)
+    raise typer.Exit(code=result.returncode)
+
 if __name__ == "__main__":
     app() 
