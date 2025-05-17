@@ -1,0 +1,4 @@
+typer[all]
+transformers
+torch
+gitpython 
