@@ -50,15 +50,18 @@ def run_git_push(target_branch: str = None) -> None:
         raise RuntimeError(f"Failed to push changes: {e.stderr}")
 
 def get_commit_history() -> List[Dict[str, str]]:
-    """Get commit history of commits that haven't been merged into main yet.
+    """Get commit history of commits that haven't been pushed to remote yet.
     
     Returns:
         List of dictionaries containing commit hash, author, date, and message.
     """
     try:
-        # Get commits that are in the current branch but not in main
+        # Get the current branch
+        current_branch = get_current_branch()
+        
+        # Get commits that are in the current branch but not in the remote tracking branch
         result = subprocess.run(
-            ["git", "log", "main..HEAD", "--pretty=format:%H|%an|%ad|%s"],
+            ["git", "log", f"origin/{current_branch}..HEAD", "--pretty=format:%H|%an|%ad|%s"],
             capture_output=True,
             text=True,
             check=True
