@@ -63,6 +63,22 @@ The commit process will:
 4. Create the commit
 5. Optionally push the changes
 
+Analyzing staged changes...
+Suggested commit message:
+feat: add user authentication
+
+What would you like to do? [use/edit/regenerate/abort] (use): regenerate
+Regenerating commit message...
+
+Suggested commit message:
+feat(auth): implement user authentication system
+
+What would you like to do? [use/edit/regenerate/abort] (use): edit
+# Editor opens
+# After editing:
+What would you like to do? [use/edit/regenerate/abort] (use): use
+Commit created successfully.
+
 ### Smart Push
 Push changes to remote repository:
 ```sh
@@ -90,8 +106,16 @@ Analyzing staged changes...
 Suggested commit message:
 feat: add user authentication
 
-Would you like to edit the commit message? [y/N]: n
-Use this commit message? [Y/n]: y
+What would you like to do? [use/edit/regenerate/abort] (use): regenerate
+Regenerating commit message...
+
+Suggested commit message:
+feat(auth): implement user authentication system
+
+What would you like to do? [use/edit/regenerate/abort] (use): edit
+# Editor opens
+# After editing:
+What would you like to do? [use/edit/regenerate/abort] (use): use
 Commit created successfully.
 
 Would you like to push these changes? [y/N]: y

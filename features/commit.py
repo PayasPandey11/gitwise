@@ -19,34 +19,71 @@ def commit_command() -> None:
 
     typer.echo("Analyzing staged changes:\n")
     typer.echo(staged_diff[:1000] + ("\n... (truncated) ..." if len(staged_diff) > 1000 else ""))
-    commit_message = generate_commit_message(staged_diff)
-    typer.echo(f"\nSuggested commit message:\n{commit_message}\n")
+    
+    while True:
+        commit_message = generate_commit_message(staged_diff)
+        typer.echo(f"\nSuggested commit message:\n{commit_message}\n")
 
-    edit = typer.confirm("Would you like to edit the commit message?", default=False)
-    final_message = commit_message
-    if edit:
-        with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-            tf.write(commit_message)
-            tf.flush()
-            editor = os.environ.get("EDITOR", "vi")
-            os.system(f'{editor} {tf.name}')
-            tf.seek(0)
-            final_message = tf.read().strip()
-        os.unlink(tf.name)
-        typer.echo(f"\nEdited commit message:\n{final_message}\n")
+        action = typer.prompt(
+            "What would you like to do?",
+            type=str,
+            default="use",
+            show_choices=True,
+            show_default=True,
+            prompt_suffix="\n[use/edit/regenerate/abort] "
+        )
 
-    confirm = typer.confirm("Use this commit message?", default=True)
-    if confirm:
-        try:
-            run_git_commit(final_message)
-            typer.echo("Commit created successfully.")
-            
-            # Ask about pushing
-            push = typer.confirm("Would you like to push these changes?", default=False)
-            if push:
-                push_command()
-        except RuntimeError as e:
-            typer.echo(str(e))
-            raise typer.Exit(code=1)
-    else:
-        typer.echo("Aborted. No commit made.") 
+        if action not in ["use", "edit", "regenerate", "abort"]:
+            typer.echo("Invalid option. Please choose from: use, edit, regenerate, abort")
+            continue
+
+        if action == "abort":
+            typer.echo("Aborted. No commit made.")
+            return
+
+        if action == "regenerate":
+            typer.echo("Regenerating commit message...")
+            continue
+
+        if action == "edit":
+            with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                tf.write(commit_message)
+                tf.flush()
+                editor = os.environ.get("EDITOR", "vi")
+                os.system(f'{editor} {tf.name}')
+                tf.seek(0)
+                commit_message = tf.read().strip()
+            os.unlink(tf.name)
+            typer.echo(f"\nEdited commit message:\n{commit_message}\n")
+            action = typer.prompt(
+                "What would you like to do?",
+                type=str,
+                default="use",
+                show_choices=True,
+                show_default=True,
+                prompt_suffix="\n[use/edit/regenerate/abort] "
+            )
+            if action not in ["use", "edit", "regenerate", "abort"]:
+                typer.echo("Invalid option. Please choose from: use, edit, regenerate, abort")
+                continue
+            if action == "abort":
+                typer.echo("Aborted. No commit made.")
+                return
+            if action == "regenerate":
+                typer.echo("Regenerating commit message...")
+                continue
+
+        # If we get here, action is "use"
+        break
+
+    try:
+        run_git_commit(commit_message)
+        typer.echo("Commit created successfully.")
+        
+        # Ask about pushing
+        push = typer.confirm("Would you like to push these changes?", default=False)
+        if push:
+            push_command()
+    except RuntimeError as e:
+        typer.echo(str(e))
+        raise typer.Exit(code=1) 
