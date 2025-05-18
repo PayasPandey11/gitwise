@@ -29,10 +29,32 @@ def pr_command() -> None:
         typer.echo(f"Suggested PR description:\n{pr_description}\n")
         
         if typer.confirm("Create PR with this title and description?", default=True):
-            # TODO: Implement actual PR creation
-            typer.echo("PR created successfully!")
-            # For now, just show the URL
-            typer.echo(f"https://github.com/PayasPandey11/gitwise/pull/new/{current_branch}")
+            # Create PR using GitHub CLI
+            try:
+                result = subprocess.run(
+                    ["gh", "pr", "create", 
+                     "--title", pr_title,
+                     "--body", pr_description,
+                     "--base", "main"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    typer.echo("PR created successfully!")
+                    typer.echo(result.stdout)
+                else:
+                    typer.echo("Failed to create PR using GitHub CLI. Please create it manually:")
+                    typer.echo("\nTitle:")
+                    typer.echo(pr_title)
+                    typer.echo("\nDescription:")
+                    typer.echo(pr_description)
+            except FileNotFoundError:
+                typer.echo("GitHub CLI not found. Please create the PR manually:")
+                typer.echo("\nTitle:")
+                typer.echo(pr_title)
+                typer.echo("\nDescription:")
+                typer.echo(pr_description)
+                
     except RuntimeError as e:
         typer.echo(str(e))
         raise typer.Exit(code=1) 
