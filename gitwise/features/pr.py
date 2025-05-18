@@ -1,60 +1,92 @@
-import typer
-import subprocess
-from gitwise.llm import generate_pr_description
-from gitwise.gitutils import get_current_branch, get_commit_history
+"""Pull request creation feature for GitWise."""
 
-def pr_command() -> None:
-    """Create a pull request with an AI-generated description."""
+import subprocess
+from typing import List, Dict, Tuple
+from gitwise.llm import generate_pr_description
+from gitwise.gitutils import get_commit_history
+from gitwise.features.pr_enhancements import enhance_pr_description
+
+def pr_command(
+    use_labels: bool = False,
+    use_checklist: bool = False,
+    skip_general_checklist: bool = False
+) -> None:
+    """Create a pull request with AI-generated description.
+    
+    Args:
+        use_labels: Add labels to the PR (default: False).
+        use_checklist: Add checklist to the PR description (default: False).
+        skip_general_checklist: Skip general checklist items (default: False).
+    """
     try:
-        # Get current branch
-        current_branch = get_current_branch()
-        typer.echo(f"Current branch: {current_branch}")
-        
         # Get commit history
         commits = get_commit_history()
         if not commits:
-            typer.echo("No commits found between current branch and remote tracking branch.")
-            typer.echo("This could be because:")
-            typer.echo("1. Your branch is up to date with remote")
-            typer.echo("2. Your branch is not based on the remote branch")
-            raise typer.Exit(code=1)
-            
-        typer.echo(f"Found {len(commits)} commits to analyze...")
-        typer.echo("Analyzing commits for PR description...\n")
-        
+            print("No commits found between current branch and remote tracking branch.")
+            print("Make sure you have committed your changes and pushed them.")
+            return
+
         # Generate PR description
-        pr_title, pr_description = generate_pr_description(commits)
+        title, description = generate_pr_description(commits)
         
-        typer.echo(f"Suggested PR title:\n{pr_title}\n")
-        typer.echo(f"Suggested PR description:\n{pr_description}\n")
+        # Enhance PR description with labels and checklist if requested
+        enhanced_description, labels = enhance_pr_description(
+            commits, 
+            description,
+            use_labels=use_labels,
+            use_checklist=use_checklist,
+            skip_general_checklist=skip_general_checklist
+        )
         
-        if typer.confirm("Create PR with this title and description?", default=True):
-            # Create PR using GitHub CLI
-            try:
-                result = subprocess.run(
-                    ["gh", "pr", "create", 
-                     "--title", pr_title,
-                     "--body", pr_description,
-                     "--base", "main"],
-                    capture_output=True,
-                    text=True
-                )
-                if result.returncode == 0:
-                    typer.echo("PR created successfully!")
-                    typer.echo(result.stdout)
-                else:
-                    typer.echo("Failed to create PR using GitHub CLI. Please create it manually:")
-                    typer.echo("\nTitle:")
-                    typer.echo(pr_title)
-                    typer.echo("\nDescription:")
-                    typer.echo(pr_description)
-            except FileNotFoundError:
-                typer.echo("GitHub CLI not found. Please create the PR manually:")
-                typer.echo("\nTitle:")
-                typer.echo(pr_title)
-                typer.echo("\nDescription:")
-                typer.echo(pr_description)
+        # Show preview
+        print("\n=== PR Preview ===")
+        print(f"Title: {title}")
+        print("\nDescription:")
+        print(enhanced_description)
+        if use_labels:
+            print("\nLabels to be applied:", ", ".join(labels) if labels else "None")
+        
+        # Confirm PR creation
+        if input("\nCreate pull request? (y/N) ").lower() != 'y':
+            print("PR creation cancelled.")
+            return
+
+        # Create PR using GitHub CLI
+        try:
+            # Create PR with title and description
+            result = subprocess.run(
+                ["gh", "pr", "create", 
+                 "--title", title,
+                 "--body", enhanced_description],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                pr_url = result.stdout.strip()
+                print(f"\n✅ Pull request created: {pr_url}")
                 
-    except RuntimeError as e:
-        typer.echo(str(e))
-        raise typer.Exit(code=1) 
+                # Add labels if enabled and available
+                if use_labels and labels:
+                    subprocess.run(
+                        ["gh", "pr", "edit", pr_url, "--add-label", ",".join(labels)],
+                        capture_output=True
+                    )
+                    print(f"Added labels: {', '.join(labels)}")
+            else:
+                print("\n❌ Failed to create pull request.")
+                print("Error:", result.stderr)
+                print("\nYou can create the PR manually with:")
+                print(f"gh pr create --title '{title}' --body '{enhanced_description}'")
+                
+        except FileNotFoundError:
+            print("\n❌ GitHub CLI (gh) not found.")
+            print("Please install GitHub CLI or create the PR manually with:")
+            print(f"Title: {title}")
+            print(f"\nDescription:\n{enhanced_description}")
+            if use_labels and labels:
+                print(f"\nLabels: {', '.join(labels)}")
+            
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}")
+        print("Please try again or create the PR manually.") 
