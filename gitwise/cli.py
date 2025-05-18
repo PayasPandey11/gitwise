@@ -15,6 +15,10 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
 from rich.table import Table
+from rich.layout import Layout
+from rich.spinner import Spinner
+from rich.text import Text
+from rich.box import Box
 
 # Support running from both the package and directly as a script
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
@@ -79,92 +83,75 @@ def add(
 ) -> None:
     """Stage files and prepare for commit with smart grouping."""
     try:
-        # Show initial status
         unstaged = get_unstaged_files()
         if not unstaged:
             console.print("[yellow]No changes to stage.[/yellow]")
             return
 
-        # Create progress display
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Staging files...", total=None)
-            
-            if not files or (len(files) == 1 and files[0] == '.'):
-                # Stage all files
-                subprocess.run(["git", "add", "."], capture_output=True)
-            else:
-                # Stage specific files
-                for file in files:
-                    if os.path.exists(file):
-                        subprocess.run(["git", "add", file], capture_output=True)
-                    else:
-                        console.print(f"[red]Warning: File not found - {file}[/red]")
-            
-            progress.update(task, completed=True)
+        # Stage files
+        if not files or (len(files) == 1 and files[0] == '.'):
+            subprocess.run(["git", "add", "."], capture_output=True)
+        else:
+            for file in files:
+                if os.path.exists(file):
+                    subprocess.run(["git", "add", file], capture_output=True)
+                else:
+                    console.print(f"[red]Warning: File not found - {file}[/red]")
 
         # Show staged changes
         staged = get_staged_files()
         if staged:
-            table = Table(title="Staged Changes", show_header=True, header_style="bold magenta")
+            table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Status", style="cyan")
             table.add_column("File", style="green")
-            
             for status, file in staged:
                 table.add_row(status, file)
-            
-            console.print(Panel(table, title="[bold green]Successfully staged files[/bold green]"))
-            
-            # Show next steps and handle user input
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print("1. Review staged changes above")
-            console.print("2. Run [cyan]gitwise commit[/cyan] to commit changes")
-            if group:
-                console.print("   (Changes will be automatically grouped)")
-            
-            # Handle user input
-            choice = typer.prompt(
-                "What would you like to do?",
-                type=str,
-                default="2",
-                show_choices=True,
-                show_default=True,
-                prompt_suffix="\n[1]review/[2]commit/[q]uit "
-            ).lower()
-            
-            if choice == "1":
-                # Show diff of staged changes
-                result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
-                console.print("\n[bold]Staged Changes Diff:[/bold]")
-                console.print(result.stdout)
-                # Ask again what to do
+            console.print(table)
+
+            while True:
                 choice = typer.prompt(
-                    "What would you like to do?",
+                    "What next?",
                     type=str,
-                    default="2",
+                    default="c",
                     show_choices=True,
                     show_default=True,
-                    prompt_suffix="\n[2]commit/[q]uit "
+                    prompt_suffix="\n[c]ommit/[r]eview diff/[q]uit "
                 ).lower()
-            
-            if choice == "2":
-                # Call commit command
-                commit_command(group=group)
-                
-                # After successful commit, ask about pushing
-                if typer.confirm("Would you like to push these changes?", default=False):
-                    console.print("\nPushing changes...")
-                    push_command()
-            elif choice == "q":
-                console.print("[yellow]Operation cancelled.[/yellow]")
-            else:
-                console.print("[red]Invalid choice.[/red]")
+
+                if choice == "r":
+                    # Show diff of staged changes (plain text)
+                    result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
+                    console.print("\n[bold]Staged Changes Diff:[/bold]")
+                    console.print(result.stdout or "[dim]No diff to show.[/dim]")
+                    # After review, loop back to main prompt
+                elif choice == "c":
+                    commit_command(group=group)
+                    # After commit, offer to push or quit
+                    while True:
+                        post_commit = typer.prompt(
+                            "Commit created. Next step?",
+                            type=str,
+                            default="p",
+                            show_choices=True,
+                            show_default=True,
+                            prompt_suffix="\n[p]ush/[q]uit "
+                        ).lower()
+                        if post_commit == "p":
+                            push_command()
+                            return
+                        elif post_commit == "q":
+                            console.print("[yellow]Done.[/yellow]")
+                            return
+                        else:
+                            console.print("[red]Invalid choice.[/red]")
+                    break
+                elif choice == "q":
+                    console.print("[yellow]Operation cancelled.[/yellow]")
+                    return
+                else:
+                    console.print("[red]Invalid choice.[/red]")
         else:
             console.print("[yellow]No files were staged.[/yellow]")
-            
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         console.print("Please try again or use [cyan]git add[/cyan] directly.")
@@ -190,14 +177,14 @@ def commit(
                 return
             
             # Show staged files
-            table = Table(title="📝 Staged Changes", show_header=True, header_style="bold magenta")
+            table = Table(title="📝 Staged Changes", show_header=True, header_style="bold magenta", box=Box.ROUNDED)
             table.add_column("Status", style="cyan")
             table.add_column("File", style="green")
             
             for status, file in staged:
                 table.add_row(status, file)
             
-            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]", expand=False))
+            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]", box=Box.ROUNDED, expand=False))
             
             # Get staged diff
             task2 = progress.add_task("🔍 Analyzing changes...", total=None)
@@ -245,10 +232,21 @@ def commit(
                     
                     # Show the diff in a panel
                     if diff_lines:
+                        # Create a table for the diff
+                        diff_table = Table(show_header=False, box=Box.ROUNDED, padding=(0, 1))
+                        diff_table.add_column("Content", style="white")
+                        
+                        for line in diff_lines[:30]:
+                            diff_table.add_row(line)
+                        
+                        if len(diff_lines) > 30:
+                            diff_table.add_row("...")
+                        
                         changes_overview.append(Panel(
-                            "\n".join(diff_lines[:30] + ["..."] if len(diff_lines) > 30 else diff_lines),
+                            diff_table,
                             title=f"[bold]{status} {file}[/bold]",
                             border_style="blue",
+                            box=Box.ROUNDED,
                             expand=False
                         ))
             
@@ -258,6 +256,7 @@ def commit(
                     "\n".join(str(panel) for panel in changes_overview),
                     title="[bold blue]Changes Overview[/bold blue]",
                     border_style="blue",
+                    box=Box.ROUNDED,
                     expand=False
                 ))
             
@@ -272,10 +271,12 @@ def commit(
                     commit_message,
                     title="[bold green]Review Message[/bold green]",
                     border_style="green",
+                    box=Box.ROUNDED,
                     expand=False
                 ),
                 title="[bold blue]Suggested Commit Message[/bold blue]",
                 border_style="blue",
+                box=Box.ROUNDED,
                 expand=False
             ))
             
@@ -302,10 +303,12 @@ def commit(
                             commit_message,
                             title="[bold green]New Commit Message[/bold green]",
                             border_style="green",
+                            box=Box.ROUNDED,
                             expand=False
                         ),
                         title="[bold blue]Suggested Commit Message[/bold blue]",
                         border_style="blue",
+                        box=Box.ROUNDED,
                         expand=False
                     ))
                     continue
@@ -324,10 +327,12 @@ def commit(
                             commit_message,
                             title="[bold green]Edited Commit Message[/bold green]",
                             border_style="green",
+                            box=Box.ROUNDED,
                             expand=False
                         ),
                         title="[bold blue]Suggested Commit Message[/bold blue]",
                         border_style="blue",
+                        box=Box.ROUNDED,
                         expand=False
                     ))
                     continue
