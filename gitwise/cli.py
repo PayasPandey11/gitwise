@@ -142,6 +142,11 @@ def add(
             if choice == "2":
                 # Call commit command
                 commit_command(group=group)
+                
+                # After successful commit, ask about pushing
+                if typer.confirm("Would you like to push these changes?", default=False):
+                    console.print("\nPushing changes...")
+                    push_command()
             elif choice == "q":
                 console.print("[yellow]Operation cancelled.[/yellow]")
             else:

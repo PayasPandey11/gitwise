@@ -23,6 +23,7 @@
 
 ### Other
 
+- enhance Makefile targets
 - update CI workflow
 - add unit tests for pr command and helpers
 - add tests for commit feature
