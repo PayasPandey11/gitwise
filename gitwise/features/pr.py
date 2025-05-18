@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
 from gitwise.llm import generate_pr_title, get_llm_response
-from gitwise.features.pr_enhancements import enhance_pr_description
+from gitwise.features.pr_enhancements import enhance_pr_description, get_pr_labels
 from gitwise.prompts import PR_DESCRIPTION_PROMPT
 from rich.console import Console
 from rich.panel import Panel
@@ -158,7 +158,8 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
                         tf.write(description)
                         tf.flush()
                         editor = os.environ.get("EDITOR", "vi")
-                        os.system(f'{editor} {tf.name}')
+                        # os.system(f'{editor} {tf.name}')
+                        subprocess.run([editor, tf.name], check=True)
                         tf.seek(0)
                         description = tf.read().strip()
                     os.unlink(tf.name)
@@ -287,6 +288,12 @@ def pr_command(
                 components.show_warning("No commits to create PR for")
                 return
 
+        # Generate PR title using LLM
+        pr_generated_title = title
+        if not pr_generated_title:
+            with components.show_spinner("Generating PR title..."):
+                pr_generated_title = generate_pr_title(commits)
+
         # Show commits that will be included
         components.show_section("Commits to Include")
         for commit in commits:
@@ -294,10 +301,12 @@ def pr_command(
 
         # Generate PR description
         components.show_section("Generating PR Description")
+        pr_body = ""
         try:
             with components.show_spinner("Analyzing changes...") as progress:
-                description = generate_pr_description(commits)
-                if not description:
+                # Use the local pr.py generate_pr_description, which calls get_repository_info
+                pr_body = generate_pr_description(commits) 
+                if not pr_body:
                     raise ValueError("Failed to generate PR description")
         except Exception as e:
             components.show_error(f"Could not generate PR description: {str(e)}")
@@ -311,17 +320,32 @@ def pr_command(
             # Try one more time
             try:
                 with components.show_spinner("Retrying...") as progress:
-                    description = generate_pr_description(commits)
-                    if not description:
+                    pr_body = generate_pr_description(commits)
+                    if not pr_body:
                         components.show_error("Failed to generate PR description again")
                         return
             except Exception as e:
                 components.show_error(f"Failed to generate PR description: {str(e)}")
                 return
 
-        # Show the generated description
+        # Enhance PR description with checklist if requested
+        # Labels will be handled separately with gh command
+        final_labels = []
+        if use_labels:
+            with components.show_spinner("Generating labels..."):
+                final_labels = get_pr_labels(commits) # Get labels based on commits
+        
+        if use_checklist:
+            with components.show_spinner("Generating checklist..."):
+                # Pass base_branch to enhance_pr_description for accurate checklist generation
+                pr_body, _ = enhance_pr_description(commits, pr_body, use_labels=False, use_checklist=True, skip_general_checklist=skip_general_checklist, base_branch_for_checklist=base_branch)
+
+        # Show the generated/enhanced description
         components.show_section("Suggested PR Description")
-        components.console.print(description)
+        components.console.print(f"[bold]Title:[/bold] {pr_generated_title}")
+        if final_labels:
+            components.console.print(f"[bold]Labels:[/bold] {', '.join(final_labels)}")
+        components.console.print(f"[bold]Body:[/bold]\n{pr_body}")
 
         if not skip_prompts:
             # Ask about creating PR
@@ -338,20 +362,21 @@ def pr_command(
 
             if choice == 2:  # Edit
                 with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                    tf.write(description)
+                    tf.write(pr_body) # Edit the potentially enhanced body
                     tf.flush()
                     editor = os.environ.get("EDITOR", "vi")
-                    os.system(f'{editor} {tf.name}')
+                    # os.system(f'{editor} {tf.name}')
+                    subprocess.run([editor, tf.name], check=True)
                     tf.seek(0)
-                    description = tf.read().strip()
+                    pr_body = tf.read().strip()
                 os.unlink(tf.name)
                 
-                if not description.strip():
+                if not pr_body.strip():
                     components.show_error("PR description cannot be empty")
                     return
                     
                 components.show_section("Edited PR Description")
-                components.console.print(description)
+                components.console.print(pr_body)
 
                 components.show_prompt(
                     "Proceed with PR creation?",
@@ -362,32 +387,39 @@ def pr_command(
                     components.show_warning("PR creation cancelled")
                     return
 
-        # Create the PR
-        components.show_section("Creating Pull Request")
-        with components.show_spinner("Creating PR...") as progress:
-            try:
-                # Use GitHub CLI if available
-                result = subprocess.run(
-                    ["gh", "pr", "create",
-                     "--title", title or f"feat: {commits[0]['message']}",
-                     "--body", description,
-                     "--base", base_branch,
-                     *(["--draft"] if draft else [])],
-                    capture_output=True,
-                    text=True
-                )
-                
-                if result.returncode == 0:
-                    components.show_success("Pull request created successfully")
-                    components.console.print(result.stdout)
-                else:
-                    components.show_error("Failed to create pull request")
-                    components.console.print(result.stderr)
+            # Create the PR
+            components.show_section("Creating Pull Request")
+            with components.show_spinner("Creating PR...") as progress:
+                try:
+                    # Use GitHub CLI if available
+                    cmd = [
+                        "gh", "pr", "create",
+                        "--title", pr_generated_title or f"feat: {commits[0]['message']}", # Fallback if title is empty
+                        "--body", pr_body,
+                        "--base", base_branch
+                    ]
+                    if draft:
+                        cmd.append("--draft")
+                    for label in final_labels:
+                        cmd.extend(["--label", label])
+                    
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    if result.returncode == 0:
+                        components.show_success("Pull request created successfully")
+                        components.console.print(result.stdout)
+                    else:
+                        components.show_error("Failed to create pull request")
+                        components.console.print(result.stderr)
+                        return
+                except FileNotFoundError:
+                    components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
+                    components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
                     return
-            except FileNotFoundError:
-                components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
-                components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
-                return
 
     except Exception as e:
         components.show_error(str(e))
