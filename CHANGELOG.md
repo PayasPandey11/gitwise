@@ -83,6 +83,7 @@ Special thanks to the following contributors for their significant contributions
 
 ### Other
 
+- improve PR creation flow and error handling
 - add pull request creation functionality
 - add changelog generation command
 - 
