@@ -230,12 +230,35 @@ def validate_branch_name(branch: str) -> bool:
     pattern = r"^(feature|fix|docs|chore|refactor|test|style|perf|ci|build|revert)/[a-z0-9-]+$"
     return bool(re.match(pattern, branch))
 
-def get_commits_since_last_pr(repo, base_branch: str) -> List[Dict]:
-    """Get commits that haven't been included in a PR yet."""
+def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
+    """Get commits that haven't been included in a PR yet, relative to the given base_branch."""
     try:
-        # Get commits between base branch and current branch
+        # Ensure the local reference of the base branch is up-to-date with its remote counterpart.
+        # This helps in getting an accurate commit list similar to what GitHub would show.
+        # We fetch the specific base branch from origin.
+        # Only run fetch if base_branch is likely a remote-tracking branch or can be fetched.
+        # For simplicity, always try to fetch the base branch ref from origin.
+        # This assumes 'origin' is the relevant remote.
+        fetch_result = subprocess.run(["git", "fetch", "origin", base_branch], capture_output=True, text=True)
+        if fetch_result.returncode != 0:
+            # Log a warning but proceed; could be an offline scenario or base_branch is purely local.
+            components.show_warning(f"Could not fetch remote state for base branch '{base_branch}'. Commit list might be inaccurate. Error: {fetch_result.stderr.strip()}")
+
+        # Now, use origin/base_branch for a more accurate comparison against the remote state,
+        # assuming the PR is targeted against the remote version of base_branch.
+        # If base_branch is already specified as e.g. origin/main, this is fine.
+        # If it's just 'main', using 'origin/main' is more robust for PRs.
+        # However, gh pr create handles this. For our display, using `base_branch..HEAD` after fetch is reasonable.
+        # The fetch updates the local `refs/remotes/origin/base_branch` and potentially local `base_branch` if it tracks it.
+        # So, `base_branch..HEAD` should now be more accurate.
+
+        # Get commits between the (potentially updated) local base_branch and current branch (HEAD)
+        # This range lists commits reachable from HEAD but not from base_branch.
+        diff_range = f"{base_branch}..HEAD"
+        components.console.print(f"[dim]Analyzing commits in range: {diff_range}[/dim]") # For debugging
+
         result = subprocess.run(
-            ["git", "log", f"{base_branch}..HEAD", "--pretty=format:%H|%s|%an"],
+            ["git", "log", diff_range, "--pretty=format:%H|%s|%an"],
             capture_output=True,
             text=True
         )
@@ -290,7 +313,7 @@ def pr_command(
         # Get commits since last PR
         components.show_section("Analyzing Changes")
         with components.show_spinner("Checking for commits...") as progress:
-            commits = get_commits_since_last_pr(None, base_branch)
+            commits = get_commits_since_last_pr(base_branch)
             if not commits:
                 components.show_warning("No commits to create PR for")
                 return
