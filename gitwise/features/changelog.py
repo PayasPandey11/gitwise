@@ -191,55 +191,49 @@ def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> st
     repo_name = repo_info.get("name", "the repository")
     
     # Generate changelog using LLM
+    # The prompt should guide the LLM to generate content for the *specific version* only.
+    prompt_version_guidance = f"Generate the detailed changelog entries for version {version} of {repo_name}. " if version else f"Generate a summary of recent changes for {repo_name}. "
+    
     messages = [
         {
             "role": "system",
-            "content": f"""You are a technical writer creating a changelog for {repo_name}.
-            Create clear, concise, and user-friendly changelog entries that:
-            1. Group related changes together
-            2. Use clear, non-technical language where possible
-            3. Follow conventional commit message format
-            4. Include any breaking changes or migration steps
-            5. Mention contributors if there are significant changes
-            
-            Format the changelog in markdown with the following structure:
-            
-            # Changelog
-            
-            ## [Unreleased]
-            
-            ### 🚀 Features
-            - List new features here
-            
-            ### 🐛 Bug Fixes
-            - List bug fixes here
-            
-            ### 📝 Documentation
-            - List documentation changes here
-            
-            ### 🔧 Maintenance
-            - List maintenance changes here
-            
-            Use emojis for each section and keep the formatting consistent."""
+            "content": f"""You are a technical writer creating a changelog section for {repo_name}.
+            Based on the provided commits, create clear, concise, and user-friendly changelog entries.
+            Please:
+            1. Group related changes under appropriate categories (e.g., ### 🚀 Features, ### 🐛 Bug Fixes, ### 📝 Documentation, ### 🔧 Maintenance, etc.).
+            2. Use clear, non-technical language where possible.
+            3. List individual changes as bullet points under their respective categories.
+            4. Do NOT include a version header like '## {version}' or '[Unreleased]' in your output; this will be added externally.
+            5. Focus only on the changes from the provided commits.
+
+            Example for a '### 🚀 Features' section:
+            - Added new login mechanism using OAuth2.
+            - Implemented user profile page.
+            """
         },
         {
             "role": "user",
-            "content": f"""Create changelog entries for the following commits:
+            "content": f"""{prompt_version_guidance}Here are the commits to include:
 
             {commit_text}"""
         }
     ]
     
     try:
-        changelog = get_llm_response(messages)
+        llm_content = get_llm_response(messages)
         
-        # Add version header if provided
+        # Construct the full version block
         if version:
             date = datetime.now().strftime("%Y-%m-%d")
-            version_header = f"\n## {version} ({date})\n"
-            changelog = changelog.replace("## [Unreleased]", f"## [Unreleased]\n{version_header}")
-        
-        return changelog
+            version_header = f"## {version} ({date})\n"
+            full_version_block = f"{version_header}{llm_content.strip()}\n\n"
+        else:
+            # This case is for generating content not tied to a specific new version tag (e.g. for an unreleased section if we used LLM there)
+            # For now, generate_changelog is mainly called with a version by changelog_command.
+            # If called without version, it implies general summary.
+            full_version_block = f"{llm_content.strip()}\n\n"
+            
+        return full_version_block
     except Exception as e:
         components.show_error(f"Could not generate changelog: {str(e)}")
         return ""
@@ -457,6 +451,18 @@ def changelog_command(
         auto_update: Whether to automatically update the changelog without prompts
     """
     try:
+        if auto_update and not version:
+            # If auto-update is called (likely by a hook) and no version is specified,
+            # assume it's for updating the [Unreleased] section.
+            components.show_section("Auto-updating Unreleased Changelog")
+            with components.show_spinner("Updating [Unreleased] section..."):
+                try:
+                    update_unreleased_changelog() # This function handles its own commit gathering
+                    components.show_success("[Unreleased] section updated successfully.")
+                except Exception as e:
+                    components.show_error(f"Failed to auto-update changelog: {str(e)}")
+            return
+
         # Get commits since last tag
         components.show_section("Analyzing Changes")
         with components.show_spinner("Checking for commits...") as progress:
@@ -465,64 +471,121 @@ def changelog_command(
                 components.show_warning("No commits found to generate changelog")
                 return
 
+        # Suggest next version if not provided
+        if not version:
+            suggested_v, reason = suggest_next_version(commits)
+            components.show_prompt(
+                f"No version specified. Suggested version based on commits (reason: {reason}): {suggested_v}",
+                options=["Use suggested version", "Enter manually", "Cancel"],
+                default="Use suggested version"
+            )
+            choice = typer.prompt("", type=int, default=1)
+            if choice == 1:
+                version = suggested_v
+            elif choice == 2:
+                version_input = typer.prompt("Enter version (e.g., v1.2.3 or 1.2.3)")
+                version = validate_version_input(version_input, current_version=parse_version(get_latest_version()) if get_latest_version() else None)
+                if not version:
+                    components.show_error("Invalid version format. Changelog generation cancelled.")
+                    return
+            else:
+                components.show_warning("Changelog generation cancelled.")
+                return
+        else: # Validate user-provided version
+            latest_parsed = parse_version(get_latest_version()) if get_latest_version() else None
+            validated_version = validate_version_input(version, current_version=latest_parsed)
+            if not validated_version:
+                components.show_error("Invalid version format or not greater than current. Changelog generation cancelled.")
+                return
+            version = validated_version
+
         # Show commits that will be included
         components.show_section("Commits to Include")
         for commit in commits:
             components.console.print(f"[bold cyan]{commit['hash'][:7]}[/bold cyan] {commit['message']}")
 
-        # Generate changelog
-        components.show_section("Generating Changelog")
+        # Generate changelog content for the new version
+        components.show_section("Generating Changelog Content for " + version)
         with components.show_spinner("Analyzing changes...") as progress:
-            changelog = generate_changelog(commits, version)
+            new_version_changelog_content = generate_changelog(commits, version)
 
-        # Show the generated changelog
-        components.show_section("Generated Changelog")
-        components.console.print(changelog)
+        # Show the generated changelog for the new version
+        components.show_section(f"Generated Content for {version}")
+        components.console.print(new_version_changelog_content)
 
         if not auto_update:
             # Ask about saving
             components.show_prompt(
-                "Would you like to save this changelog?",
-                options=["Yes", "Edit", "No"],
+                f"Would you like to add this content for {version} to {output_file or 'CHANGELOG.md'}?",
+                options=["Yes", "Edit content before adding", "No"],
                 default="Yes"
             )
             choice = typer.prompt("", type=int, default=1)
 
             if choice == 3:  # No
-                components.show_warning("Changelog generation cancelled")
+                components.show_warning("Changelog update cancelled")
                 return
 
             if choice == 2:  # Edit
-                with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                    tf.write(changelog)
+                with tempfile.NamedTemporaryFile(suffix=".md", delete=False, mode="w+") as tf:
+                    tf.write(new_version_changelog_content) # Write only the new version's content
                     tf.flush()
                     editor = os.environ.get("EDITOR", "vi")
-                    os.system(f'{editor} {tf.name}')
+                    subprocess.run([editor, tf.name], check=True)
                     tf.seek(0)
-                    changelog = tf.read().strip()
+                    new_version_changelog_content = tf.read().strip()
+                    if not new_version_changelog_content.strip().startswith(f"## {version}"):
+                        # Ensure the header is still there after edit, or add it back
+                        date = datetime.now().strftime("%Y-%m-%d")
+                        new_version_changelog_content = f"## {version} ({date})\n{new_version_changelog_content}\n\n"
+                    else:
+                        new_version_changelog_content += "\n\n" # Ensure blank lines after
+
                 os.unlink(tf.name)
-                components.show_section("Edited Changelog")
-                components.console.print(changelog)
+                components.show_section(f"Edited Content for {version}")
+                components.console.print(new_version_changelog_content)
 
                 components.show_prompt(
-                    "Proceed with saving?",
+                    "Proceed with adding this edited content?",
                     options=["Yes", "No"],
                     default="Yes"
                 )
                 if not typer.confirm("", default=True):
-                    components.show_warning("Changelog generation cancelled")
+                    components.show_warning("Changelog update cancelled")
                     return
 
-        # Save the changelog
-        output_file = output_file or "CHANGELOG.md"
-        components.show_section("Saving Changelog")
-        with components.show_spinner(f"Saving to {output_file}...") as progress:
+        # Save/Update the changelog file
+        target_changelog_file = output_file or "CHANGELOG.md"
+        components.show_section(f"Updating {target_changelog_file}")
+        with components.show_spinner(f"Saving to {target_changelog_file}...") as progress:
             try:
-                with open(output_file, "w") as f:
-                    f.write(changelog)
-                components.show_success(f"Changelog saved to {output_file}")
+                existing_content = ""
+                if os.path.exists(target_changelog_file):
+                    with open(target_changelog_file, "r") as f:
+                        existing_content = f.read()
+                
+                updated_content = ""
+                changelog_title = "# Changelog\n\n"
+                unreleased_section_regex = re.compile(r"(^##\s+\[Unreleased\].*?)(?=^##\s+v?\d+\.\d+\.\d+|^\Z)", re.MULTILINE | re.DOTALL)
+                
+                unreleased_match = unreleased_section_regex.search(existing_content)
+                
+                if existing_content.startswith(changelog_title):
+                    if unreleased_match:
+                        # Insert after unreleased section
+                        insert_point = unreleased_match.end(0)
+                        updated_content = existing_content[:insert_point] + new_version_changelog_content + existing_content[insert_point:]
+                    else:
+                        # Insert after title
+                        updated_content = changelog_title + new_version_changelog_content + existing_content[len(changelog_title):]
+                else: # No existing changelog or no title
+                    updated_content = changelog_title + new_version_changelog_content + existing_content
+
+                with open(target_changelog_file, "w") as f:
+                    f.write(updated_content.strip() + "\n") # Ensure a trailing newline
+                components.show_success(f"Changelog updated in {target_changelog_file}")
             except Exception as e:
-                components.show_error(f"Failed to save changelog: {str(e)}")
+                components.show_error(f"Failed to update changelog: {str(e)}")
 
     except Exception as e:
         components.show_error(str(e))
