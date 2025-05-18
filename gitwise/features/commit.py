@@ -336,7 +336,7 @@ def commit_command(group: bool = True) -> None:
                                 if not typer.confirm("", default=True):
                                     return
                     
-                    # Only ask about pushing after all commits are successful
+                    # Only ask about pushing after all commits are complete
                     components.show_prompt(
                         "Would you like to push these changes?",
                         options=["Yes", "No"],
@@ -406,6 +406,7 @@ def commit_command(group: bool = True) -> None:
 
         # Create commit
         components.show_section("Creating Commit")
+        commit_success = False
         with components.show_spinner("Committing changes..."):
             result = subprocess.run(
                 ["git", "commit", "-m", message],
@@ -416,22 +417,24 @@ def commit_command(group: bool = True) -> None:
             if result.returncode == 0:
                 components.show_success("Commit created successfully")
                 components.console.print(result.stdout)
-                
-                # Only ask about pushing after commit is successful
-                components.show_prompt(
-                    "Would you like to push these changes?",
-                    options=["Yes", "No"],
-                    default="Yes"
-                )
-                choice = typer.prompt("", type=int, default=1)
-                
-                if choice == 1:  # Yes
-                    # Call push command directly without additional prompts
-                    get_push_command()()
+                commit_success = True
             else:
                 components.show_error("Failed to create commit")
                 if result.stderr:
                     components.console.print(result.stderr)
+
+        # Only ask about pushing after commit is complete
+        if commit_success:
+            components.show_prompt(
+                "Would you like to push these changes?",
+                options=["Yes", "No"],
+                default="Yes"
+            )
+            choice = typer.prompt("", type=int, default=1)
+            
+            if choice == 1:  # Yes
+                # Call push command directly without additional prompts
+                get_push_command()()
 
     except Exception as e:
         components.show_error(str(e)) 
