@@ -236,87 +236,86 @@ def pr_command(
             components.console.print(f"[bold]Labels:[/bold] {', '.join(final_labels)}")
         components.console.print(f"[bold]Body:[/bold]\n{pr_body}")
 
-        if not skip_prompts:
             # Ask about creating PR
+        components.show_prompt(
+            "Would you like to create this pull request?",
+            options=["Yes", "Edit description", "No"],
+            default="Yes"
+        )
+        choice = typer.prompt("", type=int, default=1)
+
+        if choice == 3:  # No
+            components.show_warning("PR creation cancelled")
+            return
+
+        if choice == 2:  # Edit
+            with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                tf.write(pr_body) # Edit the potentially enhanced body
+                tf.flush()
+                editor = os.environ.get("EDITOR", "vi")
+                # os.system(f'{editor} {tf.name}')
+                subprocess.run([editor, tf.name], check=True)
+                tf.seek(0)
+                pr_body = tf.read().strip()
+            os.unlink(tf.name)
+            
+            if not pr_body.strip():
+                components.show_error("PR description cannot be empty")
+                return
+                
+            components.show_section("Edited PR Description")
+            components.console.print(pr_body)
+
             components.show_prompt(
-                "Would you like to create this pull request?",
-                options=["Yes", "Edit description", "No"],
+                "Proceed with PR creation?",
+                options=["Yes", "No"],
                 default="Yes"
             )
-            choice = typer.prompt("", type=int, default=1)
-
-            if choice == 3:  # No
+            if not typer.confirm("", default=True):
                 components.show_warning("PR creation cancelled")
                 return
 
-            if choice == 2:  # Edit
-                with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                    tf.write(pr_body) # Edit the potentially enhanced body
-                    tf.flush()
-                    editor = os.environ.get("EDITOR", "vi")
-                    # os.system(f'{editor} {tf.name}')
-                    subprocess.run([editor, tf.name], check=True)
-                    tf.seek(0)
-                    pr_body = tf.read().strip()
-                os.unlink(tf.name)
+        # Create the PR
+        components.show_section("Creating Pull Request")
+        with components.show_spinner("Creating PR...") as progress:
+            try:
+                print("trying  to create PR")
+                # Use GitHub CLI if available
+                cmd = [
+                    "gh", "pr", "create",
+                    "--title", pr_generated_title or f"feat: {commits[0]['message']}", # Fallback if title is empty
+                    "--body", pr_body,
+                    "--base", base_branch
+                ]
+                if draft:
+                    cmd.append("--draft")
+                for label in final_labels:
+                    cmd.extend(["--label", label])
                 
-                if not pr_body.strip():
-                    components.show_error("PR description cannot be empty")
-                    return
-                    
-                components.show_section("Edited PR Description")
-                components.console.print(pr_body)
-
-                components.show_prompt(
-                    "Proceed with PR creation?",
-                    options=["Yes", "No"],
-                    default="Yes"
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True
                 )
-                if not typer.confirm("", default=True):
-                    components.show_warning("PR creation cancelled")
-                    return
-
-            # Create the PR
-            components.show_section("Creating Pull Request")
-            with components.show_spinner("Creating PR...") as progress:
-                try:
-                    print("trying  to create PR")
-                    # Use GitHub CLI if available
-                    cmd = [
-                        "gh", "pr", "create",
-                        "--title", pr_generated_title or f"feat: {commits[0]['message']}", # Fallback if title is empty
-                        "--body", pr_body,
-                        "--base", base_branch
-                    ]
-                    if draft:
-                        cmd.append("--draft")
-                    for label in final_labels:
-                        cmd.extend(["--label", label])
-                    
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True
-                    )
-                    
-                    if result.returncode == 0:
-                        components.show_success("Pull request created successfully")
-                        components.console.print(result.stdout)
+                
+                if result.returncode == 0:
+                    components.show_success("Pull request created successfully")
+                    components.console.print(result.stdout)
+                else:
+                    components.show_error("Failed to create pull request")
+                    error_details = f"`gh pr create` exited with code {result.returncode}.\n"
+                    if result.stderr:
+                        error_details += f"\nStderr:\n{result.stderr}"
                     else:
-                        components.show_error("Failed to create pull request")
-                        error_details = f"`gh pr create` exited with code {result.returncode}.\n"
-                        if result.stderr:
-                            error_details += f"\nStderr:\n{result.stderr}"
-                        else:
-                            error_details += "\nStderr was empty."
-                        if result.stdout:
-                            error_details += f"\nStdout:\n{result.stdout}"
-                        components.console.print(error_details)
-                        return
-                except FileNotFoundError:
-                    components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
-                    components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+                        error_details += "\nStderr was empty."
+                    if result.stdout:
+                        error_details += f"\nStdout:\n{result.stdout}"
+                    components.console.print(error_details)
                     return
+            except FileNotFoundError:
+                components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
+                components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+                return
 
     except Exception as e:
         components.show_error(str(e))
