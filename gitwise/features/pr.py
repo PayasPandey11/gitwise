@@ -7,16 +7,16 @@ from gitwise.gitutils import get_commit_history
 from gitwise.features.pr_enhancements import enhance_pr_description
 
 def pr_command(
-    no_labels: bool = False,
-    no_checklist: bool = False,
+    use_labels: bool = False,
+    use_checklist: bool = False,
     skip_general_checklist: bool = False
 ) -> None:
     """Create a pull request with AI-generated description.
     
     Args:
-        no_labels: Skip adding labels to the PR.
-        no_checklist: Skip adding checklist to the PR description.
-        skip_general_checklist: Skip general checklist items.
+        use_labels: Add labels to the PR (default: False).
+        use_checklist: Add checklist to the PR description (default: False).
+        skip_general_checklist: Skip general checklist items (default: False).
     """
     try:
         # Get commit history
@@ -29,12 +29,12 @@ def pr_command(
         # Generate PR description
         title, description = generate_pr_description(commits)
         
-        # Enhance PR description with labels and checklist
+        # Enhance PR description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
             commits, 
             description,
-            use_labels=not no_labels,
-            use_checklist=not no_checklist,
+            use_labels=use_labels,
+            use_checklist=use_checklist,
             skip_general_checklist=skip_general_checklist
         )
         
@@ -43,7 +43,7 @@ def pr_command(
         print(f"Title: {title}")
         print("\nDescription:")
         print(enhanced_description)
-        if not no_labels:
+        if use_labels:
             print("\nLabels to be applied:", ", ".join(labels) if labels else "None")
         
         # Confirm PR creation
@@ -67,7 +67,7 @@ def pr_command(
                 print(f"\n✅ Pull request created: {pr_url}")
                 
                 # Add labels if enabled and available
-                if not no_labels and labels:
+                if use_labels and labels:
                     subprocess.run(
                         ["gh", "pr", "edit", pr_url, "--add-label", ",".join(labels)],
                         capture_output=True
@@ -84,7 +84,7 @@ def pr_command(
             print("Please install GitHub CLI or create the PR manually with:")
             print(f"Title: {title}")
             print(f"\nDescription:\n{enhanced_description}")
-            if not no_labels and labels:
+            if use_labels and labels:
                 print(f"\nLabels: {', '.join(labels)}")
             
     except Exception as e:
