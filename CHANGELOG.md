@@ -28,6 +28,8 @@
 
 ### Other
 
+- generate AI-enhanced PR descriptions and changelogs
+- add option to edit PR description before creation
 - generate PR descriptions and changelogs using AI
 - enhance PR description generation
 - Enhance PR description generation and improve robustness
