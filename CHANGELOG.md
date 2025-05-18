@@ -83,6 +83,8 @@ Special thanks to the following contributors for their significant contributions
 ### Other
 
 - enhance add command UI and workflow
+- add changelog generation command
+- enhance add command UI and workflow
 - simplify add command flow and prompts
 - enhance add command UI with diff table
 - enhance remote branch handling for commit retrieval
