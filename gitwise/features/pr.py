@@ -236,94 +236,97 @@ def pr_command(
             components.console.print(f"[bold]Labels:[/bold] {', '.join(final_labels)}")
         components.console.print(f"[bold]Body:[/bold]\n{pr_body}")
 
-            # Ask about creating PR
-        components.show_prompt(
-            "Would you like to create this pull request?",
-            options=["Yes", "Edit description", "No"],
-            default="Yes"
-        )
-        choice = typer.prompt("", type=int, default=1)
-
-        if choice == 3:  # No
-            components.show_warning("PR creation cancelled")
-            return
-
-        if choice == 2:  # Edit
-            with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                tf.write(pr_body) # Edit the potentially enhanced body
-                tf.flush()
-                editor = os.environ.get("EDITOR", "vi")
-                # os.system(f'{editor} {tf.name}')
-                subprocess.run([editor, tf.name], check=True)
-                tf.seek(0)
-                pr_body = tf.read().strip()
-            os.unlink(tf.name)
-            
-            if not pr_body.strip():
-                components.show_error("PR description cannot be empty")
-                return
-                
-            components.show_section("Edited PR Description")
-            components.console.print(pr_body)
-
+        if skip_prompts:
+            # If skipping prompts (e.g., called from push), directly attempt PR creation.
+            _create_gh_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+        else:
+            # Interactive mode: ask user for confirmation and allow editing.
             components.show_prompt(
-                "Proceed with PR creation?",
-                options=["Yes", "No"],
+                "Would you like to create this pull request?",
+                options=["Yes", "Edit description", "No"],
                 default="Yes"
             )
-            if not typer.confirm("", default=True):
+            choice = typer.prompt("", type=int, default=1)
+
+            if choice == 3:  # No
                 components.show_warning("PR creation cancelled")
                 return
 
-        # Create the PR
-        components.show_section("Creating Pull Request")
-        with components.show_spinner("Creating PR...") as progress:
-            try:
-                print("trying  to create PR")
-                # Use GitHub CLI if available
-                cmd = [
-                    "gh", "pr", "create",
-                    "--title", pr_generated_title or f"feat: {commits[0]['message']}", # Fallback if title is empty
-                    "--body", pr_body,
-                    "--base", base_branch
-                ]
-                if draft:
-                    cmd.append("--draft")
-                for label in final_labels:
-                    cmd.extend(["--label", label])
+            if choice == 2:  # Edit
+                with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                    tf.write(pr_body) # Edit the potentially enhanced body
+                    tf.flush()
+                    editor = os.environ.get("EDITOR", "vi")
+                    subprocess.run([editor, tf.name], check=True)
+                    tf.seek(0)
+                    pr_body = tf.read().strip()
+                os.unlink(tf.name)
                 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True
-                )
-                
-                if result.returncode == 0:
-                    components.show_success("Pull request created successfully")
-                    components.console.print(result.stdout)
-                else:
-                    components.show_error("Failed to create pull request")
-                    error_details = f"`gh pr create` exited with code {result.returncode}.\n"
-                    if result.stderr:
-                        error_details += f"\nStderr:\n{result.stderr}"
-                    else:
-                        error_details += "\nStderr was empty."
-                    if result.stdout:
-                        error_details += f"\nStdout:\n{result.stdout}"
-                    components.console.print(error_details)
+                if not pr_body.strip():
+                    components.show_error("PR description cannot be empty")
                     return
-            except FileNotFoundError:
-                components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
-                components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
-                return
+                    
+                components.show_section("Edited PR Description")
+                components.console.print(pr_body)
+
+                components.show_prompt(
+                    "Proceed with PR creation using the edited description?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                if not typer.confirm("", default=True):
+                    components.show_warning("PR creation cancelled")
+                    return
+            
+            # If choice was 1 (Yes) or after editing and confirming Yes:
+            _create_gh_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
 
     except Exception as e:
         components.show_error(str(e))
 
-def create_pull_request(title: str, body: str, base: str, head: str, draft: bool = False) -> Dict:
-    """Create a pull request using GitHub API."""
-    # Implementation depends on your GitHub API integration
-    pass
+def _create_gh_pr(title: str, body: str, base: str, labels: List[str], draft: bool = False) -> None:
+    """Internal function to create a pull request using the gh CLI."""
+    # Removed `commits` from args as `gh pr create` infers this.
+    components.show_section("Creating Pull Request via gh CLI")
+    with components.show_spinner("Running `gh pr create`...") as progress: # Changed spinner message
+        try:
+            # print("debug: trying to create PR with gh") # For local debugging if needed
+            cmd = [
+                "gh", "pr", "create",
+                "--title", title, 
+                "--body", body,
+                "--base", base
+            ]
+            if draft:
+                cmd.append("--draft")
+            for label in labels:
+                cmd.extend(["--label", label])
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True
+            )
+    
+            if result.returncode == 0:
+                components.show_success("Pull request created successfully by gh CLI.")
+                components.console.print(result.stdout)
+            else:
+                components.show_error("Failed to create pull request using gh CLI.")
+                error_details = f"`gh pr create` exited with code {result.returncode}.\n"
+                if result.stderr:
+                    error_details += f"\nStderr:\n{result.stderr}"
+                else:
+                    error_details += "\nStderr was empty."
+                if result.stdout: # Log stdout too if stderr is empty but command failed
+                    error_details += f"\nStdout:\n{result.stdout}"
+                components.console.print(error_details)
+                # Not returning anything specific as pr_command doesn't use it.
+        except FileNotFoundError:
+            components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
+            components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+        except Exception as e: # Catch any other unexpected error during PR creation
+            components.show_error(f"An unexpected error occurred during PR creation: {str(e)}")
 
 def generate_pr_description(commits: List[Dict]) -> str:
     """Generate a PR description from commits.
