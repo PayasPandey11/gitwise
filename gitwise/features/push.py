@@ -52,6 +52,14 @@ def push_command() -> None:
             components.show_warning("Push cancelled")
             return
 
+        # Update changelog before pushing
+        with components.show_spinner("Updating changelog..."):
+            try:
+                from gitwise.features.changelog import update_unreleased_changelog
+                update_unreleased_changelog()
+            except Exception as e:
+                components.show_warning(f"Could not update changelog: {str(e)}")
+
         # Push changes
         with components.show_spinner("Pushing to remote..."):
             result = subprocess.run(
@@ -62,38 +70,39 @@ def push_command() -> None:
             
             if result.returncode == 0:
                 components.show_success("Changes pushed successfully")
+                
+                # Only ask about PR after successful push
+                components.show_prompt(
+                    "Would you like to create a pull request?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                choice = typer.prompt("", type=int, default=1)
+                
+                if choice == 1:  # Yes
+                    try:
+                        # Ask about PR options
+                        components.show_prompt(
+                            "Would you like to include labels and checklist in the PR?",
+                            options=["Yes", "No"],
+                            default="Yes"
+                        )
+                        include_extras = typer.prompt("", type=int, default=1) == 1
+                        
+                        # Call PR command with user preferences
+                        pr_command(
+                            use_labels=include_extras,
+                            use_checklist=include_extras,
+                            skip_general_checklist=not include_extras,
+                            skip_prompts=True  # Skip prompts since we already asked
+                        )
+                    except Exception as e:
+                        components.show_error(f"Failed to create PR: {str(e)}")
             else:
                 components.show_error("Failed to push changes")
                 if result.stderr:
                     components.console.print(result.stderr)
                 return
-
-        # Only ask about PR after push is complete
-        components.show_prompt(
-            "Would you like to create a pull request?",
-            options=["Yes", "No"],
-            default="Yes"
-        )
-        choice = typer.prompt("", type=int, default=1)
-        
-        if choice == 1:  # Yes
-            try:
-                # Ask about PR options
-                components.show_prompt(
-                    "Would you like to include labels and checklist in the PR?",
-                    options=["Yes", "No"],
-                    default="Yes"
-                )
-                include_extras = typer.prompt("", type=int, default=1) == 1
-                
-                # Call PR command with user preferences
-                pr_command(
-                    use_labels=include_extras,
-                    use_checklist=include_extras,
-                    skip_general_checklist=not include_extras
-                )
-            except Exception as e:
-                components.show_error(f"Failed to create PR: {str(e)}")
 
     except Exception as e:
         components.show_error(str(e)) 
