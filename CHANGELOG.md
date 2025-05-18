@@ -76,12 +76,15 @@ Special thanks to the following contributors for their significant contributions
 
 ### Chores
 
+- add changelog generation command
 - add MANIFEST.in for packaging
 - add CHANGELOG.md
 - add CHANGELOG.md
 
 ### Other
 
+- add pull request creation functionality
+- add changelog generation command
 - 
 - add changelog generation command
 - enhance add command UI and workflow

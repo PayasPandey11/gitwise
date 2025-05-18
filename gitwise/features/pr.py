@@ -6,71 +6,137 @@ import json
 from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
-from gitwise.llm import generate_pr_description as llm_generate_pr_description, generate_pr_title
+from gitwise.llm import generate_pr_title, generate_pr_description as llm_generate_pr_description
 from gitwise.features.pr_enhancements import enhance_pr_description
 from gitwise.prompts import PR_DESCRIPTION_PROMPT
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm
+from rich import print as rprint
 
-def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
-    """Get commits since the last push to the remote branch."""
-    current_branch = get_current_branch()
+console = Console()
+
+def get_commits_since_last_pr(repo: Repo, base_branch: str = "main") -> List[Commit]:
+    """Get commits since last PR was created.
+    
+    Args:
+        repo: Git repository
+        base_branch: Base branch to compare against
+        
+    Returns:
+        List of commits since last PR
+    """
+    current_branch = repo.active_branch.name
+    remote_branch = f"origin/{current_branch}"
     
     try:
-        # Get the remote tracking branch
-        remote_branch = f"origin/{current_branch}"
+        # First try to get commits between remote and local
+        repo.git.fetch("origin", current_branch)
+        commits = list(repo.iter_commits(f"{remote_branch}..HEAD"))
         
-        # Check if remote branch exists
-        try:
-            repo.git.rev_parse(f"{remote_branch}")
-            # If we get here, remote branch exists, get commits since last push
-            commits = list(repo.iter_commits(f"{remote_branch}..{current_branch}"))
-        except:
-            # Remote branch doesn't exist, get all commits since base branch
-            commits = list(repo.iter_commits(f"{base_branch}..{current_branch}"))
-        
+        # If no commits found, try getting commits since base branch
         if not commits:
-            # If no commits found, try getting commits since base branch
-            commits = list(repo.iter_commits(f"{base_branch}..{current_branch}"))
-        
+            commits = list(repo.iter_commits(f"{base_branch}..HEAD"))
+            
         return commits
     except Exception as e:
         # If any error occurs, fall back to base branch
-        return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
+        console.print(f"[yellow]Warning: {str(e)}[/yellow]")
+        console.print("[yellow]Falling back to comparing with base branch...[/yellow]")
+        return list(repo.iter_commits(f"{base_branch}..HEAD"))
 
-def generate_pr_description(commits: List[Commit]) -> str:
-    """Generate a PR description using LLM with industry-standard format."""
-    if not commits:
-        return "No changes to describe."
+def create_pr(repo: Repo, title: str, description: str, labels: List[str] = None) -> str:
+    """Create a pull request.
+    
+    Args:
+        repo: Git repository
+        title: PR title
+        description: PR description
+        labels: Optional list of labels to add
+        
+    Returns:
+        URL of the created PR
+    """
+    # This is a placeholder - in a real implementation, you would use the GitHub API
+    # to create the PR. For now, we'll just return a mock URL.
+    return f"https://github.com/owner/repo/pull/123"
 
-    # Prepare commit information for the LLM
-    commit_info = []
-    for commit in commits:
-        msg = commit.message.strip()
-        # Remove conventional commit prefix if present
-        msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
-        commit_info.append({
-            "message": msg,
-            "hash": commit.hexsha[:7],
-            "author": commit.author.name,
-            "date": commit.committed_datetime.strftime("%Y-%m-%d %H:%M:%S")
-        })
-
-    # Use the existing PR description prompt
-    prompt = PR_DESCRIPTION_PROMPT.format(commits=json.dumps(commit_info, indent=2))
-
-    # Use the LLM to generate the description
-    try:
+def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str] = None) -> Optional[str]:
+    """Create a pull request for the current branch.
+    
+    Args:
+        repo: Git repository
+        base_branch: Base branch to create PR against
+        labels: Optional list of labels to add to the PR
+        
+    Returns:
+        URL of the created PR if successful, None otherwise
+    """
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        # Get commits since last PR
+        task = progress.add_task("Analyzing commits...", total=None)
+        commits = get_commits_since_last_pr(repo, base_branch)
+        progress.update(task, completed=True)
+        
+        if not commits:
+            console.print("[red]No new commits to create PR for.[/red]")
+            console.print("[yellow]This might happen if:")
+            console.print("1. All commits have already been pushed and included in a PR")
+            console.print("2. You haven't made any commits yet")
+            console.print("3. You're on the base branch (main/master)[/yellow]")
+            return None
+            
+        # Generate PR title
+        task = progress.add_task("Generating PR title...", total=None)
+        title = generate_pr_title(commits)
+        progress.update(task, completed=True)
+        
+        # Prepare commit information for LLM
+        commit_info = []
+        for commit in commits:
+            message = commit.message.split('\n')[0]
+            commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
+        
+        # Generate PR description using LLM
+        task = progress.add_task("Generating PR description...", total=None)
+        prompt = PR_DESCRIPTION_PROMPT.format(
+            commits="\n".join(commit_info),
+            base_branch=base_branch,
+            current_branch=repo.active_branch.name
+        )
         description = llm_generate_pr_description(prompt)
-        return description
-    except Exception as e:
-        print(f"Error generating PR description: {str(e)}")
-        # Fallback to a simple description if LLM fails
-        return "\n".join([
-            "## Changes",
-            *[f"- {commit['message']}" for commit in commit_info],
-            "",
-            "## Testing",
-            "Please verify the changes work as expected."
-        ])
+        progress.update(task, completed=True)
+        
+        # Show preview
+        console.print("\n[bold]PR Preview:[/bold]")
+        console.print(Panel(f"[bold]{title}[/bold]\n\n{description}", title="Pull Request", border_style="blue"))
+        
+        if not Confirm.ask("Create this pull request?"):
+            return None
+            
+        # Create PR
+        task = progress.add_task("Creating pull request...", total=None)
+        pr_url = create_pr(repo, title, description, labels)
+        progress.update(task, completed=True)
+        
+        return pr_url
+
+def validate_branch_name(branch: str) -> bool:
+    """Validate branch name against naming conventions."""
+    # Protected branches
+    protected = {"main", "master", "develop"}
+    if branch in protected:
+        return False
+    
+    # Branch name pattern
+    pattern = r"^(feature|fix|docs|chore|refactor|test|style|perf|ci|build|revert)/[a-z0-9-]+$"
+    return bool(re.match(pattern, branch))
 
 def pr_command(
     use_labels: bool = False,
@@ -107,19 +173,21 @@ def pr_command(
         if title:
             pr_title = title
         else:
-            # Generate a concise title from the most significant commit
-            if commits:
-                main_commit = commits[0]  # Most recent commit
-                msg = main_commit.message.strip()
-                # Remove conventional commit prefix if present
-                msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
-                # Take first line and limit length
-                pr_title = msg.split('\n')[0][:100]
-            else:
-                pr_title = "Update"
+            pr_title = generate_pr_title(commits)
 
+        # Prepare commit information for LLM
+        commit_info = []
+        for commit in commits:
+            message = commit.message.split('\n')[0]
+            commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
+        
         # Generate PR description using LLM
-        pr_description = generate_pr_description(commits)
+        prompt = PR_DESCRIPTION_PROMPT.format(
+            commits="\n".join(commit_info),
+            base_branch=base_branch,
+            current_branch=current_branch
+        )
+        pr_description = llm_generate_pr_description(prompt)
         
         # Enhance the description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
@@ -175,17 +243,6 @@ def pr_command(
     except Exception as e:
         print(f"\n❌ Error: {str(e)}")
         print("Please try again or create the PR manually.")
-
-def validate_branch_name(branch: str) -> bool:
-    """Validate branch name against naming conventions."""
-    # Protected branches
-    protected = {"main", "master", "develop"}
-    if branch in protected:
-        return False
-    
-    # Branch name pattern
-    pattern = r"^(feature|fix|docs|chore|refactor|test|style|perf|ci|build|revert)/[a-z0-9-]+$"
-    return bool(re.match(pattern, branch))
 
 def create_pull_request(title: str, body: str, base: str, head: str, draft: bool = False) -> Dict:
     """Create a pull request using GitHub API."""
