@@ -70,8 +70,8 @@ def show_menu(options: list[tuple[str, str]]) -> None:
     console.print("\n[bold blue]What would you like to do?[/bold blue]")
     
     # Show options with numbers
-    for key, text in options:
-        console.print(f"[bold cyan]{key}[/bold cyan] {text}")
+    for i, (_, text) in enumerate(options, 1):
+        console.print(f"[bold cyan]{i}[/bold cyan] {text}")
     
     # Add another separator
     console.print("\n" + "─" * 50)
@@ -79,16 +79,21 @@ def show_menu(options: list[tuple[str, str]]) -> None:
     # Show prompt with clear formatting
     console.print("\n[bold yellow]Select an option[/bold yellow] [dim](press Enter for default)[/dim]")
 
-def show_prompt(prompt: str, default: str = None) -> None:
+def show_prompt(prompt: str, options: list[str] = None, default: str = None) -> None:
     """Show a formatted prompt for user input."""
     # Add a separator line
     console.print("\n" + "─" * 50)
     
     # Show prompt with clear formatting
-    if default:
-        console.print(f"\n[bold yellow]{prompt}[/bold yellow] [dim](default: {default})[/dim]")
+    if options:
+        console.print(f"\n[bold blue]{prompt}[/bold blue]")
+        for i, option in enumerate(options, 1):
+            console.print(f"[bold cyan]{i}[/bold cyan] {option}")
     else:
-        console.print(f"\n[bold yellow]{prompt}[/bold yellow]")
+        if default:
+            console.print(f"\n[bold yellow]{prompt}[/bold yellow] [dim](default: {default})[/dim]")
+        else:
+            console.print(f"\n[bold yellow]{prompt}[/bold yellow]")
     
     # Add another separator
     console.print("\n" + "─" * 50)

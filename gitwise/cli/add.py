@@ -51,9 +51,9 @@ def add_command(
 
             # Show menu
             options = [
-                ("1", "Create commit"),
-                ("2", "Review changes"),
-                ("3", "Quit")
+                ("", "Create commit"),
+                ("", "Review changes"),
+                ("", "Quit")
             ]
             components.show_menu(options)
             
@@ -62,7 +62,11 @@ def add_command(
             if choice == 1:
                 commit_command(group=group)
                 # After commit, offer to push
-                components.show_prompt("Push these changes?", default="yes")
+                components.show_prompt(
+                    "Push these changes?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
                 if typer.confirm("", default=True):
                     push_command()
             elif choice == 2:
