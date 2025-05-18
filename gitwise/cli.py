@@ -4,12 +4,13 @@ import typer
 import sys
 import os
 import subprocess
+import tempfile
 from typing import Optional, List
 from gitwise.features.commit import commit_command
 from gitwise.features.push import push_command
 from gitwise.features.pr import pr_command
 from gitwise.features.changelog import changelog_command
-from gitwise.gitutils import get_staged_files, get_unstaged_files
+from gitwise.gitutils import get_staged_files, get_unstaged_files, get_staged_diff
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
@@ -206,13 +207,105 @@ def commit(
             
             console.print(Panel(table, title="[bold green]Files to Commit[/bold green]"))
             
+            # Get staged diff
+            task2 = progress.add_task("🔍 Analyzing changes...", total=None)
+            staged_diff = get_staged_diff()
+            progress.update(task2, completed=True)
+            
+            # Show changes in a more organized way
+            console.print("\n[bold blue]Changes Overview[/bold blue]")
+            for status, file in staged:
+                console.print(f"\n[cyan]{status}[/cyan] [green]{file}[/green]")
+                # Get file-specific diff
+                result = subprocess.run(
+                    ["git", "diff", "--cached", "--", file],
+                    capture_output=True,
+                    text=True
+                )
+                if result.stdout:
+                    # Show only the changed lines, not the full diff
+                    changes = []
+                    for line in result.stdout.splitlines():
+                        if line.startswith('+') and not line.startswith('+++'):
+                            changes.append(f"[green]{line}[/green]")
+                        elif line.startswith('-') and not line.startswith('---'):
+                            changes.append(f"[red]{line}[/red]")
+                    if changes:
+                        console.print(Panel(
+                            "\n".join(changes[:5] + ["..."] if len(changes) > 5 else changes),
+                            title=f"[bold]Changes in {file}[/bold]",
+                            border_style="blue"
+                        ))
+            
             # Generate commit message
             progress.update(task1, description="🤖 Generating commit message...")
-            commit_command(message=message, group=group)
+            commit_message = generate_commit_message(staged_diff)
             progress.update(task1, completed=True)
+            
+            # Show commit message in a nice panel
+            console.print("\n[bold blue]Suggested Commit Message[/bold blue]")
+            console.print(Panel(
+                commit_message,
+                title="[bold green]Review Message[/bold green]",
+                border_style="green"
+            ))
+            
+            # Handle commit message options
+            while True:
+                choice = typer.prompt(
+                    "What would you like to do?",
+                    type=str,
+                    default="u",
+                    show_choices=True,
+                    show_default=True,
+                    prompt_suffix="\n[u]se/[e]dit/[r]egenerate/[a]bort "
+                ).lower()
+                
+                if choice == "a":
+                    console.print("[yellow]Operation cancelled.[/yellow]")
+                    return
+                
+                if choice == "r":
+                    progress.add_task("🔄 Regenerating commit message...", total=None)
+                    commit_message = generate_commit_message(staged_diff)
+                    console.print(Panel(
+                        commit_message,
+                        title="[bold green]New Commit Message[/bold green]",
+                        border_style="green"
+                    ))
+                    continue
+                
+                if choice == "e":
+                    with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                        tf.write(commit_message)
+                        tf.flush()
+                        editor = os.environ.get("EDITOR", "vi")
+                        os.system(f'{editor} {tf.name}')
+                        tf.seek(0)
+                        commit_message = tf.read().strip()
+                    os.unlink(tf.name)
+                    console.print(Panel(
+                        commit_message,
+                        title="[bold green]Edited Commit Message[/bold green]",
+                        border_style="green"
+                    ))
+                    continue
+                
+                if choice == "u":
+                    break
+            
+            # Create commit
+            task3 = progress.add_task("💾 Creating commit...", total=None)
+            run_git_commit(commit_message)
+            progress.update(task3, completed=True)
             
             # Show success message
             console.print("\n[bold green]✅ Commit created successfully![/bold green]")
+            
+            # Ask about pushing
+            if typer.confirm("\nWould you like to push these changes?", default=False):
+                console.print("\n[bold blue]Pushing Changes[/bold blue]")
+                push_command()
             
     except Exception as e:
         console.print(f"[red]❌ Error: {str(e)}[/red]")
@@ -334,8 +427,91 @@ def changelog(
     auto_update: bool = typer.Option(False, "--auto-update", help="Update the unreleased section of the changelog"),
     setup_hook: bool = typer.Option(False, "--setup-hook", help="Set up git commit hook for automatic changelog updates")
 ) -> None:
-    """Generate a changelog for the repository."""
-    changelog_command(version, create_tag, auto_update, setup_hook)
+    """Generate a changelog for the repository.
+    
+    This command will:
+    1. Analyze your repository's version history
+    2. Generate or update the changelog
+    3. Optionally create version tags
+    4. Set up automatic updates
+    """
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            if setup_hook:
+                task = progress.add_task("🔧 Setting up commit hook...", total=None)
+                changelog_command(version, create_tag, auto_update, setup_hook)
+                progress.update(task, completed=True)
+                console.print("\n[bold green]✅ Commit hook set up successfully![/bold green]")
+                return
+
+            if auto_update:
+                task = progress.add_task("📝 Updating unreleased section...", total=None)
+                changelog_command(version, create_tag, auto_update, setup_hook)
+                progress.update(task, completed=True)
+                console.print("\n[bold green]✅ Changelog updated successfully![/bold green]")
+                return
+
+            # Get version tags
+            task1 = progress.add_task("🔍 Checking version tags...", total=None)
+            tags = get_version_tags()
+            progress.update(task1, completed=True)
+
+            if not tags:
+                if create_tag:
+                    # Get commits since last tag
+                    task2 = progress.add_task("📜 Analyzing commits...", total=None)
+                    commits = get_commits_between_tags(None, "HEAD")
+                    progress.update(task2, completed=True)
+
+                    if not commits:
+                        console.print("[yellow]⚠️  No commits found to create a version tag.[/yellow]")
+                        return
+
+                    # Show commits
+                    table = Table(title="📝 Commits to Include", show_header=True, header_style="bold magenta")
+                    table.add_column("Hash", style="cyan")
+                    table.add_column("Message", style="green")
+                    table.add_column("Author", style="yellow")
+
+                    for commit in commits:
+                        table.add_row(
+                            commit['hash'][:7],
+                            commit['message'],
+                            commit['author']
+                        )
+
+                    console.print(Panel(table, title="[bold blue]Version Preview[/bold blue]"))
+
+                    # Suggest next version
+                    task3 = progress.add_task("🤖 Suggesting next version...", total=None)
+                    suggested_version, explanation = suggest_next_version(commits)
+                    progress.update(task3, completed=True)
+
+                    console.print(f"\n[bold]Suggested version:[/bold] [cyan]{suggested_version}[/cyan]")
+                    console.print(f"[bold]Reason:[/bold] {explanation}")
+
+                    if typer.confirm("\nCreate this version?", default=True):
+                        task4 = progress.add_task("📝 Creating version...", total=None)
+                        changelog_command(suggested_version, create_tag, auto_update, setup_hook)
+                        progress.update(task4, completed=True)
+                        console.print("\n[bold green]✅ Version created successfully![/bold green]")
+                else:
+                    console.print("[yellow]⚠️  No version tags found in the repository.[/yellow]")
+                    console.print("Run [cyan]gitwise changelog --create-tag[/cyan] to create a version tag.")
+            else:
+                task2 = progress.add_task("📝 Generating changelog...", total=None)
+                changelog_command(version, create_tag, auto_update, setup_hook)
+                progress.update(task2, completed=True)
+                console.print("\n[bold green]✅ Changelog generated successfully![/bold green]")
+
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):
@@ -365,7 +541,7 @@ def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list",
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def git(ctx: typer.Context):
-    """Pass through to git command.
+    """Pass through to git command with enhanced output.
     
     Examples:
         gitwise git status
@@ -373,39 +549,82 @@ def git(ctx: typer.Context):
         gitwise git log --oneline
     """
     if not ctx.args:
-        typer.echo("Please provide a git command.")
-        typer.echo("\nExamples:")
-        typer.echo("  gitwise git status")
-        typer.echo("  gitwise git checkout -b feature/new")
-        typer.echo("  gitwise git log --oneline")
+        console.print("[yellow]⚠️  Please provide a git command.[/yellow]")
+        console.print("\n[bold]Examples:[/bold]")
+        console.print("  [cyan]gitwise git status[/cyan]")
+        console.print("  [cyan]gitwise git checkout -b feature/new[/cyan]")
+        console.print("  [cyan]gitwise git log --oneline[/cyan]")
         raise typer.Exit(1)
-    
-    result = subprocess.run(["git"] + ctx.args)
-    raise typer.Exit(code=result.returncode)
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            task = progress.add_task(f"🔄 Running git {' '.join(ctx.args)}...", total=None)
+            result = subprocess.run(["git"] + ctx.args, capture_output=True, text=True)
+            progress.update(task, completed=True)
+
+            if result.returncode == 0:
+                if result.stdout:
+                    console.print(result.stdout)
+                console.print("[bold green]✅ Command completed successfully![/bold green]")
+            else:
+                console.print(f"[red]❌ Error: {result.stderr}[/red]")
+                raise typer.Exit(result.returncode)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 # Add a catch-all command for unknown commands
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def catch_all(ctx: typer.Context):
-    """Pass through to git command."""
+    """Pass through to git command with enhanced output."""
     if not ctx.args:
-        typer.echo("Please provide a git command.")
+        console.print("[yellow]⚠️  Please provide a git command.[/yellow]")
         raise typer.Exit(1)
-    
+
     command = ctx.args[0]
     args = ctx.args[1:]
-    
-    # If it's a gitwise command, run it
-    if command in GITWISE_COMMANDS:
-        if command == "commit":
-            commit_command()
-        elif command == "push":
-            push_command()
-        elif command == "pr":
-            pr_command()
-    else:
-        # Otherwise pass through to git
-        result = subprocess.run(["git", command] + args)
-        raise typer.Exit(code=result.returncode)
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            # If it's a gitwise command, run it
+            if command in GITWISE_COMMANDS:
+                task = progress.add_task(f"🤖 Running {command} command...", total=None)
+                if command == "commit":
+                    commit_command()
+                elif command == "push":
+                    push_command()
+                elif command == "pr":
+                    pr_command()
+                progress.update(task, completed=True)
+                console.print(f"[bold green]✅ {command} command completed successfully![/bold green]")
+            else:
+                # Otherwise pass through to git
+                task = progress.add_task(f"🔄 Running git {command}...", total=None)
+                result = subprocess.run(["git", command] + args, capture_output=True, text=True)
+                progress.update(task, completed=True)
+
+                if result.returncode == 0:
+                    if result.stdout:
+                        console.print(result.stdout)
+                    console.print("[bold green]✅ Command completed successfully![/bold green]")
+                else:
+                    console.print(f"[red]❌ Error: {result.stderr}[/red]")
+                    raise typer.Exit(result.returncode)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 if __name__ == "__main__":
     app() 
