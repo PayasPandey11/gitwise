@@ -30,12 +30,20 @@ def add_command(
                     components.show_error("Failed to stage files")
                     return
             else:
+                failed_files = []
                 for file in files:
                     if os.path.exists(file):
                         if not git.stage_file(file):
                             components.show_error(f"Failed to stage file: {file}")
+                            failed_files.append(file)
                     else:
                         components.show_error(f"File not found: {file}")
+                        failed_files.append(file)
+                
+                if failed_files:
+                    components.show_warning(f"Could not stage the following files: {', '.join(failed_files)}")
+                    # Decide if we should proceed if some files failed. For now, we do.
+                    # If not, add a `return` here.
 
         # Show staged changes
         staged = git.get_staged_files()
@@ -43,40 +51,37 @@ def add_command(
             components.show_section("Staged Changes")
             components.show_files_table(staged)
 
-            # Show diff for each file
-            for status, file in staged:
-                diff = git.get_file_diff(file)
-                if diff:
-                    components.show_diff(diff, f"Changes in {file}")
+            while True:
+                options = [
+                    ("commit", "Create commit with these changes"),
+                    ("diff", "View full diff of staged changes"),
+                    ("quit", "Quit and leave files staged")
+                ]
+                components.show_menu(options)
+                
+                choice_map = {1: "commit", 2: "diff", 3: "quit"}
+                user_choice_num = typer.prompt("Select an option", type=int, default=1)
+                action = choice_map.get(user_choice_num)
 
-            # Show menu
-            options = [
-                ("", "Create commit"),
-                ("", "Review changes"),
-                ("", "Quit")
-            ]
-            components.show_menu(options)
-            
-            choice = typer.prompt("", type=int, default=1)
-            
-            if choice == 1:
-                commit_command(group=group)
-                # After commit, offer to push
-                components.show_prompt(
-                    "Push these changes?",
-                    options=["Yes", "No"],
-                    default="Yes"
-                )
-                if typer.confirm("", default=True):
-                    push_command()
-            elif choice == 2:
-                # Show full diff
-                diff = git.get_staged_diff()
-                if diff:
-                    components.show_section("Full Changes")
-                    components.show_diff(diff)
-            else:
-                components.show_warning("Operation cancelled.")
+                if action == "commit":
+                    commit_command()
+                    # After commit, offer to push
+                    if git.get_current_branch():
+                        if typer.confirm("Push these changes?", default=True):
+                            push_command()
+                    break
+                elif action == "diff":
+                    full_diff = git.get_staged_diff()
+                    if full_diff:
+                        components.show_section("Full Staged Changes")
+                        components.show_diff(full_diff)
+                    else:
+                        components.show_warning("No staged changes to diff.")
+                elif action == "quit":
+                    components.show_warning("Operation cancelled. Files remain staged.")
+                    break
+                else:
+                    components.show_error("Invalid choice. Please try again.")
         else:
             components.show_section("Status")
             components.show_warning("No files were staged.")

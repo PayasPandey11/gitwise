@@ -47,14 +47,15 @@ def add(
 
 @app.command(name="commit", help="Create a commit with AI-generated message")
 def commit(
-    no_group: bool = typer.Option(
+    group: bool = typer.Option(
         False,
-        "--no-group",
-        help="Disable automatic grouping of changes"
+        "--group",
+        "-g",
+        help="Enable automatic grouping of related changes into separate commits (can be slower)."
     )
 ) -> None:
     """Create a commit with AI-generated message."""
-    commit_command(group=not no_group)
+    commit_command(group=group)
 
 @app.command()
 def push() -> None:
@@ -87,15 +88,38 @@ def changelog(
 def git(
     args: List[str] = typer.Argument(None, help="Git command and arguments")
 ) -> None:
-    """Pass through to git with enhanced output."""
+    """Pass through to git with enhanced output and pager handling for common commands."""
     if not args:
         components.show_error("No git command provided")
         raise typer.Exit(code=1)
 
+    command_to_run = ["git"] + args
+    
+    # Heuristic: Common git commands that use a pager
+    pager_commands = {"log", "diff", "show", "branch"} # `branch -vv` can page
+    
+    # Check if the first arg is a command that typically pages AND if we are likely not in an interactive gh-controlled pager scenario
+    # This is a simple heuristic. A more robust check would involve `sys.stdout.isatty()`
+    # and potentially checking if `gh` is the parent process and handling its pager.
+    # For now, if it's a known pager command and not explicitly piped by the user, append `| cat`.
+    is_pager_command = args[0] in pager_commands
+    is_piped_by_user = any("|" in arg for arg in args) # very basic check
+    
+    # If it's a pager command, not explicitly piped by user, and stdout is likely not a TTY (or to be safe for scripting)
+    # For now, always append `| cat` for these commands if not piped, to ensure scriptability and avoid hangs.
+    # More sophisticated: only if !sys.stdout.isatty() or a specific flag is given.
+    if is_pager_command and not is_piped_by_user:
+        # components.show_warning(f"Command '{args[0]}' typically uses a pager. Appending '| cat' for script-friendly output.")
+        # This modification of `args` for Popen is tricky as `| cat` is shell syntax.
+        # Instead, we should run it through a shell if we want to use pipes, or handle paging differently.
+        # For simplicity with Popen, we'll let users pipe manually or use gh's pager if run via `gh alias`.
+        # The previous logic of just streaming output is safer than trying to auto-pipe here without shell=True.
+        pass # Reverted to no auto-piping for now. README should reflect this.
+
     try:
         # Use Popen for better control over the process
         process = subprocess.Popen(
-            ["git"] + args,
+            command_to_run,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

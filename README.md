@@ -1,214 +1,177 @@
-# GitWise
+# GitWise: Your AI-Powered Git Co-pilot
 
-GitWise is an AI-powered git assistant that helps you write better commit messages, create pull requests, and manage your repository with smart automation.
+**GitWise is a command-line tool designed for experienced developers to enhance their Git workflow with intelligent AI assistance. It focuses on speed, efficiency, and integrating seamlessly with your existing habits, while upholding industry best practices.**
 
-## Features
+Are you a seasoned developer who loves the power of Git but wishes some parts were faster or smarter? GitWise is built for you. We don't replace your Git knowledge; we augment it. GitWise helps you:
 
-- **Smart Commit Messages**: Generate conventional commit messages using AI
-- **Smart Commit Grouping**: Automatically group related changes into logical commits
-- **Pull Request Creation**: Create PRs with AI-generated descriptions and optional labels/checklists
-- **Changelog Management**: Generate and maintain changelogs with semantic versioning support
-- **Offline LLM Support**: Coming soon! Run GitWise without internet connection
+- **Craft Perfect Commits, Instantly**: Generate Conventional Commit messages from your staged diffs in seconds.
+- **Streamline PR Creation**: Get AI-generated PR titles and descriptions, plus automated label and checklist suggestions.
+- **Maintain Changelogs Effortlessly**: Keep your `CHANGELOG.md` up-to-date with minimal fuss.
+- **Retain Full Git Control**: Use any standard Git command via `gitwise git ...` with the speed you expect. AI features are opt-in enhancements.
+
+GitWise aims to make your `add -> commit -> push -> PR` cycle more efficient and enjoyable.
+
+## Key Features
+
+- **🚀 Blazing Fast Core**: Standard Git commands passed through `gitwise git ...` run at native Git speed.
+- **🧠 Smart Commit Messages**: AI-generated Conventional Commits (opt-in grouping for complex changes via `gitwise commit --group`).
+- **✍️ Intelligent PR Descriptions**: AI-generated PR titles and descriptions.
+- **🏷️ Automated PR Enhancements**: Optional label suggestions based on commit types and file-specific checklists for PRs.
+- **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
+- **⚙️ Git Command Passthrough**: Use `gitwise` as a wrapper for any `git` command (e.g., `gitwise status`, `gitwise log`).
 
 ## Installation
 
-### Using pip
+Ensure you have Python 3.8+ installed.
+
+### Using pip (Recommended)
 
 ```bash
 pip install gitwise
 ```
 
-### Using Make
+### From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gitwise.git
-
-# Navigate to the project directory
+git clone https://github.com/PayasPandey11/gitwise.git
 cd gitwise
 
-# Install using make
-make install
+# Install for use
+make install # or python setup.py install
 
-# For development installation
-make install-dev
+# For development (editable install)
+make install-dev # or pip install -e .
 ```
 
-### Development Setup
+## Quick Start
 
-```bash
-# Install development dependencies
-pip install -e ".[dev]"
+1.  **Configure your OpenRouter API Key:** GitWise uses OpenRouter to access LLMs.
+    ```bash
+    export OPENROUTER_API_KEY="your_openrouter_api_key"
+    ```
+    (Add this to your `.bashrc`, `.zshrc`, etc.)
 
-# Run tests
-pytest
+2.  **Stage your changes:**
+    ```bash
+    git add . # Or use gitwise add .
+    ```
 
-# Run linting
-flake8
-```
+3.  **Create a smart commit:**
+    ```bash
+    gitwise commit
+    ```
+    For more complex changes, consider `gitwise commit --group` to let AI suggest separate commits.
 
-## Usage
+4.  **Push your changes:**
+    ```bash
+    gitwise push
+    ```
+    This will also offer to create a Pull Request.
 
-### Smart Commit Messages
+5.  **Create a Pull Request directly:**
+    ```bash
+    gitwise pr
+    ```
+    Add labels and a checklist: `gitwise pr --labels --checklist`
 
-```bash
-# Stage changes and create a commit
-gitwise add .
+## Detailed Usage
 
-# Create a commit with a specific message
-gitwise commit -m "your message"
+GitWise commands are designed to be intuitive. Here are the main ones:
 
-# Use smart commit grouping (default behavior)
-gitwise add . --group
-```
+### `gitwise add [files...]`
+- Interactively stage files. 
+- Shows a summary of staged files and offers to commit or view the full diff.
+- Example: `gitwise add .` or `gitwise add file1.py file2.md`
 
-### Pull Requests
+### `gitwise commit [--group]`
+- Generates an AI-powered Conventional Commit message for your staged changes.
+- You can review, edit, or regenerate the message before committing.
+- Use `--group` (or `-g`) for GitWise to analyze changes and suggest breaking them into multiple logical commits. This is powerful for refactoring or large feature work but can be slower due to more LLM calls.
+- Example: `gitwise commit` (for a single smart commit)
+- Example: `gitwise commit --group` (to try grouping)
 
-```bash
-# Create a PR with AI-generated description
-gitwise pr
+### `gitwise push`
+- Pushes your committed changes to the remote repository.
+- Prompts to create a Pull Request after a successful push.
 
-# Create a PR with labels based on commit types
-gitwise pr --use-labels
+### `gitwise pr [--labels] [--checklist] [--base <branch>] [--title <title>] [--draft]`
+- Creates a Pull Request on GitHub (requires `gh` CLI to be installed and authenticated).
+- AI generates the PR title (if not provided) and a descriptive body based on your commits.
+- `--labels`: Suggests relevant labels (e.g., bug, feature) based on commit types.
+- `--checklist`: Adds a context-aware checklist to the PR body based on changed file types (e.g., reminders for tests, docs for Python files).
+- Example: `gitwise pr --labels --checklist --base develop`
 
-# Create a PR with a checklist based on changed files
-gitwise pr --use-checklist
+### `gitwise changelog [--version <version>] [--output-file <file>]`
+- Generates or updates your `CHANGELOG.md`.
+- **For New Releases**: Run `gitwise changelog`. It will suggest a semantic version based on your recent commits. Confirm or provide a version (e.g., `v1.2.3`). The AI will generate entries for this version.
+- **Automatic Unreleased Section (Optional)**: For a fully automated workflow, set up the GitWise pre-commit hook:
+  ```bash
+  gitwise setup-hooks
+  ```
+  This hook will call `gitwise changelog --auto-update` before each commit to keep an `[Unreleased]` section in your `CHANGELOG.md` fresh. (Requires `pre-commit` to be installed: `pip install pre-commit`)
+- **Best Practice**: Use [Conventional Commit](https://www.conventionalcommits.org/) messages (e.g., `feat: ...`, `fix: ...`) for the best changelog results.
 
-# Skip general checklist items
-gitwise pr --use-checklist --skip-general-checklist
-```
+### `gitwise setup-hooks`
+- Installs a pre-commit hook to automatically update the `[Unreleased]` section of your changelog before each commit.
+- This helps maintain an up-to-date pending changelog effortlessly.
+- Requires `pre-commit` to be installed in your environment.
 
-### Changelog Management
+### `gitwise git <git_command_and_args...>`
+- A direct passthrough to any standard `git` command.
+- Useful if you want to stay within the `gitwise` CLI but need a specific Git command.
+- Output is streamed directly from Git. If you are using a command that pages (e.g., `git log`, `git diff`) and need script-friendly output, you should pipe it manually (e.g., `gitwise git log | cat`). If running `gitwise` via a GitHub CLI alias (`gh alias set gw --shell 'gitwise $1'`), `gh` may handle paging for you.
+- Example: `gitwise git status -sb`, `gitwise git log --oneline -n 5`
 
-GitWise helps you maintain a changelog automatically. Here's how to use it effectively:
+## Changelog Management Workflow
 
-#### When to Update the Changelog
+This workflow ensures your changelog is consistently updated with minimal manual effort.
 
-1. **Before Releases**:
-   ```bash
-   # Generate changelog for the upcoming release
-   gitwise changelog --create-tag
-   ```
-   - Run this before creating a new release
-   - Review and commit the generated CHANGELOG.md
-   - Create the version tag
+## Development Setup
 
-2. **During Development**:
-   - Use conventional commit messages (feat:, fix:, etc.)
-   - The changelog will automatically categorize your changes
+If you want to contribute to GitWise:
 
-3. **For Pre-releases**:
-   ```bash
-   # Create an alpha release
-   gitwise changelog --create-tag
-   # When prompted, type 'alpha'
-   
-   # Create a beta release
-   gitwise changelog --create-tag
-   # When prompted, type 'beta'
-   
-   # Create a release candidate
-   gitwise changelog --create-tag
-   # When prompted, type 'rc'
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/PayasPandey11/gitwise.git
+    cd gitwise
+    ```
+2.  **Create a virtual environment and install dependencies:**
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -e ".[dev]" # Installs in editable mode with dev dependencies
+    ```
+3.  **Run tests:**
+    ```bash
+    pytest
+    ```
+4.  **Check linting:**
+    ```bash
+    # Add your linter command here, e.g., flake8 or ruff check .
+    # flake8 gitwise tests
+    ```
 
-#### Changelog Best Practices
+## Roadmap & Future Ideas
 
-1. **Commit Messages**:
-   - Use conventional commit types:
-     - `feat:` for new features
-     - `fix:` for bug fixes
-     - `docs:` for documentation
-     - `style:` for formatting
-     - `refactor:` for code changes
-     - `perf:` for performance
-     - `test:` for tests
-     - `chore:` for maintenance
+GitWise is actively developing! Here are some directions we're exploring:
 
-2. **Version Numbers**:
-   - Follow semantic versioning (MAJOR.MINOR.PATCH)
-   - MAJOR: Breaking changes
-   - MINOR: New features
-   - PATCH: Bug fixes
+- **Enhanced AI Capabilities**: 
+    - AI-assisted interactive rebase (`git rebase -i`).
+    - AI-driven diff summaries (`gitwise diff-ai`).
+    - Smart stash messages and management.
+- **Local LLM Support**: Run GitWise entirely offline using local models (e.g., Ollama, GPT4All).
+- **Pre-PR Sanity Checks**: Automated checks for common issues before PR creation.
+- **Deeper IDE Integration**: Tighter coupling with IDEs like VS Code.
+- **Configuration Flexibility**: Allow users to select LLM models and define custom prompts/behavior via a config file.
+- **Team-Specific Workflows**: Features to support team conventions and automation.
 
-3. **Pre-release Workflow**:
-   ```
-   v1.0.0-alpha.1 → v1.0.0-alpha.2 → v1.0.0-beta.1 → v1.0.0-rc.1 → v1.0.0
-   ```
-
-4. **Changelog Structure**:
-   ```markdown
-   # Changelog
-
-   ## v1.1.0
-   *Released on 2024-03-20*
-
-   ### Features
-   - New feature 1
-   - New feature 2
-
-   ### Bug Fixes
-   - Fixed issue 1
-   - Fixed issue 2
-   ```
-
-#### Common Workflows
-
-1. **New Feature Development**:
-   ```bash
-   # 1. Make your changes
-   # 2. Commit with conventional messages
-   gitwise commit -m "feat: add new feature"
-   
-   # 3. Before release, generate changelog
-   gitwise changelog --create-tag
-   ```
-
-2. **Bug Fix Release**:
-   ```bash
-   # 1. Fix the bug
-   gitwise commit -m "fix: resolve issue"
-   
-   # 2. Create patch release
-   gitwise changelog --create-tag
-   ```
-
-3. **Pre-release Testing**:
-   ```bash
-   # 1. Create alpha release
-   gitwise changelog --create-tag
-   # Type 'alpha' when prompted
-   
-   # 2. After testing, create beta
-   gitwise changelog --create-tag
-   # Type 'beta' when prompted
-   ```
-
-### Git Command Passthrough
-
-GitWise supports all standard git commands:
-
-```bash
-# Use any git command
-gitwise status
-gitwise checkout -b feature/new
-gitwise log --oneline
-```
-
-## Roadmap
-
-### Coming Soon
-
-- **Offline LLM Support**: Run GitWise without internet connection
-  - Local model support for commit messages
-  - Offline PR description generation
-  - Configurable model selection
-  - Automatic model updates
+Stay tuned, or contribute your own ideas!
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. Check out our `CONTRIBUTING.md` for guidelines (if it exists, or create one!).
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the `LICENSE` file for details.

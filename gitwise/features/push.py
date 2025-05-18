@@ -41,59 +41,68 @@ def push_command() -> None:
         components.console.print(commits)
 
         # Ask about pushing
+        components.console.line() # Line before prompt
         components.show_prompt(
             "Would you like to push these changes?",
             options=["Yes", "No"],
             default="Yes"
         )
         choice = typer.prompt("", type=int, default=1)
+        components.console.line() # Line after prompt
 
         if choice == 2:  # No
             components.show_warning("Push cancelled")
             return
 
         # Push changes
-        with components.show_spinner("Pushing to remote..."):
+        spinner = components.show_spinner("Pushing to remote...")
+        spinner.start() # Start the spinner explicitly
+        try:
             result = subprocess.run(
                 ["git", "push", "origin", current_branch],
                 capture_output=True,
                 text=True
             )
-            
-            if result.returncode == 0:
-                components.show_success("Changes pushed successfully")
-            else:
-                components.show_error("Failed to push changes")
-                if result.stderr:
-                    components.console.print(result.stderr)
-                return
+        finally:
+            spinner.stop() # Stop the spinner explicitly in a finally block
+            components.console.line() # Ensure a newline after spinner stops to clear its line
 
-        # Only ask about PR after push is complete
-        components.show_prompt(
-            "Would you like to create a pull request?",
-            options=["Yes", "No"],
-            default="Yes"
-        )
-        choice = typer.prompt("", type=int, default=1)
-        
-        if choice == 1:  # Yes
-            try:
-                # Ask about PR options
-                components.show_prompt(
-                    "Would you like to include labels and checklist in the PR?",
-                    options=["Yes", "No"],
-                    default="Yes"
-                )
-                include_extras = typer.prompt("", type=int, default=1) == 1
-                
-                # Call PR command with user preferences
-                pr_command(
-                    use_labels=include_extras,
-                    use_checklist=include_extras,
-                    skip_general_checklist=not include_extras
-                )
-            except Exception as e:
-                components.show_error(f"Failed to create PR: {str(e)}")
+        if result.returncode == 0:
+            components.show_success("Changes pushed successfully")
+            
+            components.console.line() # Ensure clean line before next prompt
+            components.show_prompt(
+                "Would you like to create a pull request?",
+                options=["Yes", "No"],
+                default="Yes"
+            )
+            pr_choice = typer.prompt("", type=int, default=1) # Renamed variable
+            components.console.line() # Line after prompt
+            
+            if pr_choice == 1:  # Yes
+                try:
+                    components.show_prompt(
+                        "Would you like to include labels and checklist in the PR?",
+                        options=["Yes", "No"],
+                        default="Yes"
+                    )
+                    extras_choice = typer.prompt("", type=int, default=1) # Renamed variable
+                    include_extras = extras_choice == 1
+                    components.console.line() # Line after prompt and before pr_command
+                    
+                    pr_command(
+                        use_labels=include_extras,
+                        use_checklist=include_extras,
+                        skip_general_checklist=not include_extras, # Corrected logic here
+                        skip_prompts=True  # Skip prompts since we already asked
+                    )
+                except Exception as e:
+                    components.show_error(f"Failed to create PR: {str(e)}")
+        else:
+            components.show_error("Failed to push changes")
+            if result.stderr:
+                components.console.print(result.stderr)
+            return
 
     except Exception as e:
         components.show_error(str(e)) 
