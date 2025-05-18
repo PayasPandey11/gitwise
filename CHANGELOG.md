@@ -23,6 +23,7 @@
 
 ### Other
 
+- enhance add command UI with diff table
 - enhance remote branch handling for commit retrieval
 - enhance add command workflow and UI
 - enhance add command with smart file preview

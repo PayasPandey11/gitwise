@@ -108,38 +108,48 @@ def add(
                 table.add_row(status, file)
             console.print(table)
 
-            # Simple prompt for next action
-            choice = typer.prompt(
-                "What next?",
-                type=str,
-                default="c",
-                show_choices=True,
-                show_default=True,
-                prompt_suffix="\n[r]eview diff/[c]ommit/[q]uit "
-            ).lower()
-
-            if choice == "r":
-                # Show diff of staged changes (plain text)
-                result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
-                console.print("\n[bold]Staged Changes Diff:[/bold]")
-                console.print(result.stdout or "[dim]No diff to show.[/dim]")
-                # After review, ask again
-                choice2 = typer.prompt(
-                    "Commit staged changes?",
+            while True:
+                choice = typer.prompt(
+                    "What next?",
                     type=str,
-                    default="y",
+                    default="c",
                     show_choices=True,
                     show_default=True,
-                    prompt_suffix=" [y]/n "
+                    prompt_suffix="\n[c]ommit/[r]eview diff/[q]uit "
                 ).lower()
-                if choice2 == "y":
+
+                if choice == "r":
+                    # Show diff of staged changes (plain text)
+                    result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
+                    console.print("\n[bold]Staged Changes Diff:[/bold]")
+                    console.print(result.stdout or "[dim]No diff to show.[/dim]")
+                    # After review, loop back to main prompt
+                elif choice == "c":
                     commit_command(group=group)
-            elif choice == "c":
-                commit_command(group=group)
-            elif choice == "q":
-                console.print("[yellow]Operation cancelled.[/yellow]")
-            else:
-                console.print("[red]Invalid choice.[/red]")
+                    # After commit, offer to push or quit
+                    while True:
+                        post_commit = typer.prompt(
+                            "Commit created. Next step?",
+                            type=str,
+                            default="p",
+                            show_choices=True,
+                            show_default=True,
+                            prompt_suffix="\n[p]ush/[q]uit "
+                        ).lower()
+                        if post_commit == "p":
+                            push_command()
+                            return
+                        elif post_commit == "q":
+                            console.print("[yellow]Done.[/yellow]")
+                            return
+                        else:
+                            console.print("[red]Invalid choice.[/red]")
+                    break
+                elif choice == "q":
+                    console.print("[yellow]Operation cancelled.[/yellow]")
+                    return
+                else:
+                    console.print("[red]Invalid choice.[/red]")
         else:
             console.print("[yellow]No files were staged.[/yellow]")
     except Exception as e:
