@@ -82,6 +82,7 @@ Special thanks to the following contributors for their significant contributions
 
 ### Other
 
+- add changelog generation command
 - enhance add command UI and workflow
 - add changelog generation command
 - enhance add command UI and workflow

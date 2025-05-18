@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
-from gitwise.llm import generate_pr_description, generate_pr_title
+from gitwise.llm import generate_pr_description as llm_generate_pr_description, generate_pr_title
 from gitwise.features.pr_enhancements import enhance_pr_description
 
 def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
@@ -94,7 +94,7 @@ Focus on clarity, completeness, and professional tone."""
 
     # Use the LLM to generate the description
     try:
-        description = generate_pr_description(prompt)
+        description = llm_generate_pr_description(prompt)
         return description
     except Exception as e:
         print(f"Error generating PR description: {str(e)}")
