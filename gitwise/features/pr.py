@@ -12,17 +12,26 @@ def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
     """Get commits since the last push to the remote branch."""
     current_branch = get_current_branch()
     
-    # Get the remote tracking branch
-    remote_branch = f"origin/{current_branch}"
-    
-    # Check if remote branch exists
     try:
-        # Try to get the remote branch
-        repo.git.rev_parse(f"{remote_branch}")
-        # If we get here, remote branch exists, get commits since last push
-        return list(repo.iter_commits(f"{remote_branch}..{current_branch}"))
-    except:
-        # Remote branch doesn't exist, get all commits since base branch
+        # Get the remote tracking branch
+        remote_branch = f"origin/{current_branch}"
+        
+        # Check if remote branch exists
+        try:
+            repo.git.rev_parse(f"{remote_branch}")
+            # If we get here, remote branch exists, get commits since last push
+            commits = list(repo.iter_commits(f"{remote_branch}..{current_branch}"))
+        except:
+            # Remote branch doesn't exist, get all commits since base branch
+            commits = list(repo.iter_commits(f"{base_branch}..{current_branch}"))
+        
+        if not commits:
+            # If no commits found, try getting commits since base branch
+            commits = list(repo.iter_commits(f"{base_branch}..{current_branch}"))
+        
+        return commits
+    except Exception as e:
+        # If any error occurs, fall back to base branch
         return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
 def pr_command(
@@ -46,59 +55,51 @@ def pr_command(
     try:
         repo = Repo(".")
         base_branch = base or get_base_branch()
-        
-        # Validate branch name
         current_branch = get_current_branch()
         if not validate_branch_name(current_branch):
             raise ValueError(f"Invalid branch name: {current_branch}")
-        
-        # Get commits since last PR
+
+        # Get only new commits (not in remote or base)
         commits = get_commits_since_last_pr(repo, base_branch)
         if not commits:
-            raise ValueError("No new commits to create PR for")
-        
+            print("\n[bold yellow]No new commits to create PR for.[/bold yellow]")
+            return
+
         # Generate PR title and description
         pr_title = title or generate_pr_title(commits)
         pr_description = generate_pr_description(commits)
-        
-        # Enhance PR description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
-            commits, 
+            commits,
             pr_description,
             use_labels=use_labels,
             use_checklist=use_checklist,
             skip_general_checklist=skip_general_checklist
         )
-        
-        # Show preview
-        print("\n=== PR Preview ===")
-        print(f"Title: {pr_title}")
-        print("\nDescription:")
-        print(enhanced_description)
-        if use_labels:
-            print("\nLabels to be applied:", ", ".join(labels) if labels else "None")
-        
+
+        # Simple, clean preview
+        print("\n=== Pull Request Preview ===")
+        print(f"[Title]\n{pr_title}\n")
+        print(f"[Description]\n{enhanced_description.strip()}\n")
+        if use_labels and labels:
+            print(f"[Labels] {', '.join(labels)}\n")
+
         # Confirm PR creation
-        if input("\nCreate pull request? (y/N) ").lower() != 'y':
+        if input("Create pull request? (y/N) ").lower() != 'y':
             print("PR creation cancelled.")
             return
 
         # Create PR using GitHub CLI
         try:
-            # Create PR with title and description
             result = subprocess.run(
-                ["gh", "pr", "create", 
+                ["gh", "pr", "create",
                  "--title", pr_title,
                  "--body", enhanced_description],
                 capture_output=True,
                 text=True
             )
-            
             if result.returncode == 0:
                 pr_url = result.stdout.strip()
                 print(f"\n✅ Pull request created: {pr_url}")
-                
-                # Add labels if enabled and available
                 if use_labels and labels:
                     subprocess.run(
                         ["gh", "pr", "edit", pr_url, "--add-label", ",".join(labels)],
@@ -110,7 +111,6 @@ def pr_command(
                 print("Error:", result.stderr)
                 print("\nYou can create the PR manually with:")
                 print(f"gh pr create --title '{pr_title}' --body '{enhanced_description}'")
-                
         except FileNotFoundError:
             print("\n❌ GitHub CLI (gh) not found.")
             print("Please install GitHub CLI or create the PR manually with:")
@@ -118,7 +118,6 @@ def pr_command(
             print(f"\nDescription:\n{enhanced_description}")
             if use_labels and labels:
                 print(f"\nLabels: {', '.join(labels)}")
-            
     except Exception as e:
         print(f"\n❌ Error: {str(e)}")
         print("Please try again or create the PR manually.")

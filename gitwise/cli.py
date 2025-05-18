@@ -83,92 +83,65 @@ def add(
 ) -> None:
     """Stage files and prepare for commit with smart grouping."""
     try:
-        # Show initial status
         unstaged = get_unstaged_files()
         if not unstaged:
             console.print("[yellow]No changes to stage.[/yellow]")
             return
 
-        # Create progress display
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Staging files...", total=None)
-            
-            if not files or (len(files) == 1 and files[0] == '.'):
-                # Stage all files
-                subprocess.run(["git", "add", "."], capture_output=True)
-            else:
-                # Stage specific files
-                for file in files:
-                    if os.path.exists(file):
-                        subprocess.run(["git", "add", file], capture_output=True)
-                    else:
-                        console.print(f"[red]Warning: File not found - {file}[/red]")
-            
-            progress.update(task, completed=True)
+        # Stage files
+        if not files or (len(files) == 1 and files[0] == '.'):
+            subprocess.run(["git", "add", "."], capture_output=True)
+        else:
+            for file in files:
+                if os.path.exists(file):
+                    subprocess.run(["git", "add", file], capture_output=True)
+                else:
+                    console.print(f"[red]Warning: File not found - {file}[/red]")
 
         # Show staged changes
         staged = get_staged_files()
         if staged:
-            table = Table(title="Staged Changes", show_header=True, header_style="bold magenta")
+            table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Status", style="cyan")
             table.add_column("File", style="green")
-            
             for status, file in staged:
                 table.add_row(status, file)
-            
-            console.print(Panel(table, title="[bold green]Successfully staged files[/bold green]"))
-            
-            # Show next steps and handle user input
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print("1. Review staged changes above")
-            console.print("2. Run [cyan]gitwise commit[/cyan] to commit changes")
-            if group:
-                console.print("   (Changes will be automatically grouped)")
-            
-            # Handle user input
+            console.print(table)
+
+            # Simple prompt for next action
             choice = typer.prompt(
-                "What would you like to do?",
+                "What next?",
                 type=str,
-                default="2",
+                default="c",
                 show_choices=True,
                 show_default=True,
-                prompt_suffix="\n[1]review/[2]commit/[q]uit "
+                prompt_suffix="\n[r]eview diff/[c]ommit/[q]uit "
             ).lower()
-            
-            if choice == "1":
-                # Show diff of staged changes
+
+            if choice == "r":
+                # Show diff of staged changes (plain text)
                 result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
                 console.print("\n[bold]Staged Changes Diff:[/bold]")
-                console.print(result.stdout)
-                # Ask again what to do
-                choice = typer.prompt(
-                    "What would you like to do?",
+                console.print(result.stdout or "[dim]No diff to show.[/dim]")
+                # After review, ask again
+                choice2 = typer.prompt(
+                    "Commit staged changes?",
                     type=str,
-                    default="2",
+                    default="y",
                     show_choices=True,
                     show_default=True,
-                    prompt_suffix="\n[2]commit/[q]uit "
+                    prompt_suffix=" [y]/n "
                 ).lower()
-            
-            if choice == "2":
-                # Call commit command
+                if choice2 == "y":
+                    commit_command(group=group)
+            elif choice == "c":
                 commit_command(group=group)
-                
-                # After successful commit, ask about pushing
-                if typer.confirm("Would you like to push these changes?", default=False):
-                    console.print("\nPushing changes...")
-                    push_command()
             elif choice == "q":
                 console.print("[yellow]Operation cancelled.[/yellow]")
             else:
                 console.print("[red]Invalid choice.[/red]")
         else:
             console.print("[yellow]No files were staged.[/yellow]")
-            
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         console.print("Please try again or use [cyan]git add[/cyan] directly.")
