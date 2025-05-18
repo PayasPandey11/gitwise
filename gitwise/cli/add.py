@@ -10,7 +10,7 @@ from ..features.push import push_command
 
 def add_command(
     files: List[str] = None,
-    group: bool = False
+    # group: bool = False # Parameter not used
 ) -> None:
     """Stage files and prepare for commit with smart grouping."""
     try:
@@ -42,8 +42,7 @@ def add_command(
                 
                 if failed_files:
                     components.show_warning(f"Could not stage the following files: {', '.join(failed_files)}")
-                    # Decide if we should proceed if some files failed. For now, we do.
-                    # If not, add a `return` here.
+                    # Current logic proceeds even if some files fail to stage.
 
         # Show staged changes
         staged = git.get_staged_files()
