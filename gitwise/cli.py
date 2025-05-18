@@ -102,14 +102,18 @@ def pr(
 
 @app.command()
 def changelog(
-    version: Optional[str] = typer.Argument(None, help="Version to generate changelog for. If not provided, generates for all versions.")
+    version: Optional[str] = typer.Argument(None, help="Version to generate changelog for. If not provided, generates for all versions."),
+    create_tag: bool = typer.Option(False, "--create-tag", help="Automatically create a version tag if none exists.")
 ) -> None:
     """Generate a changelog from commit history.
     
     The changelog is generated based on version tags and commit messages.
     It categorizes changes into Features, Bug Fixes, Documentation, etc.
+    
+    If no version tags exist, use --create-tag to automatically create one
+    based on your commit history.
     """
-    changelog_command(version)
+    changelog_command(version, create_tag)
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):
