@@ -76,6 +76,7 @@ Special thanks to the following contributors for their significant contributions
 
 ### Chores
 
+- add changelog generation command
 - add MANIFEST.in for packaging
 - add CHANGELOG.md
 - add CHANGELOG.md
