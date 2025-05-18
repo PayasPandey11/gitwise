@@ -7,6 +7,30 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
+def get_llm_response(messages: List[Dict[str, str]]) -> str:
+    """Get response from LLM API.
+    
+    Args:
+        messages: List of message dictionaries with role and content.
+        
+    Returns:
+        The response text from the LLM.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500,
+            extra_headers={
+                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
+                "X-Title": "gitwise",  # Your project name
+            }
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        raise RuntimeError(f"Failed to get LLM response: {str(e)}")
+
 def generate_commit_message(diff: str, guidance: str = None) -> str:
     """Generate a commit message based on the diff.
     
@@ -59,66 +83,59 @@ Here are the changes to analyze:
         raise RuntimeError(f"Failed to generate commit message: {str(e)}")
 
 def generate_pr_description(commits: List[Dict[str, str]]) -> Tuple[str, str]:
-    """Generate a PR title and description based on commit history.
+    """Generate a PR title and description from commit history.
     
     Args:
-        commits: List of commit dictionaries containing hash, author, date, and message
-    
+        commits: List of commit dictionaries containing hash, message, and author.
+        
     Returns:
         Tuple of (title, description)
     """
-    system_prompt = """You are an expert at writing pull request descriptions.
-Follow these rules:
-1. Create a clear, concise title that summarizes the functionality
-2. Write a detailed description that:
-   - Explains the purpose and functionality of the changes
-   - Highlights key features and their impact
-   - Mentions any breaking changes
-   - Only references issues if they are explicitly mentioned in commit messages
-3. Use markdown formatting
-4. Keep the tone professional but friendly
-5. Focus on functionality and features, not code changes
-6. Don't make assumptions about issues or features unless explicitly mentioned
-7. Don't include random or made-up information
-8. If there's not enough information about functionality, focus on what can be inferred from commit messages"""
-
     # Format commits for the prompt
     commit_text = "\n".join([
         f"Commit: {c['hash']}\n"
         f"Author: {c['author']}\n"
-        f"Date: {c['date']}\n"
         f"Message: {c['message']}\n"
         for c in commits
     ])
-
-    try:
-        response = client.chat.completions.create(
-            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"""Analyze these commits and create a PR description.
-Focus on the functionality and features being implemented.
-Only mention issues if they are explicitly referenced in commit messages.
-Don't make assumptions or include random information.
+    
+    system_prompt = """You are an expert at writing pull request descriptions.
+Follow these rules:
+1. Create a clear, concise title that summarizes the changes
+2. Write a detailed description that:
+   - Summarizes the key changes
+   - Groups related changes together
+   - Highlights any breaking changes
+   - Mentions any new features
+   - Notes any bug fixes
+3. Use markdown formatting
+4. Keep the description professional and technical
+5. Focus on the "what" and "why" of the changes
+6. If there are multiple authors, acknowledge their contributions
+7. If there are related issues, reference them
+8. If there's not enough information about functionality, ask for more details
 
 Here are the commits to analyze:
 
-{commit_text}"""}
-            ],
-            temperature=0.7,
-            max_tokens=500,
-            extra_headers={
-                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
-                "X-Title": "gitwise",  # Your project name
-            }
-        )
-        
-        # Split the response into title and description
-        content = response.choices[0].message.content.strip()
-        lines = content.split('\n')
-        title = lines[0]
-        description = '\n'.join(lines[1:]).strip()
-        
-        return title, description
-    except Exception as e:
-        raise RuntimeError(f"Failed to generate PR description: {str(e)}") 
+{commits}
+
+Generate a PR title and description based on these commits."""
+
+    messages = [
+        {"role": "system", "content": system_prompt.format(commits=commit_text)},
+        {"role": "user", "content": "Please generate a PR title and description."}
+    ]
+    
+    response = get_llm_response(messages)
+    
+    # Split response into title and description
+    parts = response.split("\n\n", 1)
+    if len(parts) == 2:
+        title = parts[0].strip()
+        description = parts[1].strip()
+    else:
+        # If we can't split properly, use the whole response as description
+        title = "Update codebase"
+        description = response.strip()
+    
+    return title, description 
