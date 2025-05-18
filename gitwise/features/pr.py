@@ -2,6 +2,7 @@
 
 import subprocess
 import re
+import json
 from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
@@ -35,60 +36,76 @@ def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
         return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
 def generate_pr_description(commits: List[Commit]) -> str:
-    """Generate a structured PR description from commits."""
+    """Generate a PR description using LLM with industry-standard format."""
     if not commits:
         return "No changes to describe."
 
-    # Group commits by type
-    changes = {
-        "Features": [],
-        "Fixes": [],
-        "Improvements": [],
-        "Other": []
-    }
-
+    # Prepare commit information for the LLM
+    commit_info = []
     for commit in commits:
         msg = commit.message.strip()
         # Remove conventional commit prefix if present
         msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
-        # Take first line only
-        msg = msg.split('\n')[0]
+        commit_info.append({
+            "message": msg,
+            "hash": commit.hexsha[:7],
+            "author": commit.author.name,
+            "date": commit.committed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        })
 
-        # Categorize the commit
-        if any(x in commit.message.lower() for x in ["feat", "feature", "add", "new"]):
-            changes["Features"].append(msg)
-        elif any(x in commit.message.lower() for x in ["fix", "bug", "issue"]):
-            changes["Fixes"].append(msg)
-        elif any(x in commit.message.lower() for x in ["improve", "enhance", "update", "refactor"]):
-            changes["Improvements"].append(msg)
-        else:
-            changes["Other"].append(msg)
+    # Create a structured prompt for the LLM
+    prompt = f"""Create a professional pull request description following industry best practices.
+Use the following commits to generate a comprehensive PR description:
 
-    # Build the description
-    description = []
-    
-    # Summary section
-    total_changes = sum(len(msgs) for msgs in changes.values())
-    description.append(f"## Summary\nThis PR includes {total_changes} changes:\n")
-    
-    # Add counts for each category
-    for category, msgs in changes.items():
-        if msgs:
-            description.append(f"- {len(msgs)} {category.lower()}")
-    description.append("")
+{json.dumps(commit_info, indent=2)}
 
-    # Changes section
-    for category, msgs in changes.items():
-        if msgs:
-            description.append(f"## {category}")
-            for msg in msgs:
-                description.append(f"- {msg}")
-            description.append("")
+The PR description should follow this structure:
 
-    # Add a note about testing
-    description.append("## Testing\nPlease verify the changes work as expected.")
+## Overview
+A concise summary of the changes and their purpose.
 
-    return "\n".join(description)
+## Changes
+- List of key changes with brief explanations
+- Focus on the "why" not just the "what"
+- Group related changes together
+
+## Technical Details
+- Implementation details
+- Architecture changes
+- Dependencies affected
+
+## Testing
+- Test cases covered
+- Manual testing steps
+- Edge cases considered
+
+## Impact
+- Performance implications
+- Security considerations
+- User experience changes
+
+## Additional Notes
+- Breaking changes
+- Migration steps if needed
+- Related issues/PRs
+
+Format the response in markdown with proper headers and sections.
+Focus on clarity, completeness, and professional tone."""
+
+    # Use the LLM to generate the description
+    try:
+        description = generate_pr_description(prompt)
+        return description
+    except Exception as e:
+        print(f"Error generating PR description: {str(e)}")
+        # Fallback to a simple description if LLM fails
+        return "\n".join([
+            "## Changes",
+            *[f"- {commit['message']}" for commit in commit_info],
+            "",
+            "## Testing",
+            "Please verify the changes work as expected."
+        ])
 
 def pr_command(
     use_labels: bool = False,
@@ -136,7 +153,10 @@ def pr_command(
             else:
                 pr_title = "Update"
 
+        # Generate PR description using LLM
         pr_description = generate_pr_description(commits)
+        
+        # Enhance the description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
             commits,
             pr_description,
