@@ -1,7 +1,7 @@
 """LLM integration for GitWise."""
 
 import os
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Union
 from openai import OpenAI
 from gitwise.prompts import COMMIT_MESSAGE_PROMPT, PR_DESCRIPTION_PROMPT
 from git import Commit
@@ -11,17 +11,37 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
-def get_llm_response(prompt: str) -> str:
-    """Get response from LLM."""
+def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]]) -> str:
+    """Get response from LLM.
+    
+    Args:
+        prompt_or_messages: Either a string prompt or a list of message dictionaries
+        
+    Returns:
+        LLM response as a string
+        
+    Raises:
+        RuntimeError: If there's an error getting the response
+    """
     try:
+        # Convert string prompt to message list if needed
+        if isinstance(prompt_or_messages, str):
+            messages = [{"role": "user", "content": prompt_or_messages}]
+        else:
+            messages = prompt_or_messages
+            
         response = client.chat.completions.create(
             model="anthropic/claude-3-opus",
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             extra_headers={
                 "HTTP-Referer": "https://github.com/payas/gitwise",
                 "X-Title": "GitWise"
             }
         )
+        
+        if not response.choices or not response.choices[0].message:
+            raise RuntimeError("Empty response from LLM")
+            
         return response.choices[0].message.content.strip()
     except Exception as e:
         raise RuntimeError(f"Error getting LLM response: {str(e)}")
