@@ -28,6 +28,8 @@
 ### Other
 
 - enhance PR creation with LLM-generated details
+- Enhance UX and handle errors gracefully
+- enhance PR creation with LLM-generated details
 - enhance setup.py for flexibility and maintainability
 - improve prompt for better commit messages
 - improve error handling for authentication failures
