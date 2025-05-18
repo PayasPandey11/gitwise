@@ -72,10 +72,24 @@ def push_command() -> None:
                 choice = typer.prompt("", type=int, default=1)
                 
                 if choice == 1:  # Yes
-                    # Clear the console before starting PR creation
-                    components.console.clear()
-                    # Call PR command directly without additional prompts
-                    pr_command(use_labels=False, use_checklist=False, skip_general_checklist=True)
+                    try:
+                        # Ask about PR options
+                        components.show_prompt(
+                            "Would you like to include labels and checklist in the PR?",
+                            options=["Yes", "No"],
+                            default="Yes"
+                        )
+                        include_extras = typer.prompt("", type=int, default=1) == 1
+                        
+                        # Call PR command with user preferences
+                        pr_command(
+                            use_labels=include_extras,
+                            use_checklist=include_extras,
+                            skip_general_checklist=not include_extras
+                        )
+                    except Exception as e:
+                        components.show_error(f"Failed to create PR: {str(e)}")
+                        # Continue execution since push was successful
             else:
                 components.show_error("Failed to push changes")
                 if result.stderr:
