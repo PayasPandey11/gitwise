@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
-from gitwise.llm import generate_pr_title, generate_pr_description as llm_generate_pr_description
+from gitwise.llm import generate_pr_title, get_llm_response
 from gitwise.features.pr_enhancements import enhance_pr_description
 from gitwise.prompts import PR_DESCRIPTION_PROMPT
 from rich.console import Console
@@ -15,6 +15,11 @@ from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm
 from rich import print as rprint
+from gitwise.core import git
+from gitwise.ui import components
+import os
+import tempfile
+import typer
 
 console = Console()
 
@@ -110,7 +115,7 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
             base_branch=base_branch,
             current_branch=repo.active_branch.name
         )
-        description = llm_generate_pr_description(prompt)
+        description = get_llm_response(prompt)
         progress.update(task, completed=True)
         
         # Show preview
@@ -138,6 +143,33 @@ def validate_branch_name(branch: str) -> bool:
     pattern = r"^(feature|fix|docs|chore|refactor|test|style|perf|ci|build|revert)/[a-z0-9-]+$"
     return bool(re.match(pattern, branch))
 
+def get_commits_since_last_pr(repo, base_branch: str) -> List[Dict]:
+    """Get commits that haven't been included in a PR yet."""
+    try:
+        # Get commits between base branch and current branch
+        result = subprocess.run(
+            ["git", "log", f"{base_branch}..HEAD", "--pretty=format:%H|%s|%an"],
+            capture_output=True,
+            text=True
+        )
+        
+        if not result.stdout.strip():
+            return []
+            
+        commits = []
+        for line in result.stdout.strip().split('\n'):
+            hash_, message, author = line.split('|')
+            commits.append({
+                'hash': hash_,
+                'message': message,
+                'author': author
+            })
+            
+        return commits
+    except Exception as e:
+        components.show_error(f"Failed to get commits: {str(e)}")
+        return []
+
 def pr_command(
     use_labels: bool = False,
     use_checklist: bool = False,
@@ -146,105 +178,174 @@ def pr_command(
     base: Optional[str] = None,
     draft: bool = False
 ) -> None:
-    """Create a pull request with AI-generated title and description.
-    
-    Args:
-        use_labels: Add labels to the PR (default: False).
-        use_checklist: Add checklist to the PR description (default: False).
-        skip_general_checklist: Skip general checklist items (default: False).
-        title: Custom title for the PR (optional).
-        base: Base branch for the PR (optional).
-        draft: Create a draft PR (default: False).
-    """
+    """Create a pull request with AI-generated title and description."""
     try:
-        repo = Repo(".")
-        base_branch = base or get_base_branch()
-        current_branch = get_current_branch()
-        if not validate_branch_name(current_branch):
-            raise ValueError(f"Invalid branch name: {current_branch}")
-
-        # Get only new commits (not in remote or base)
-        commits = get_commits_since_last_pr(repo, base_branch)
-        if not commits:
-            print("\n[bold yellow]No new commits to create PR for.[/bold yellow]")
+        # Get current branch
+        current_branch = git.get_current_branch()
+        if not current_branch:
+            components.show_error("Not on any branch")
             return
 
-        # Generate PR title and description
-        if title:
-            pr_title = title
-        else:
-            pr_title = generate_pr_title(commits)
+        # Get base branch
+        base_branch = base or "main"
+        
+        # Get commits since last PR
+        components.show_section("Analyzing Changes")
+        with components.show_spinner("Checking for commits...") as progress:
+            commits = get_commits_since_last_pr(None, base_branch)
+            if not commits:
+                components.show_warning("No commits to create PR for")
+                return
 
-        # Prepare commit information for LLM
-        commit_info = []
+        # Show commits that will be included
+        components.show_section("Commits to Include")
         for commit in commits:
-            message = commit.message.split('\n')[0]
-            commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
-        
-        # Generate PR description using LLM
-        prompt = PR_DESCRIPTION_PROMPT.format(
-            commits="\n".join(commit_info),
-            base_branch=base_branch,
-            current_branch=current_branch
-        )
-        pr_description = llm_generate_pr_description(prompt)
-        
-        # Enhance the description with labels and checklist if requested
-        enhanced_description, labels = enhance_pr_description(
-            commits,
-            pr_description,
-            use_labels=use_labels,
-            use_checklist=use_checklist,
-            skip_general_checklist=skip_general_checklist
-        )
+            components.console.print(f"[bold cyan]{commit['hash'][:7]}[/bold cyan] {commit['message']}")
 
-        # Simple, clean preview
-        print("\n=== Pull Request Preview ===")
-        print(f"[Title]\n{pr_title}\n")
-        print(f"[Description]\n{enhanced_description.strip()}\n")
-        if use_labels and labels:
-            print(f"[Labels] {', '.join(labels)}\n")
+        # Generate PR description
+        components.show_section("Generating PR Description")
+        with components.show_spinner("Analyzing changes...") as progress:
+            description = generate_pr_description(commits)
 
-        # Confirm PR creation
-        if input("Create pull request? (y/N) ").lower() != 'y':
-            print("PR creation cancelled.")
+        # Show the generated description
+        components.show_section("Suggested PR Description")
+        components.console.print(description)
+
+        # Ask about creating PR
+        components.show_prompt(
+            "Would you like to create this pull request?",
+            options=["Yes", "Edit description", "No"],
+            default="Yes"
+        )
+        choice = typer.prompt("", type=int, default=1)
+
+        if choice == 3:  # No
+            components.show_warning("PR creation cancelled")
             return
 
-        # Create PR using GitHub CLI
-        try:
-            result = subprocess.run(
-                ["gh", "pr", "create",
-                 "--title", pr_title,
-                 "--body", enhanced_description],
-                capture_output=True,
-                text=True
+        if choice == 2:  # Edit
+            with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                tf.write(description)
+                tf.flush()
+                editor = os.environ.get("EDITOR", "vi")
+                os.system(f'{editor} {tf.name}')
+                tf.seek(0)
+                description = tf.read().strip()
+            os.unlink(tf.name)
+            components.show_section("Edited PR Description")
+            components.console.print(description)
+
+            components.show_prompt(
+                "Proceed with PR creation?",
+                options=["Yes", "No"],
+                default="Yes"
             )
-            if result.returncode == 0:
-                pr_url = result.stdout.strip()
-                print(f"\n✅ Pull request created: {pr_url}")
-                if use_labels and labels:
-                    subprocess.run(
-                        ["gh", "pr", "edit", pr_url, "--add-label", ",".join(labels)],
-                        capture_output=True
-                    )
-                    print(f"Added labels: {', '.join(labels)}")
-            else:
-                print("\n❌ Failed to create pull request.")
-                print("Error:", result.stderr)
-                print("\nYou can create the PR manually with:")
-                print(f"gh pr create --title '{pr_title}' --body '{enhanced_description}'")
-        except FileNotFoundError:
-            print("\n❌ GitHub CLI (gh) not found.")
-            print("Please install GitHub CLI or create the PR manually with:")
-            print(f"Title: {pr_title}")
-            print(f"\nDescription:\n{enhanced_description}")
-            if use_labels and labels:
-                print(f"\nLabels: {', '.join(labels)}")
+            if not typer.confirm("", default=True):
+                components.show_warning("PR creation cancelled")
+                return
+
+        # Create the PR
+        components.show_section("Creating Pull Request")
+        with components.show_spinner("Creating PR...") as progress:
+            try:
+                # Use GitHub CLI if available
+                result = subprocess.run(
+                    ["gh", "pr", "create",
+                     "--title", title or f"feat: {commits[0]['message']}",
+                     "--body", description,
+                     "--base", base_branch,
+                     *(["--draft"] if draft else [])],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    components.show_success("Pull request created successfully")
+                    components.console.print(result.stdout)
+                else:
+                    components.show_error("Failed to create pull request")
+                    components.console.print(result.stderr)
+            except FileNotFoundError:
+                components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
+                components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
-        print("Please try again or create the PR manually.")
+        components.show_error(str(e))
 
 def create_pull_request(title: str, body: str, base: str, head: str, draft: bool = False) -> Dict:
     """Create a pull request using GitHub API."""
     # Implementation depends on your GitHub API integration
-    pass 
+    pass
+
+def generate_pr_description(commits: List[Dict]) -> str:
+    """Generate a PR description from commits.
+    
+    Args:
+        commits: List of commit dictionaries.
+        
+    Returns:
+        Formatted PR description string.
+    """
+    # Prepare commit messages for LLM
+    commit_text = "\n".join([
+        f"- {commit['message']} ({commit['author']})"
+        for commit in commits
+    ])
+    
+    # Get repository info
+    repo_info = get_repository_info()
+    repo_name = repo_info.get("name", "the repository")
+    
+    # Generate PR description using LLM
+    messages = [
+        {
+            "role": "system",
+            "content": f"""You are a technical writer creating a pull request description for {repo_name}.
+            Create clear, concise, and user-friendly PR descriptions that:
+            1. Summarize the changes and their purpose
+            2. Group related changes together
+            3. Use clear, non-technical language where possible
+            4. Include any breaking changes or migration steps
+            5. Mention contributors if there are significant changes
+            
+            Format the description in markdown with appropriate sections."""
+        },
+        {
+            "role": "user",
+            "content": f"""Create a PR description for the following commits:
+
+            {commit_text}"""
+        }
+    ]
+    
+    try:
+        description = get_llm_response(messages)
+        return description
+    except Exception as e:
+        components.show_error(f"Could not generate PR description: {str(e)}")
+        return ""
+
+def get_repository_info() -> Dict[str, str]:
+    """Get repository information.
+    
+    Returns:
+        Dictionary with repository information.
+    """
+    info = {}
+    
+    # Get repository URL
+    result = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"],
+        capture_output=True,
+        text=True
+    )
+    info["url"] = result.stdout.strip()
+    
+    # Get repository name
+    if info["url"]:
+        # Extract name from URL
+        match = re.search(r"[:/]([^/]+/[^/]+?)(?:\.git)?$", info["url"])
+        if match:
+            info["name"] = match.group(1)
+    
+    return info 

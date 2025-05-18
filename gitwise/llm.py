@@ -1,3 +1,5 @@
+"""LLM integration for GitWise."""
+
 import os
 from typing import List, Dict, Tuple, Optional
 from openai import OpenAI
