@@ -4,6 +4,7 @@
 
 ### Features
 
+- generate PR descriptions and changelogs using AI
 - show all operations before commit to improve UX
 
 ### Documentation
@@ -27,6 +28,7 @@
 
 ### Other
 
+- Enhance PR description generation and improve robustness
 - generate AI-enhanced PR descriptions and changelogs
 - Bypass PR creation prompts and always create PR
 - enhance PR description using AI-generated content
