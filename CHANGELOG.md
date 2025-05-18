@@ -1,5 +1,18 @@
 # Changelog
 
+
+## [Unreleased]
+
+### Chores
+
+- add CHANGELOG.md
+
+### Other
+
+- enhance feature descriptions and add changelog guide
+- add version parsing and comparison
+- add --create-tag option to changelog command
+
 ## v1.0.0-beta.1
 
 *Released on *
