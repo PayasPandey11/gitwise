@@ -8,6 +8,7 @@ from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
 from gitwise.llm import generate_pr_description as llm_generate_pr_description, generate_pr_title
 from gitwise.features.pr_enhancements import enhance_pr_description
+from gitwise.prompts import PR_DESCRIPTION_PROMPT
 
 def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
     """Get commits since the last push to the remote branch."""
@@ -53,44 +54,8 @@ def generate_pr_description(commits: List[Commit]) -> str:
             "date": commit.committed_datetime.strftime("%Y-%m-%d %H:%M:%S")
         })
 
-    # Create a structured prompt for the LLM
-    prompt = f"""Create a professional pull request description following industry best practices.
-Use the following commits to generate a comprehensive PR description:
-
-{json.dumps(commit_info, indent=2)}
-
-The PR description should follow this structure:
-
-## Overview
-A concise summary of the changes and their purpose.
-
-## Changes
-- List of key changes with brief explanations
-- Focus on the "why" not just the "what"
-- Group related changes together
-
-## Technical Details
-- Implementation details
-- Architecture changes
-- Dependencies affected
-
-## Testing
-- Test cases covered
-- Manual testing steps
-- Edge cases considered
-
-## Impact
-- Performance implications
-- Security considerations
-- User experience changes
-
-## Additional Notes
-- Breaking changes
-- Migration steps if needed
-- Related issues/PRs
-
-Format the response in markdown with proper headers and sections.
-Focus on clarity, completeness, and professional tone."""
+    # Use the existing PR description prompt
+    prompt = PR_DESCRIPTION_PROMPT.format(commits=json.dumps(commit_info, indent=2))
 
     # Use the LLM to generate the description
     try:
