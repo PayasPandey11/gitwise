@@ -140,7 +140,7 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
             components.show_section("Suggested PR Description")
             components.console.print(description)
 
-            if not skip_prompts:
+            if True:
                 # Ask about creating PR
                 components.show_prompt(
                     "Would you like to create this pull request?",
@@ -421,6 +421,7 @@ def pr_command(
             components.show_section("Creating Pull Request")
             with components.show_spinner("Creating PR...") as progress:
                 try:
+                    print("trying  to create PR")
                     # Use GitHub CLI if available
                     cmd = [
                         "gh", "pr", "create",
