@@ -72,9 +72,10 @@ def push_command() -> None:
                 choice = typer.prompt("", type=int, default=1)
                 
                 if choice == 1:  # Yes
-                    # Close any existing spinners before starting PR creation
+                    # Clear the console before starting PR creation
                     components.console.clear()
-                    pr_command()
+                    # Call PR command directly without additional prompts
+                    pr_command(use_labels=False, use_checklist=False, skip_general_checklist=True)
             else:
                 components.show_error("Failed to push changes")
                 if result.stderr:

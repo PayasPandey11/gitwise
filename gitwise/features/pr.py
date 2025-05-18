@@ -176,9 +176,20 @@ def pr_command(
     skip_general_checklist: bool = False,
     title: Optional[str] = None,
     base: Optional[str] = None,
-    draft: bool = False
+    draft: bool = False,
+    skip_prompts: bool = False
 ) -> None:
-    """Create a pull request with AI-generated title and description."""
+    """Create a pull request with AI-generated description.
+    
+    Args:
+        use_labels: Whether to add labels to the PR
+        use_checklist: Whether to add a checklist to the PR description
+        skip_general_checklist: Whether to skip general checklist items
+        title: Custom title for the PR
+        base: Base branch for the PR
+        draft: Whether to create a draft PR
+        skip_prompts: Whether to skip interactive prompts (used when called from push)
+    """
     try:
         # Get current branch
         current_branch = git.get_current_branch()
@@ -211,38 +222,39 @@ def pr_command(
         components.show_section("Suggested PR Description")
         components.console.print(description)
 
-        # Ask about creating PR
-        components.show_prompt(
-            "Would you like to create this pull request?",
-            options=["Yes", "Edit description", "No"],
-            default="Yes"
-        )
-        choice = typer.prompt("", type=int, default=1)
-
-        if choice == 3:  # No
-            components.show_warning("PR creation cancelled")
-            return
-
-        if choice == 2:  # Edit
-            with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                tf.write(description)
-                tf.flush()
-                editor = os.environ.get("EDITOR", "vi")
-                os.system(f'{editor} {tf.name}')
-                tf.seek(0)
-                description = tf.read().strip()
-            os.unlink(tf.name)
-            components.show_section("Edited PR Description")
-            components.console.print(description)
-
+        if not skip_prompts:
+            # Ask about creating PR
             components.show_prompt(
-                "Proceed with PR creation?",
-                options=["Yes", "No"],
+                "Would you like to create this pull request?",
+                options=["Yes", "Edit description", "No"],
                 default="Yes"
             )
-            if not typer.confirm("", default=True):
+            choice = typer.prompt("", type=int, default=1)
+
+            if choice == 3:  # No
                 components.show_warning("PR creation cancelled")
                 return
+
+            if choice == 2:  # Edit
+                with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                    tf.write(description)
+                    tf.flush()
+                    editor = os.environ.get("EDITOR", "vi")
+                    os.system(f'{editor} {tf.name}')
+                    tf.seek(0)
+                    description = tf.read().strip()
+                os.unlink(tf.name)
+                components.show_section("Edited PR Description")
+                components.console.print(description)
+
+                components.show_prompt(
+                    "Proceed with PR creation?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                if not typer.confirm("", default=True):
+                    components.show_warning("PR creation cancelled")
+                    return
 
         # Create the PR
         components.show_section("Creating Pull Request")
