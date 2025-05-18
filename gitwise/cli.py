@@ -1,8 +1,10 @@
+"""Command-line interface for GitWise."""
+
 import typer
 import sys
 import os
 import subprocess
-from typing import Optional
+from typing import Optional, List
 
 # Support running from both the package and directly as a script
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
@@ -20,8 +22,7 @@ else:
 GITWISE_COMMANDS = {
     "commit": "Generate a smart commit message for staged changes",
     "push": "Push changes with option to create PR",
-    "pr": "Create a pull request with AI-generated description",
-    "changelog": "Generate a changelog from commit history (coming soon)"
+    "pr": "Create a pull request with AI-generated description"
 }
 
 GIT_PASSTHROUGH_COMMANDS = {
@@ -36,7 +37,6 @@ app = typer.Typer(
     - Generate conventional commit messages using AI
     - Create PRs with AI-generated descriptions
     - Push changes with PR creation option
-    - Coming soon: Changelog generation
 
     Usage:
     - Use gitwise-specific commands for enhanced features
@@ -46,21 +46,28 @@ app = typer.Typer(
     add_completion=False
 )
 
-@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
-def add(ctx: typer.Context):
-    """Stage changes and optionally create a commit."""
-    # First, run git add with the provided arguments
-    result = subprocess.run(["git", "add"] + ctx.args)
-    if result.returncode != 0:
-        raise typer.Exit(code=result.returncode)
+@app.command()
+def add(
+    files: List[str] = typer.Argument(None, help="Files to stage. Use '.' for all files."),
+    no_group: bool = typer.Option(False, "--no-group", help="Disable smart commit grouping.")
+) -> None:
+    """Stage files and optionally create a commit with smart grouping."""
+    # Stage files
+    if not files:
+        files = ['.']  # Default to all files if none specified
+        
+    for file in files:
+        result = subprocess.run(["git", "add", file], capture_output=True, text=True)
+        if result.returncode != 0:
+            typer.echo(f"Error staging {file}: {result.stderr}")
+            raise typer.Exit(code=1)
     
-    # Check if there are any staged changes
+    # Check if there are staged changes
     result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
-    if result.returncode == 1:  # There are staged changes
-        # Ask if user wants to commit
-        if typer.confirm("Would you like to create a commit for these changes?", default=True):
-            # Ask about smart grouping
-            if typer.confirm("Would you like to use smart commit grouping?", default=False):
+    if result.returncode == 1:  # Changes are staged
+        if typer.confirm("Create commit for staged changes?", default=True):
+            # Ask about smart grouping with Yes as default
+            if typer.confirm("Would you like to use smart commit grouping?", default=True):
                 commit_command(group=True)
             else:
                 commit_command(group=False)
@@ -69,38 +76,31 @@ def add(ctx: typer.Context):
 
 @app.command()
 def commit(
-    group: bool = typer.Option(
-        False,
-        "--group",
-        "-g",
-        help="Group related changes into separate commits"
-    )
+    message: Optional[str] = typer.Option(None, "-m", "--message", help="Commit message."),
+    group: bool = typer.Option(False, "--group", help="Use smart commit grouping.")
 ) -> None:
     """Create a commit with an AI-generated message."""
-    commit_command(group=group)
+    commit_command(message, group)
 
 @app.command()
-def push(target_branch: str = None) -> None:
-    """Push changes to remote repository with option to create PR.
-    
-    Args:
-        target_branch: Optional target branch to push to. If not provided, will prompt user.
-    """
-    push_command(target_branch)
+def push(
+    force: bool = typer.Option(False, "--force", "-f", help="Force push changes.")
+) -> None:
+    """Push changes to remote repository."""
+    push_command(force)
 
 @app.command()
-def pr() -> None:
-    """Create a pull request with an AI-generated title and description."""
-    pr_command()
-
-@app.command()
-def changelog() -> None:
-    """Generate a changelog from commit history (coming soon)."""
-    typer.echo("Changelog generation coming soon!")
+def pr(
+    use_labels: bool = typer.Option(False, "--use-labels", help="Add labels to the PR."),
+    use_checklist: bool = typer.Option(False, "--use-checklist", help="Add checklist to the PR description."),
+    skip_general_checklist: bool = typer.Option(False, "--skip-general-checklist", help="Skip general checklist items.")
+) -> None:
+    """Create a pull request with AI-generated description."""
+    pr_command(use_labels, use_checklist, skip_general_checklist)
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):
-    """gitwise: AI-powered git assistant with smart commit messages, PR descriptions, and more."""
+    """Main entry point for GitWise."""
     if list_commands:
         typer.echo("\nGitwise-specific commands:")
         for cmd, desc in GITWISE_COMMANDS.items():
@@ -161,8 +161,6 @@ def catch_all(ctx: typer.Context):
             push_command()
         elif command == "pr":
             pr_command()
-        elif command == "changelog":
-            typer.echo("Changelog generation coming soon!")
     else:
         # Otherwise pass through to git
         result = subprocess.run(["git", command] + args)
