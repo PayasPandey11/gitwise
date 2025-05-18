@@ -5,9 +5,10 @@ from typing import Optional
 from gitwise.core import git
 from gitwise.ui import components
 from gitwise.features.pr import pr_command
+import typer
 
 def push_command() -> None:
-    """Push changes to remote repository and optionally create a PR."""
+    """Push changes and optionally create a PR."""
     try:
         # Get current branch
         current_branch = git.get_current_branch()
@@ -15,21 +16,21 @@ def push_command() -> None:
             components.show_error("Not on any branch")
             return
 
-        # Check if there are any commits to push
-        with components.show_spinner("Checking for commits to push...") as progress:
-            result = subprocess.run(
-                ["git", "log", "@{u}.."],
-                capture_output=True,
-                text=True
-            )
-            if not result.stdout.strip():
-                components.show_warning("No commits to push")
-                return
+        # Check if there are commits to push
+        result = subprocess.run(
+            ["git", "log", f"origin/{current_branch}..HEAD"],
+            capture_output=True,
+            text=True
+        )
+        
+        if not result.stdout.strip():
+            components.show_warning("No commits to push")
+            return
 
-        # Show what will be pushed
+        # Show changes to be pushed
         components.show_section("Changes to Push")
         result = subprocess.run(
-            ["git", "log", "--oneline", "@{u}.."],
+            ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
             capture_output=True,
             text=True
         )
@@ -37,26 +38,42 @@ def push_command() -> None:
 
         # Ask about pushing
         components.show_prompt(
-            f"Push to the same branch ({current_branch})?",
+            "Would you like to push these changes?",
             options=["Yes", "No"],
             default="Yes"
         )
-        if not subprocess.run(["git", "push"], capture_output=True).returncode == 0:
-            components.show_error("Failed to push changes")
+        choice = typer.prompt("", type=int, default=1)
+
+        if choice == 2:  # No
+            components.show_warning("Push cancelled")
             return
 
-        components.show_success("Changes pushed successfully")
-
-        # Ask about creating PR
-        components.show_prompt(
-            "Would you like to create a pull request?",
-            options=["Yes", "No"],
-            default="No"
-        )
-        if subprocess.run(["git", "push", "--set-upstream", "origin", current_branch], capture_output=True).returncode == 0:
-            pr_command()
-        else:
-            components.show_error("Failed to set upstream branch")
+        # Push changes
+        components.show_section("Pushing Changes")
+        with components.show_spinner("Pushing to remote...") as progress:
+            result = subprocess.run(
+                ["git", "push", "origin", current_branch],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                components.show_success("Changes pushed successfully")
+                
+                # Ask about creating PR
+                components.show_prompt(
+                    "Would you like to create a pull request?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                choice = typer.prompt("", type=int, default=1)
+                
+                if choice == 1:  # Yes
+                    pr_command()
+            else:
+                components.show_error("Failed to push changes")
+                if result.stderr:
+                    components.console.print(result.stderr)
 
     except Exception as e:
         components.show_error(str(e)) 
