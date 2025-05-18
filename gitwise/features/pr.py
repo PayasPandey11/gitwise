@@ -201,7 +201,14 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
                         return result.stdout.strip()
                     else:
                         components.show_error("Failed to create pull request")
-                        components.console.print(result.stderr)
+                        error_details = f"`gh pr create` exited with code {result.returncode}.\n"
+                        if result.stderr:
+                            error_details += f"\nStderr:\n{result.stderr}"
+                        else:
+                            error_details += "\nStderr was empty."
+                        if result.stdout:
+                            error_details += f"\nStdout:\n{result.stdout}"
+                        components.console.print(error_details)
                         return None
                 except FileNotFoundError:
                     components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
@@ -414,7 +421,14 @@ def pr_command(
                         components.console.print(result.stdout)
                     else:
                         components.show_error("Failed to create pull request")
-                        components.console.print(result.stderr)
+                        error_details = f"`gh pr create` exited with code {result.returncode}.\n"
+                        if result.stderr:
+                            error_details += f"\nStderr:\n{result.stderr}"
+                        else:
+                            error_details += "\nStderr was empty."
+                        if result.stdout:
+                            error_details += f"\nStdout:\n{result.stdout}"
+                        components.console.print(error_details)
                         return
                 except FileNotFoundError:
                     components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
