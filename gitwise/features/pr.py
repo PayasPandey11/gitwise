@@ -34,6 +34,62 @@ def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
         # If any error occurs, fall back to base branch
         return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
+def generate_pr_description(commits: List[Commit]) -> str:
+    """Generate a structured PR description from commits."""
+    if not commits:
+        return "No changes to describe."
+
+    # Group commits by type
+    changes = {
+        "Features": [],
+        "Fixes": [],
+        "Improvements": [],
+        "Other": []
+    }
+
+    for commit in commits:
+        msg = commit.message.strip()
+        # Remove conventional commit prefix if present
+        msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
+        # Take first line only
+        msg = msg.split('\n')[0]
+
+        # Categorize the commit
+        if any(x in commit.message.lower() for x in ["feat", "feature", "add", "new"]):
+            changes["Features"].append(msg)
+        elif any(x in commit.message.lower() for x in ["fix", "bug", "issue"]):
+            changes["Fixes"].append(msg)
+        elif any(x in commit.message.lower() for x in ["improve", "enhance", "update", "refactor"]):
+            changes["Improvements"].append(msg)
+        else:
+            changes["Other"].append(msg)
+
+    # Build the description
+    description = []
+    
+    # Summary section
+    total_changes = sum(len(msgs) for msgs in changes.values())
+    description.append(f"## Summary\nThis PR includes {total_changes} changes:\n")
+    
+    # Add counts for each category
+    for category, msgs in changes.items():
+        if msgs:
+            description.append(f"- {len(msgs)} {category.lower()}")
+    description.append("")
+
+    # Changes section
+    for category, msgs in changes.items():
+        if msgs:
+            description.append(f"## {category}")
+            for msg in msgs:
+                description.append(f"- {msg}")
+            description.append("")
+
+    # Add a note about testing
+    description.append("## Testing\nPlease verify the changes work as expected.")
+
+    return "\n".join(description)
+
 def pr_command(
     use_labels: bool = False,
     use_checklist: bool = False,
