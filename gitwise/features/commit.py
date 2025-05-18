@@ -7,6 +7,11 @@ from gitwise.llm import generate_commit_message
 from gitwise.gitutils import get_staged_diff, run_git_commit, get_changed_files
 from gitwise.ui import components
 
+# Import push_command only when needed to avoid circular imports
+def get_push_command():
+    from gitwise.features.push import push_command
+    return push_command
+
 COMMIT_TYPES = {
     "feat": "A new feature",
     "fix": "A bug fix",
@@ -341,7 +346,7 @@ def commit_command(group: bool = True) -> None:
                     
                     if choice == 1:  # Yes
                         # Call push command directly without additional prompts
-                        push_command()
+                        get_push_command()()
                     return
 
         # If no grouping or user chose not to group, proceed with single commit
@@ -422,7 +427,7 @@ def commit_command(group: bool = True) -> None:
                 
                 if choice == 1:  # Yes
                     # Call push command directly without additional prompts
-                    push_command()
+                    get_push_command()()
             else:
                 components.show_error("Failed to create commit")
                 if result.stderr:
