@@ -79,58 +79,137 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
     Returns:
         URL of the created PR if successful, None otherwise
     """
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console
-    ) as progress:
-        # Get commits since last PR
-        task = progress.add_task("Analyzing commits...", total=None)
-        commits = get_commits_since_last_pr(repo, base_branch)
-        progress.update(task, completed=True)
-        
-        if not commits:
-            console.print("[red]No new commits to create PR for.[/red]")
-            console.print("[yellow]This might happen if:")
-            console.print("1. All commits have already been pushed and included in a PR")
-            console.print("2. You haven't made any commits yet")
-            console.print("3. You're on the base branch (main/master)[/yellow]")
-            return None
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            # Get commits since last PR
+            task = progress.add_task("Analyzing commits...", total=None)
+            commits = get_commits_since_last_pr(repo, base_branch)
+            progress.update(task, completed=True)
             
-        # Generate PR title
-        task = progress.add_task("Generating PR title...", total=None)
-        title = generate_pr_title(commits)
-        progress.update(task, completed=True)
-        
-        # Prepare commit information for LLM
-        commit_info = []
-        for commit in commits:
-            message = commit.message.split('\n')[0]
-            commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
-        
-        # Generate PR description using LLM
-        task = progress.add_task("Generating PR description...", total=None)
-        prompt = PR_DESCRIPTION_PROMPT.format(
-            commits="\n".join(commit_info),
-            base_branch=base_branch,
-            current_branch=repo.active_branch.name
-        )
-        description = get_llm_response(prompt)
-        progress.update(task, completed=True)
-        
-        # Show preview
-        console.print("\n[bold]PR Preview:[/bold]")
-        console.print(Panel(f"[bold]{title}[/bold]\n\n{description}", title="Pull Request", border_style="blue"))
-        
-        if not Confirm.ask("Create this pull request?"):
-            return None
+            if not commits:
+                console.print("[red]No new commits to create PR for.[/red]")
+                console.print("[yellow]This might happen if:")
+                console.print("1. All commits have already been pushed and included in a PR")
+                console.print("2. You haven't made any commits yet")
+                console.print("3. You're on the base branch (main/master)[/yellow]")
+                return None
+                
+            # Generate PR title
+            task = progress.add_task("Generating PR title...", total=None)
+            title = generate_pr_title(commits)
+            progress.update(task, completed=True)
             
-        # Create PR
-        task = progress.add_task("Creating pull request...", total=None)
-        pr_url = create_pr(repo, title, description, labels)
-        progress.update(task, completed=True)
-        
-        return pr_url
+            # Prepare commit information for LLM
+            commit_info = []
+            for commit in commits:
+                message = commit.message.split('\n')[0]
+                commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
+            
+            # Generate PR description
+            components.show_section("Generating PR Description")
+            try:
+                with components.show_spinner("Analyzing changes...") as progress:
+                    description = generate_pr_description(commits)
+                    if not description:
+                        raise ValueError("Failed to generate PR description")
+            except Exception as e:
+                components.show_error(f"Could not generate PR description: {str(e)}")
+                components.show_prompt(
+                    "Would you like to try again?",
+                    options=["Yes", "No"],
+                    default="No"
+                )
+                if not typer.confirm("", default=False):
+                    return None
+                # Try one more time
+                try:
+                    with components.show_spinner("Retrying...") as progress:
+                        description = generate_pr_description(commits)
+                        if not description:
+                            components.show_error("Failed to generate PR description again")
+                            return None
+                except Exception as e:
+                    components.show_error(f"Failed to generate PR description: {str(e)}")
+                    return None
+
+            # Show the generated description
+            components.show_section("Suggested PR Description")
+            components.console.print(description)
+
+            if not skip_prompts:
+                # Ask about creating PR
+                components.show_prompt(
+                    "Would you like to create this pull request?",
+                    options=["Yes", "Edit description", "No"],
+                    default="Yes"
+                )
+                choice = typer.prompt("", type=int, default=1)
+
+                if choice == 3:  # No
+                    components.show_warning("PR creation cancelled")
+                    return None
+
+                if choice == 2:  # Edit
+                    with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                        tf.write(description)
+                        tf.flush()
+                        editor = os.environ.get("EDITOR", "vi")
+                        os.system(f'{editor} {tf.name}')
+                        tf.seek(0)
+                        description = tf.read().strip()
+                    os.unlink(tf.name)
+                    
+                    if not description.strip():
+                        components.show_error("PR description cannot be empty")
+                        return None
+                        
+                    components.show_section("Edited PR Description")
+                    components.console.print(description)
+
+                    components.show_prompt(
+                        "Proceed with PR creation?",
+                        options=["Yes", "No"],
+                        default="Yes"
+                    )
+                    if not typer.confirm("", default=True):
+                        components.show_warning("PR creation cancelled")
+                        return None
+
+            # Create the PR
+            components.show_section("Creating Pull Request")
+            with components.show_spinner("Creating PR...") as progress:
+                try:
+                    # Use GitHub CLI if available
+                    result = subprocess.run(
+                        ["gh", "pr", "create",
+                         "--title", title or f"feat: {commits[0]['message']}",
+                         "--body", description,
+                         "--base", base_branch,
+                         *(["--draft"] if draft else [])],
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    if result.returncode == 0:
+                        components.show_success("Pull request created successfully")
+                        components.console.print(result.stdout)
+                        return result.stdout.strip()
+                    else:
+                        components.show_error("Failed to create pull request")
+                        components.console.print(result.stderr)
+                        return None
+                except FileNotFoundError:
+                    components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
+                    components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+                    return None
+
+    except Exception as e:
+        components.show_error(str(e))
+        return None
 
 def validate_branch_name(branch: str) -> bool:
     """Validate branch name against naming conventions."""
@@ -215,8 +294,30 @@ def pr_command(
 
         # Generate PR description
         components.show_section("Generating PR Description")
-        with components.show_spinner("Analyzing changes...") as progress:
-            description = generate_pr_description(commits)
+        try:
+            with components.show_spinner("Analyzing changes...") as progress:
+                description = generate_pr_description(commits)
+                if not description:
+                    raise ValueError("Failed to generate PR description")
+        except Exception as e:
+            components.show_error(f"Could not generate PR description: {str(e)}")
+            components.show_prompt(
+                "Would you like to try again?",
+                options=["Yes", "No"],
+                default="No"
+            )
+            if not typer.confirm("", default=False):
+                return
+            # Try one more time
+            try:
+                with components.show_spinner("Retrying...") as progress:
+                    description = generate_pr_description(commits)
+                    if not description:
+                        components.show_error("Failed to generate PR description again")
+                        return
+            except Exception as e:
+                components.show_error(f"Failed to generate PR description: {str(e)}")
+                return
 
         # Show the generated description
         components.show_section("Suggested PR Description")
@@ -244,6 +345,11 @@ def pr_command(
                     tf.seek(0)
                     description = tf.read().strip()
                 os.unlink(tf.name)
+                
+                if not description.strip():
+                    components.show_error("PR description cannot be empty")
+                    return
+                    
                 components.show_section("Edited PR Description")
                 components.console.print(description)
 
@@ -277,9 +383,11 @@ def pr_command(
                 else:
                     components.show_error("Failed to create pull request")
                     components.console.print(result.stderr)
+                    return
             except FileNotFoundError:
                 components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
                 components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
+                return
 
     except Exception as e:
         components.show_error(str(e))
