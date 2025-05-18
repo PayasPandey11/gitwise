@@ -202,7 +202,25 @@ def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> st
             4. Include any breaking changes or migration steps
             5. Mention contributors if there are significant changes
             
-            Format the changelog in markdown with appropriate sections."""
+            Format the changelog in markdown with the following structure:
+            
+            # Changelog
+            
+            ## [Unreleased]
+            
+            ### 🚀 Features
+            - List new features here
+            
+            ### 🐛 Bug Fixes
+            - List bug fixes here
+            
+            ### 📝 Documentation
+            - List documentation changes here
+            
+            ### 🔧 Maintenance
+            - List maintenance changes here
+            
+            Use emojis for each section and keep the formatting consistent."""
         },
         {
             "role": "user",
@@ -214,6 +232,13 @@ def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> st
     
     try:
         changelog = get_llm_response(messages)
+        
+        # Add version header if provided
+        if version:
+            date = datetime.now().strftime("%Y-%m-%d")
+            version_header = f"\n## {version} ({date})\n"
+            changelog = changelog.replace("## [Unreleased]", f"## [Unreleased]\n{version_header}")
+        
         return changelog
     except Exception as e:
         components.show_error(f"Could not generate changelog: {str(e)}")
@@ -238,7 +263,7 @@ def update_changelog(version: str, commits: List[Dict[str, str]]) -> None:
     
     # Prepare new changelog entry
     date = datetime.now().strftime("%Y-%m-%d")
-    new_entry = f"## {version}\n*Released on {date}*\n\n{release_notes}\n\n"
+    new_entry = f"## {version} ({date})\n\n{release_notes}\n\n"
     
     # Update changelog
     if existing_content:
