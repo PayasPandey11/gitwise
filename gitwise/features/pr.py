@@ -9,20 +9,16 @@ from gitwise.llm import generate_pr_description, generate_pr_title
 from gitwise.features.pr_enhancements import enhance_pr_description
 
 def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
-    """Get commits since the last PR or base branch, whichever is more recent."""
+    """Get commits since the last push to the remote branch."""
     current_branch = get_current_branch()
     
-    # Get the last PR merge commit on this branch
-    last_pr_commit = None
-    for commit in repo.iter_commits(f"{base_branch}..{current_branch}"):
-        if "Merge pull request" in commit.message:
-            last_pr_commit = commit
-            break
-    
-    # If no PR found, use base branch as reference
-    if last_pr_commit:
-        return list(repo.iter_commits(f"{last_pr_commit.hexsha}..{current_branch}"))
-    else:
+    # Get the remote tracking branch
+    try:
+        remote_branch = f"origin/{current_branch}"
+        # Get commits between remote branch and current branch
+        return list(repo.iter_commits(f"{remote_branch}..{current_branch}"))
+    except:
+        # If remote branch doesn't exist, get commits since base branch
         return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
 def pr_command(

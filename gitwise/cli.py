@@ -15,6 +15,10 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
 from rich.table import Table
+from rich.layout import Layout
+from rich.spinner import Spinner
+from rich.text import Text
+from rich.box import Box
 
 # Support running from both the package and directly as a script
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
@@ -190,14 +194,14 @@ def commit(
                 return
             
             # Show staged files
-            table = Table(title="📝 Staged Changes", show_header=True, header_style="bold magenta")
+            table = Table(title="📝 Staged Changes", show_header=True, header_style="bold magenta", box=Box.ROUNDED)
             table.add_column("Status", style="cyan")
             table.add_column("File", style="green")
             
             for status, file in staged:
                 table.add_row(status, file)
             
-            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]", expand=False))
+            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]", box=Box.ROUNDED, expand=False))
             
             # Get staged diff
             task2 = progress.add_task("🔍 Analyzing changes...", total=None)
@@ -249,6 +253,7 @@ def commit(
                             "\n".join(diff_lines[:30] + ["..."] if len(diff_lines) > 30 else diff_lines),
                             title=f"[bold]{status} {file}[/bold]",
                             border_style="blue",
+                            box=Box.ROUNDED,
                             expand=False
                         ))
             
@@ -258,6 +263,7 @@ def commit(
                     "\n".join(str(panel) for panel in changes_overview),
                     title="[bold blue]Changes Overview[/bold blue]",
                     border_style="blue",
+                    box=Box.ROUNDED,
                     expand=False
                 ))
             
@@ -272,10 +278,12 @@ def commit(
                     commit_message,
                     title="[bold green]Review Message[/bold green]",
                     border_style="green",
+                    box=Box.ROUNDED,
                     expand=False
                 ),
                 title="[bold blue]Suggested Commit Message[/bold blue]",
                 border_style="blue",
+                box=Box.ROUNDED,
                 expand=False
             ))
             
@@ -302,10 +310,12 @@ def commit(
                             commit_message,
                             title="[bold green]New Commit Message[/bold green]",
                             border_style="green",
+                            box=Box.ROUNDED,
                             expand=False
                         ),
                         title="[bold blue]Suggested Commit Message[/bold blue]",
                         border_style="blue",
+                        box=Box.ROUNDED,
                         expand=False
                     ))
                     continue
@@ -324,10 +334,12 @@ def commit(
                             commit_message,
                             title="[bold green]Edited Commit Message[/bold green]",
                             border_style="green",
+                            box=Box.ROUNDED,
                             expand=False
                         ),
                         title="[bold blue]Suggested Commit Message[/bold blue]",
                         border_style="blue",
+                        box=Box.ROUNDED,
                         expand=False
                     ))
                     continue
