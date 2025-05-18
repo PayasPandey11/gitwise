@@ -50,38 +50,50 @@ def run_git_push(target_branch: str = None) -> None:
         raise RuntimeError(f"Failed to push changes: {e.stderr}")
 
 def get_commit_history() -> List[Dict[str, str]]:
-    """Get commit history of commits that haven't been pushed to remote yet.
+    """Get commit history for unpushed commits.
     
     Returns:
-        List of dictionaries containing commit hash, author, date, and message.
+        List of dictionaries containing commit hash, message, and author.
     """
     try:
         # Get the current branch
         current_branch = get_current_branch()
         
-        # Get commits that are in the current branch but not in the remote tracking branch
+        # Get the remote tracking branch
         result = subprocess.run(
-            ["git", "log", f"origin/{current_branch}..HEAD", "--pretty=format:%H|%an|%ad|%s"],
+            ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
             capture_output=True,
-            text=True,
-            check=True
+            text=True
         )
         
+        if result.returncode != 0:
+            # No remote tracking branch found, compare with origin/main
+            remote_branch = "origin/main"
+        else:
+            remote_branch = result.stdout.strip()
+        
+        # Get commits between remote branch and HEAD
+        result = subprocess.run(
+            ["git", "log", f"{remote_branch}..HEAD", "--pretty=format:%H|%s|%an"],
+            capture_output=True,
+            text=True
+        )
+        
+        if not result.stdout.strip():
+            return []
+            
         commits = []
         for line in result.stdout.strip().split('\n'):
-            if not line:
-                continue
-            hash_, author, date, message = line.split('|', 3)
+            hash, message, author = line.split('|')
             commits.append({
-                'hash': hash_,
-                'author': author,
-                'date': date,
-                'message': message
+                'hash': hash,
+                'message': message,
+                'author': author
             })
-        
+            
         return commits
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error getting commit history: {e.stderr}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to get commit history: {str(e)}")
 
 def get_changed_files() -> List[str]:
     """Get list of changed files."""
