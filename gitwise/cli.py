@@ -94,6 +94,7 @@ def add(
             task1 = progress.add_task("🔍 Checking for changes...", total=None)
             unstaged = get_unstaged_files()
             if not unstaged:
+                progress.update(task1, completed=True)
                 console.print(Panel(
                     "[yellow]No changes to stage.[/yellow]",
                     title="[bold blue]Status[/bold blue]",
@@ -207,6 +208,9 @@ def add(
                             expand=False
                         ))
 
+                # Complete the progress task before showing the menu
+                progress.update(task1, completed=True)
+
                 # Simplified workflow with better styling
                 console.print("\n[bold blue]What would you like to do?[/bold blue]")
                 options = [
@@ -250,6 +254,7 @@ def add(
                         box=ROUNDED
                     ))
             else:
+                progress.update(task1, completed=True)
                 console.print(Panel(
                     "[yellow]No files were staged.[/yellow]",
                     title="[bold blue]Status[/bold blue]",
