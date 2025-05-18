@@ -331,7 +331,7 @@ def commit_command(group: bool = True) -> None:
                                 if not typer.confirm("", default=True):
                                     return
                     
-                    # Ask about pushing after all commits
+                    # Only ask about pushing after all commits are successful
                     components.show_prompt(
                         "Would you like to push these changes?",
                         options=["Yes", "No"],
@@ -340,8 +340,6 @@ def commit_command(group: bool = True) -> None:
                     choice = typer.prompt("", type=int, default=1)
                     
                     if choice == 1:  # Yes
-                        # Clear the console before starting push
-                        components.console.clear()
                         # Call push command directly without additional prompts
                         push_command()
                     return
@@ -414,7 +412,7 @@ def commit_command(group: bool = True) -> None:
                 components.show_success("Commit created successfully")
                 components.console.print(result.stdout)
                 
-                # Ask about pushing
+                # Only ask about pushing after commit is successful
                 components.show_prompt(
                     "Would you like to push these changes?",
                     options=["Yes", "No"],
@@ -423,8 +421,6 @@ def commit_command(group: bool = True) -> None:
                 choice = typer.prompt("", type=int, default=1)
                 
                 if choice == 1:  # Yes
-                    # Clear the console before starting push
-                    components.console.clear()
                     # Call push command directly without additional prompts
                     push_command()
             else:
