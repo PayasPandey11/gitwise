@@ -408,7 +408,14 @@ def commit_command(group: bool = True) -> None:
         # Create commit
         components.show_section("Creating Commit")
         commit_success = False
-        with components.show_spinner(f"Committing {len(staged_files)} files..."):
+        
+        # Show all operations that will happen
+        components.console.print("\n[bold]Operations to be performed:[/bold]")
+        components.console.print("1. Creating git commit")
+        components.console.print("2. Updating changelog")
+        components.console.print("3. Running commit hooks (if any)")
+        
+        with components.show_spinner("Creating git commit..."):
             result = subprocess.run(
                 ["git", "commit", "-m", message],
                 capture_output=True,
@@ -416,15 +423,26 @@ def commit_command(group: bool = True) -> None:
             )
             
             if result.returncode == 0:
-                components.show_success("Commit created successfully")
+                components.show_success("Git commit created successfully")
                 components.console.print(result.stdout)
                 commit_success = True
             else:
                 components.show_error("Failed to create commit")
                 if result.stderr:
                     components.console.print(result.stderr)
+                return
 
-        # Only ask about pushing after commit is complete
+        # Update changelog after successful commit
+        if commit_success:
+            with components.show_spinner("Updating changelog..."):
+                try:
+                    from gitwise.features.changelog import update_unreleased_changelog
+                    update_unreleased_changelog()
+                    components.show_success("Changelog updated successfully")
+                except Exception as e:
+                    components.show_warning(f"Could not update changelog: {str(e)}")
+
+        # Only ask about pushing after all operations are complete
         if commit_success:
             components.show_prompt(
                 "Would you like to push these changes?",

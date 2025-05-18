@@ -23,6 +23,7 @@
 
 ### Other
 
+- 
 - update changelog and simplify PR creation flow after push
 - handle empty commit list and improve error handling
 - improve error handling and user experience when creating PRs
