@@ -23,6 +23,7 @@
 
 ### Other
 
+- enhance add command with smart file preview
 - enhance add command workflow
 - enhance add command with file staging and commit prep
 - enhance Makefile targets
