@@ -5,7 +5,7 @@ import sys
 import os
 import subprocess
 import tempfile
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 from gitwise.features.commit import commit_command
 from gitwise.features.push import push_command
 from gitwise.features.pr import pr_command
@@ -671,6 +671,64 @@ def catch_all(ctx: typer.Context):
     except Exception as e:
         console.print(f"[red]❌ Error: {str(e)}[/red]")
         raise typer.Exit(1)
+
+def get_version_tags() -> List[str]:
+    """Get all version tags from the repository."""
+    try:
+        result = subprocess.run(
+            ["git", "tag", "--sort=-v:refname"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            return [tag for tag in result.stdout.splitlines() if tag]
+        return []
+    except Exception:
+        return []
+
+def get_commits_between_tags(start_tag: Optional[str], end_tag: str) -> List[Dict]:
+    """Get commits between two tags."""
+    try:
+        range_spec = f"{start_tag}..{end_tag}" if start_tag else end_tag
+        result = subprocess.run(
+            ["git", "log", "--pretty=format:%h|%s|%an", range_spec],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            commits = []
+            for line in result.stdout.splitlines():
+                if line:
+                    hash_, message, author = line.split("|", 2)
+                    commits.append({
+                        "hash": hash_,
+                        "message": message,
+                        "author": author
+                    })
+            return commits
+        return []
+    except Exception:
+        return []
+
+def suggest_next_version(commits: List[Dict]) -> Tuple[str, str]:
+    """Suggest the next version based on commit messages."""
+    # Simple version suggestion logic
+    major = minor = patch = 0
+    for commit in commits:
+        msg = commit["message"].lower()
+        if "breaking" in msg or "major" in msg:
+            major += 1
+        elif "feat" in msg or "feature" in msg:
+            minor += 1
+        else:
+            patch += 1
+    
+    if major > 0:
+        return f"{major}.0.0", "Major version bump due to breaking changes"
+    elif minor > 0:
+        return f"0.{minor}.0", "Minor version bump due to new features"
+    else:
+        return f"0.0.{patch}", "Patch version bump for fixes and improvements"
 
 if __name__ == "__main__":
     app() 
