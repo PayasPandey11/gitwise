@@ -27,6 +27,10 @@
 
 ### Other
 
+- Improve error logging when PR creation fails
+- generate changelog using templates for prompts
+- generate PR details using LLM
+- improve push command UI/UX
 - enhance PR creation with LLM-generated details
 - Enhance UX and handle errors gracefully
 - enhance PR creation with LLM-generated details
