@@ -7,6 +7,30 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
+def get_llm_response(messages: List[Dict[str, str]]) -> str:
+    """Get response from LLM API.
+    
+    Args:
+        messages: List of message dictionaries with role and content.
+        
+    Returns:
+        The response text from the LLM.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500,
+            extra_headers={
+                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
+                "X-Title": "gitwise",  # Your project name
+            }
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        raise RuntimeError(f"Failed to get LLM response: {str(e)}")
+
 def generate_commit_message(diff: str, guidance: str = None) -> str:
     """Generate a commit message based on the diff.
     
