@@ -174,15 +174,7 @@ def commit(
     message: Optional[str] = typer.Argument(None, help="Commit message"),
     group: bool = typer.Option(True, "--group/--no-group", help="Group related changes into logical commits")
 ) -> None:
-    """Create a commit with a smart message.
-    
-    This command will:
-    1. Analyze your staged changes
-    2. Generate a conventional commit message
-    3. Allow you to edit or regenerate the message
-    4. Create the commit
-    5. Optionally push the changes
-    """
+    """Create a commit with a smart message."""
     try:
         with Progress(
             SpinnerColumn(),
@@ -205,7 +197,7 @@ def commit(
             for status, file in staged:
                 table.add_row(status, file)
             
-            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]"))
+            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]", expand=False))
             
             # Get staged diff
             task2 = progress.add_task("🔍 Analyzing changes...", total=None)
@@ -213,9 +205,8 @@ def commit(
             progress.update(task2, completed=True)
             
             # Show changes in a more organized way
-            console.print("\n[bold blue]Changes Overview[/bold blue]")
+            changes_overview = []
             for status, file in staged:
-                console.print(f"\n[cyan]{status}[/cyan] [green]{file}[/green]")
                 # Get file-specific diff
                 result = subprocess.run(
                     ["git", "diff", "--cached", "--", file],
@@ -223,19 +214,52 @@ def commit(
                     text=True
                 )
                 if result.stdout:
-                    # Show only the changed lines, not the full diff
-                    changes = []
+                    # Parse and format the diff
+                    diff_lines = []
+                    current_hunk = []
+                    context_lines = []
                     for line in result.stdout.splitlines():
-                        if line.startswith('+') and not line.startswith('+++'):
-                            changes.append(f"[green]{line}[/green]")
+                        if line.startswith('@@'):
+                            if current_hunk:
+                                # Add context lines before the hunk
+                                if context_lines:
+                                    diff_lines.extend(context_lines)
+                                    context_lines = []
+                                diff_lines.extend(current_hunk)
+                                diff_lines.append('')
+                            current_hunk = [f"[blue]{line}[/blue]"]
+                        elif line.startswith('+') and not line.startswith('+++'):
+                            current_hunk.append(f"[green]{line}[/green]")
                         elif line.startswith('-') and not line.startswith('---'):
-                            changes.append(f"[red]{line}[/red]")
-                    if changes:
-                        console.print(Panel(
-                            "\n".join(changes[:5] + ["..."] if len(changes) > 5 else changes),
-                            title=f"[bold]Changes in {file}[/bold]",
-                            border_style="blue"
+                            current_hunk.append(f"[red]{line}[/red]")
+                        elif line.startswith(' '):
+                            # Keep track of context lines
+                            if len(context_lines) < 3:  # Keep last 3 context lines
+                                context_lines.append(line)
+                            current_hunk.append(line)
+                    
+                    if current_hunk:
+                        if context_lines:
+                            diff_lines.extend(context_lines)
+                        diff_lines.extend(current_hunk)
+                    
+                    # Show the diff in a panel
+                    if diff_lines:
+                        changes_overview.append(Panel(
+                            "\n".join(diff_lines[:30] + ["..."] if len(diff_lines) > 30 else diff_lines),
+                            title=f"[bold]{status} {file}[/bold]",
+                            border_style="blue",
+                            expand=False
                         ))
+            
+            # Show all changes in a single panel
+            if changes_overview:
+                console.print(Panel(
+                    "\n".join(str(panel) for panel in changes_overview),
+                    title="[bold blue]Changes Overview[/bold blue]",
+                    border_style="blue",
+                    expand=False
+                ))
             
             # Generate commit message
             progress.update(task1, description="🤖 Generating commit message...")
@@ -243,11 +267,16 @@ def commit(
             progress.update(task1, completed=True)
             
             # Show commit message in a nice panel
-            console.print("\n[bold blue]Suggested Commit Message[/bold blue]")
             console.print(Panel(
-                commit_message,
-                title="[bold green]Review Message[/bold green]",
-                border_style="green"
+                Panel(
+                    commit_message,
+                    title="[bold green]Review Message[/bold green]",
+                    border_style="green",
+                    expand=False
+                ),
+                title="[bold blue]Suggested Commit Message[/bold blue]",
+                border_style="blue",
+                expand=False
             ))
             
             # Handle commit message options
@@ -269,9 +298,15 @@ def commit(
                     progress.add_task("🔄 Regenerating commit message...", total=None)
                     commit_message = generate_commit_message(staged_diff)
                     console.print(Panel(
-                        commit_message,
-                        title="[bold green]New Commit Message[/bold green]",
-                        border_style="green"
+                        Panel(
+                            commit_message,
+                            title="[bold green]New Commit Message[/bold green]",
+                            border_style="green",
+                            expand=False
+                        ),
+                        title="[bold blue]Suggested Commit Message[/bold blue]",
+                        border_style="blue",
+                        expand=False
                     ))
                     continue
                 
@@ -285,9 +320,15 @@ def commit(
                         commit_message = tf.read().strip()
                     os.unlink(tf.name)
                     console.print(Panel(
-                        commit_message,
-                        title="[bold green]Edited Commit Message[/bold green]",
-                        border_style="green"
+                        Panel(
+                            commit_message,
+                            title="[bold green]Edited Commit Message[/bold green]",
+                            border_style="green",
+                            expand=False
+                        ),
+                        title="[bold blue]Suggested Commit Message[/bold blue]",
+                        border_style="blue",
+                        expand=False
                     ))
                     continue
                 
