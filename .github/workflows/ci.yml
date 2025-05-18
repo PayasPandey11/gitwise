@@ -11,7 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: ['3.11']  # Latest stable version for primary testing
+        include:
+          - python-version: '3.8'  # Minimum supported version
+            test-type: 'min-version'
+          - python-version: '3.11'
+            test-type: 'full'
 
     steps:
     - uses: actions/checkout@v3
@@ -24,17 +29,28 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pytest pytest-cov
         pip install -e ".[dev]"
     
     - name: Run tests
       run: |
-        make test
+        if [ "${{ matrix.test-type }}" = "full" ]; then
+          python -m pytest tests/ --cov=gitwise --cov-report=xml
+        else
+          python -m pytest tests/  # Skip coverage for min version
+        fi
     
     - name: Run linting
+      if: matrix.test-type == 'full'  # Only run linting once
       run: |
-        make lint
+        pip install flake8 black isort mypy
+        flake8 gitwise tests
+        black --check gitwise tests
+        isort --check-only gitwise tests
+        mypy gitwise tests
     
     - name: Upload coverage
+      if: matrix.test-type == 'full'  # Only upload coverage once
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
