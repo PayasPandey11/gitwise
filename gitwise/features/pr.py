@@ -13,12 +13,16 @@ def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
     current_branch = get_current_branch()
     
     # Get the remote tracking branch
+    remote_branch = f"origin/{current_branch}"
+    
+    # Check if remote branch exists
     try:
-        remote_branch = f"origin/{current_branch}"
-        # Get commits between remote branch and current branch
+        # Try to get the remote branch
+        repo.git.rev_parse(f"{remote_branch}")
+        # If we get here, remote branch exists, get commits since last push
         return list(repo.iter_commits(f"{remote_branch}..{current_branch}"))
     except:
-        # If remote branch doesn't exist, get commits since base branch
+        # Remote branch doesn't exist, get all commits since base branch
         return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
 def pr_command(
