@@ -17,7 +17,9 @@ Additional guidance: {guidance}
 
 Commit message:"""
 
-PR_DESCRIPTION_PROMPT = """You are an expert at writing clear, descriptive, and user-friendly pull request descriptions.
+PR_DESCRIPTION_PROMPT = """**CRITICAL INSTRUCTION: Your entire response must be ONLY the PR description text. Do NOT include any preamble, conversational text, or any kind of "Contributors" or "Acknowledgements" section. Author information is available in the Git history.**
+
+You are an expert at writing clear, descriptive, and user-friendly pull request descriptions.
 Please analyze the following commits and write a PR description that:
 1. Summarizes the changes in a clear, user-friendly way.
 2. Groups related changes together under logical headings (e.g., ### Features, ### Bug Fixes, ### Refactoring).
@@ -29,7 +31,6 @@ Please analyze the following commits and write a PR description that:
    - **Key Features/Fixes:** Bullet points of main changes.
    - **Testing Done:** (Suggest placeholder if not inferable: e.g., "Manual testing performed for new feature X.")
    - **Potential Impact:** (e.g., "No breaking changes expected." or "Users will need to update their configuration for Y.")
-7. **IMPORTANT**: Do NOT include a "Contributors" or "Acknowledgements" section. Information about authors is available in the Git history.
 
 Commits:
 {commits}
