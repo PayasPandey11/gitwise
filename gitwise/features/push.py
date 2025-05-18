@@ -94,7 +94,7 @@ def push_command() -> None:
                         use_labels=include_extras,
                         use_checklist=include_extras,
                         skip_general_checklist=not include_extras, # Corrected logic here
-                        skip_prompts=True  # Skip prompts since we already asked
+                        skip_prompts=False  # CHANGED: Now allows pr_command to run its full interactive flow
                     )
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
