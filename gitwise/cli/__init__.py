@@ -13,12 +13,12 @@ from gitwise.features.pr import pr_command
 from gitwise.features.changelog import changelog_command
 
 # Define command categories with emojis
-COMMIT_COMMANDS = {
-    "commit": "Create a commit with AI-generated message",
-    "push": "Push changes and optionally create a PR",
-    "pr": "Create a pull request with AI-generated description",
-    "changelog": "Generate a changelog from commits"
-}
+# COMMIT_COMMANDS = {
+#     "commit": "Create a commit with AI-generated message",
+#     "push": "Push changes and optionally create a PR",
+#     "pr": "Create a pull request with AI-generated description",
+#     "changelog": "Generate a changelog from commits"
+# }
 
 # Create the main app
 app = typer.Typer(
@@ -95,26 +95,15 @@ def git(
 
     command_to_run = ["git"] + args
     
-    # Heuristic: Common git commands that use a pager
-    pager_commands = {"log", "diff", "show", "branch"} # `branch -vv` can page
-    
-    # Check if the first arg is a command that typically pages AND if we are likely not in an interactive gh-controlled pager scenario
-    # This is a simple heuristic. A more robust check would involve `sys.stdout.isatty()`
-    # and potentially checking if `gh` is the parent process and handling its pager.
-    # For now, if it's a known pager command and not explicitly piped by the user, append `| cat`.
-    is_pager_command = args[0] in pager_commands
-    is_piped_by_user = any("|" in arg for arg in args) # very basic check
-    
-    # If it's a pager command, not explicitly piped by user, and stdout is likely not a TTY (or to be safe for scripting)
-    # For now, always append `| cat` for these commands if not piped, to ensure scriptability and avoid hangs.
-    # More sophisticated: only if !sys.stdout.isatty() or a specific flag is given.
-    if is_pager_command and not is_piped_by_user:
-        # components.show_warning(f"Command '{args[0]}' typically uses a pager. Appending '| cat' for script-friendly output.")
-        # This modification of `args` for Popen is tricky as `| cat` is shell syntax.
-        # Instead, we should run it through a shell if we want to use pipes, or handle paging differently.
-        # For simplicity with Popen, we'll let users pipe manually or use gh's pager if run via `gh alias`.
-        # The previous logic of just streaming output is safer than trying to auto-pipe here without shell=True.
-        pass # Reverted to no auto-piping for now. README should reflect this.
+    # Simplified pager handling:
+    # The responsibility of piping commands that use a pager (like log, diff)
+    # is left to the user or handled by gh's pager if run via `gh alias`.
+    # GitWise will stream the output directly.
+    # pager_commands = {"log", "diff", "show", "branch"} 
+    # is_pager_command = args[0] in pager_commands
+    # is_piped_by_user = any("|" in arg for arg in args)
+    # if is_pager_command and not is_piped_by_user:
+    #     pass # No auto-piping
 
     try:
         # Use Popen for better control over the process
