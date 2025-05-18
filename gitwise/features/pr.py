@@ -32,15 +32,20 @@ def get_commits_since_last_pr(repo: Repo, base_branch: str = "main") -> List[Com
     remote_branch = f"origin/{current_branch}"
     
     try:
-        # Check if remote branch exists
-        repo.git.rev_parse(f"{remote_branch}")
-        # Get commits since last push
+        # First try to get commits between remote and local
+        repo.git.fetch("origin", current_branch)
         commits = list(repo.iter_commits(f"{remote_branch}..HEAD"))
-    except:
-        # If no remote branch, get all commits since base branch
-        commits = list(repo.iter_commits(f"{base_branch}..HEAD"))
-    
-    return commits
+        
+        # If no commits found, try getting commits since base branch
+        if not commits:
+            commits = list(repo.iter_commits(f"{base_branch}..HEAD"))
+            
+        return commits
+    except Exception as e:
+        # If any error occurs, fall back to base branch
+        console.print(f"[yellow]Warning: {str(e)}[/yellow]")
+        console.print("[yellow]Falling back to comparing with base branch...[/yellow]")
+        return list(repo.iter_commits(f"{base_branch}..HEAD"))
 
 def create_pr(repo: Repo, title: str, description: str, labels: List[str] = None) -> str:
     """Create a pull request.
@@ -81,6 +86,10 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
         
         if not commits:
             console.print("[red]No new commits to create PR for.[/red]")
+            console.print("[yellow]This might happen if:")
+            console.print("1. All commits have already been pushed and included in a PR")
+            console.print("2. You haven't made any commits yet")
+            console.print("3. You're on the base branch (main/master)[/yellow]")
             return None
             
         # Generate PR title
