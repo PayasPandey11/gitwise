@@ -2,43 +2,73 @@
 
 ## [Unreleased]
 
-### 🚀 Features
-- Add changelog generation command with version parsing and comparison (payas)
-- Enhance PR creation flow with title generation and improved description (payas)
-- Add pull request creation functionality (payas)
-- Enhance add command UI and workflow with smart file preview, staging, and commit prep (payas)
-- Add `--no-group` flag to `commit` command (payas)
-- Simplify PR creation flow after pushing changes (payas)
-- Add `--create-tag` option to `changelog` command (payas)
+### Documentation
 
-### 🐛 Bug Fixes
-- Avoid circular imports when calling push command (payas)
+- add changelog feature documentation and contributing guidelines
+- add changelog feature documentation
+- add API documentation for GitWise
+- add contributing guidelines
+- add contributor covenant code of conduct
 
-### 📝 Documentation
-- Add API documentation for GitWise (payas)
-- Add changelog feature documentation and contributing guidelines (payas)
-- Enhance feature descriptions in README and add changelog guide (payas)
+### Tests
 
-### 🔧 Maintenance
-- Improve error handling and user experience when creating PRs (payas)
-- Improve push prompt flow for better user experience (payas)
-- Adjust push flow for better user experience (payas)
-- Simplify command flows and improve user experience (payas)
-- Enhance push command workflow (payas)
-- Simplify add command flow and prompts (payas)
-- Enhance remote branch handling for commit retrieval (payas)
+- add tests for changelog feature
 
-### 🧪 Testing
-- Add unit tests for PR command and helpers (payas)
-- Add tests for commit feature (payas) 
-- Add tests for changelog feature (payas)
+### Chores
 
-### 🛠️ Build System
-- Update CI workflow (payas)
-- Add GitHub Actions workflow for testing and deployment (payas)
-- Enhance Makefile targets (payas)
-- Add MANIFEST.in for packaging (payas)
+- add changelog generation command
+- add MANIFEST.in for packaging
+- add CHANGELOG.md
+- add CHANGELOG.md
 
-### 📄 Chores
-- Add CHANGELOG.md (payas)
-- Add contributor covenant code of conduct (payas)
+### Other
+
+- update changelog and simplify PR creation flow after push
+- handle empty commit list and improve error handling
+- improve error handling and user experience when creating PRs
+- improve push prompt flow for better user experience
+- Avoid circular imports when calling push command
+- adjust push flow for better user experience
+- simplify PR creation flow after pushing changes
+- simplify command flows and improve user experience
+- add `--no-group` flag to `commit` command
+- add changelog generation and enhance PR creation
+- add changelog generation command
+- enhance add and changelog commands
+- enhance push command workflow
+- enhance add command UX
+- improve add command ux
+- enhance add command UX
+- improve add command UX
+- add PR title generation and enhance PR description
+- improve add command UX
+- add PR title generation and enhance PR description generation
+- improve PR creation flow and error handling
+- add pull request creation functionality
+- add changelog generation command
+- 
+- add changelog generation command
+- enhance add command UI and workflow
+- add changelog generation command
+- enhance add command UI and workflow
+- simplify add command flow and prompts
+- enhance add command UI with diff table
+- enhance remote branch handling for commit retrieval
+- enhance add command workflow and UI
+- enhance add command with smart file preview
+- enhance add command workflow
+- enhance add command with smart file preview
+- enhance add command workflow
+- enhance add command with file staging and commit prep
+- enhance Makefile targets
+- update CI workflow
+- add unit tests for pr command and helpers
+- add tests for commit feature
+- simplify add and commit commands, add changelog generation
+- add GitHub Actions workflow for testing and deployment
+- enhance changelog generation
+- simplify add and commit commands
+- enhance feature descriptions and add changelog guide
+- add version parsing and comparison
+- add --create-tag option to changelog command
+

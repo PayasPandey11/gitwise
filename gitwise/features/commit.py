@@ -307,25 +307,26 @@ def commit_command(group: bool = True) -> None:
                             try:
                                 # Stage only the files for this group
                                 stage_files(group['files'])
-                                result = subprocess.run(
-                                    ["git", "commit", "-m", f"{group['type']}: {group['description']}"],
-                                    capture_output=True,
-                                    text=True
-                                )
-                                if result.returncode == 0:
-                                    components.show_success("Commit created successfully")
-                                    components.console.print(result.stdout)
-                                else:
-                                    components.show_error("Failed to create commit")
-                                    if result.stderr:
-                                        components.console.print(result.stderr)
-                                    components.show_prompt(
-                                        "Continue with remaining groups?",
-                                        options=["Yes", "No"],
-                                        default="Yes"
+                                with components.show_spinner(f"Committing {len(group['files'])} files..."):
+                                    result = subprocess.run(
+                                        ["git", "commit", "-m", f"{group['type']}: {group['description']}"],
+                                        capture_output=True,
+                                        text=True
                                     )
-                                    if not typer.confirm("", default=True):
-                                        return
+                                    if result.returncode == 0:
+                                        components.show_success("Commit created successfully")
+                                        components.console.print(result.stdout)
+                                    else:
+                                        components.show_error("Failed to create commit")
+                                        if result.stderr:
+                                            components.console.print(result.stderr)
+                                        components.show_prompt(
+                                            "Continue with remaining groups?",
+                                            options=["Yes", "No"],
+                                            default="Yes"
+                                        )
+                                        if not typer.confirm("", default=True):
+                                            return
                             except Exception as e:
                                 components.show_error(str(e))
                                 components.show_prompt(
@@ -407,7 +408,7 @@ def commit_command(group: bool = True) -> None:
         # Create commit
         components.show_section("Creating Commit")
         commit_success = False
-        with components.show_spinner("Committing changes..."):
+        with components.show_spinner(f"Committing {len(staged_files)} files..."):
             result = subprocess.run(
                 ["git", "commit", "-m", message],
                 capture_output=True,
