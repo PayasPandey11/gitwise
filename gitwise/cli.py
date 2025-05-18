@@ -249,8 +249,18 @@ def commit(
                     
                     # Show the diff in a panel
                     if diff_lines:
+                        # Create a table for the diff
+                        diff_table = Table(show_header=False, box=Box.ROUNDED, padding=(0, 1))
+                        diff_table.add_column("Content", style="white")
+                        
+                        for line in diff_lines[:30]:
+                            diff_table.add_row(line)
+                        
+                        if len(diff_lines) > 30:
+                            diff_table.add_row("...")
+                        
                         changes_overview.append(Panel(
-                            "\n".join(diff_lines[:30] + ["..."] if len(diff_lines) > 30 else diff_lines),
+                            diff_table,
                             title=f"[bold]{status} {file}[/bold]",
                             border_style="blue",
                             box=Box.ROUNDED,
