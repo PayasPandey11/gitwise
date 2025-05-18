@@ -3,31 +3,33 @@
 ## [Unreleased]
 
 ### 🚀 Features
-- Add changelog generation command with version parsing and comparison (payas)
-- Enhance pull request creation flow with improved title generation and error handling (payas) 
-- Add smart file preview and diff table to `add` command for better staging visualization (payas)
-- Introduce `--create-tag` option to `changelog` command for tagging releases (payas)
+- Added changelog generation command to easily create release notes (payas)
+- Enhanced add command UI and workflow for improved user experience (payas)
+- Implemented smart file preview in add command to help users review changes (payas)
+- Added file staging and commit preparation to add command (payas)
+- Improved pull request creation flow with better error handling (payas)
+- Added pull request title generation and enhanced description generation (payas)
+- Enhanced remote branch handling for commit retrieval in pull request command (payas)
 
-### 🐛 Bug Fixes
-- None
+### 🔧 Refactoring
+- Simplified add and commit commands for easier use (payas)
+- Improved add command UX by simplifying flow and prompts (payas)
+- Enhanced push command workflow for smoother operation (payas)
 
-### 📝 Documentation  
-- Add changelog feature documentation and usage guide to README (payas)
-- Create API documentation for GitWise (payas)
-- Add contributing guidelines and contributor covenant code of conduct (payas)
+### 📝 Documentation
+- Added API documentation for GitWise (payas)
+- Created contributing guidelines to help new contributors (payas)
+- Added changelog feature documentation and guide (payas)
+- Introduced Contributor Covenant Code of Conduct (payas)
+
+### 🧪 Testing
+- Implemented unit tests for pull request command and helpers (payas)
+- Added tests for commit and changelog features (payas)
 
 ### 🔧 Maintenance
-- Enhance Makefile targets for improved development workflow (payas)
-- Update CI workflow to include testing and deployment (payas)
-- Add MANIFEST.in for proper packaging (payas)
+- Updated CI workflow for improved testing and deployment (payas)
+- Enhanced Makefile targets for easier development (payas)
+- Added MANIFEST.in for proper packaging (payas)
 
-### ♻️ Refactoring  
-- Simplify `add` and `commit` command flows and prompts (payas)
-- Improve remote branch handling for commit retrieval in `pr` command (payas)
-- Streamline `add` command workflow and UI (payas)
-- Enhance `push` command workflow (payas)
-
-### ✅ Tests
-- Add unit tests for `pr` command and helpers (payas)  
-- Introduce tests for `commit` feature (payas)
-- Create tests for `changelog` feature (payas)
+### 📦 Chores
+- Added CHANGELOG.md to track project changes (payas)

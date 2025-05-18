@@ -93,16 +93,36 @@ def git(
         raise typer.Exit(code=1)
 
     try:
-        result = subprocess.run(["git"] + args, capture_output=True, text=True)
-        if result.returncode == 0:
+        # Use Popen for better control over the process
+        process = subprocess.Popen(
+            ["git"] + args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1  # Line buffered
+        )
+        
+        # Stream output in real-time
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                components.console.print(output.strip())
+        
+        # Get the return code
+        return_code = process.poll()
+        
+        if return_code == 0:
             components.show_success("Git command executed successfully")
-            if result.stdout:
-                components.console.print(result.stdout)
         else:
             components.show_error("Git command failed")
-            if result.stderr:
-                components.console.print(result.stderr)
-            raise typer.Exit(code=result.returncode)
+            # Print any remaining stderr
+            stderr = process.stderr.read()
+            if stderr:
+                components.console.print(stderr)
+            raise typer.Exit(code=return_code)
+            
     except Exception as e:
         components.show_error(str(e))
         raise typer.Exit(code=1)
