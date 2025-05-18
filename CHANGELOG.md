@@ -27,6 +27,9 @@
 
 ### Other
 
+- enhance commit list for PR by fetching latest base branch state
+- generate changelog and PR details using LLM templates
+- add CHANGELOG prompts and guidance
 - Improve error logging when PR creation fails
 - generate changelog using templates for prompts
 - generate PR details using LLM
