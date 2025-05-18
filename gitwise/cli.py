@@ -31,32 +31,42 @@ else:
     from gitwise.features.changelog import changelog_command
     from gitwise.gitutils import get_staged_files, get_unstaged_files
 
-# Define command categories
+# Define command categories with emojis and better descriptions
 GITWISE_COMMANDS = {
-    "commit": "Generate a smart commit message for staged changes",
-    "push": "Push changes with option to create PR",
-    "pr": "Create a pull request with AI-generated description"
+    "commit": "📝 Generate a smart commit message for staged changes",
+    "push": "⬆️  Push changes with option to create PR",
+    "pr": "🔀 Create a pull request with AI-generated description",
+    "changelog": "📋 Manage changelog with automatic updates"
 }
 
 GIT_PASSTHROUGH_COMMANDS = {
-    "add": "Stage changes (git add passthrough)",
-    "git": "Pass through any git command"
+    "add": "➕ Stage changes with smart preview",
+    "git": "🔄 Pass through any git command"
 }
 
 app = typer.Typer(
-    help="""gitwise: AI-powered git assistant
+    help="""[bold blue]gitwise[/bold blue]: AI-powered git assistant 🤖
 
-    Smart Features:
-    - Generate conventional commit messages using AI
-    - Create PRs with AI-generated descriptions
-    - Push changes with PR creation option
+    [bold]Smart Features:[/bold]
+    • [cyan]Smart Commits[/cyan] - Generate conventional commit messages using AI
+    • [cyan]Smart PRs[/cyan] - Create PRs with AI-generated descriptions
+    • [cyan]Smart Push[/cyan] - Push changes with automatic PR creation
+    • [cyan]Smart Changelog[/cyan] - Automatic changelog management
 
-    Usage:
-    - Use gitwise-specific commands for enhanced features
-    - Use any git command directly (e.g., gitwise checkout, gitwise status)
-    - All git commands are supported through passthrough
+    [bold]Usage:[/bold]
+    • Use [cyan]gitwise --list[/cyan] to see all available commands
+    • Use [cyan]gitwise <command> --help[/cyan] for detailed command help
+    • All git commands are supported (e.g., [cyan]gitwise status[/cyan])
+
+    [bold]Examples:[/bold]
+    • [cyan]gitwise add .[/cyan] - Stage and prepare changes
+    • [cyan]gitwise commit[/cyan] - Create a smart commit
+    • [cyan]gitwise pr[/cyan] - Create a PR with AI description
+    • [cyan]gitwise status[/cyan] - Regular git status
+    • [cyan]gitwise checkout -b new[/cyan] - Regular git checkout
     """,
-    add_completion=False
+    add_completion=False,
+    rich_markup_mode="rich"
 )
 
 console = Console()
@@ -163,14 +173,99 @@ def commit(
     message: Optional[str] = typer.Argument(None, help="Commit message"),
     group: bool = typer.Option(True, "--group/--no-group", help="Group related changes into logical commits")
 ) -> None:
-    """Create a commit with a smart message."""
-    commit_command(message=message, group=group)
+    """Create a commit with a smart message.
+    
+    This command will:
+    1. Analyze your staged changes
+    2. Generate a conventional commit message
+    3. Allow you to edit or regenerate the message
+    4. Create the commit
+    5. Optionally push the changes
+    """
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            # Show initial status
+            task1 = progress.add_task("📊 Analyzing staged changes...", total=None)
+            staged = get_staged_files()
+            if not staged:
+                console.print("[yellow]⚠️  No staged changes found. Please stage your changes first.[/yellow]")
+                return
+            
+            # Show staged files
+            table = Table(title="📝 Staged Changes", show_header=True, header_style="bold magenta")
+            table.add_column("Status", style="cyan")
+            table.add_column("File", style="green")
+            
+            for status, file in staged:
+                table.add_row(status, file)
+            
+            console.print(Panel(table, title="[bold green]Files to Commit[/bold green]"))
+            
+            # Generate commit message
+            progress.update(task1, description="🤖 Generating commit message...")
+            commit_command(message=message, group=group)
+            progress.update(task1, completed=True)
+            
+            # Show success message
+            console.print("\n[bold green]✅ Commit created successfully![/bold green]")
+            
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 @app.command()
 def push() -> None:
-    """Push changes to the remote repository."""
-    # TODO: Implement push command
-    pass
+    """Push changes to the remote repository.
+    
+    This command will:
+    1. Push your changes to the remote
+    2. Optionally create a PR if not on main branch
+    3. Show the PR URL if created
+    """
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            # Check branch
+            task1 = progress.add_task("🔍 Checking branch status...", total=None)
+            current_branch = get_current_branch()
+            progress.update(task1, completed=True)
+            
+            # Show commits to push
+            task2 = progress.add_task("📜 Analyzing commits to push...", total=None)
+            commits = get_commit_history()
+            if commits:
+                table = Table(title="📝 Commits to Push", show_header=True, header_style="bold magenta")
+                table.add_column("Hash", style="cyan")
+                table.add_column("Message", style="green")
+                
+                for commit in commits:
+                    table.add_row(
+                        commit['hash'][:7],
+                        commit['message']
+                    )
+                
+                console.print(Panel(table, title="[bold blue]Push Preview[/bold blue]"))
+            
+            # Push changes
+            progress.update(task2, description="⬆️  Pushing changes...")
+            push_command()
+            progress.update(task2, completed=True)
+            
+            # Show success message
+            console.print("\n[bold green]✅ Changes pushed successfully![/bold green]")
+            
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 @app.command()
 def pr(
@@ -178,8 +273,59 @@ def pr(
     use_checklist: bool = typer.Option(False, "--use-checklist/--no-checklist", help="Add checklist based on changed files"),
     skip_general_checklist: bool = typer.Option(False, "--skip-general-checklist/--no-skip-general-checklist", help="Skip general checklist items")
 ) -> None:
-    """Create a pull request with a smart description."""
-    pr_command(use_labels, use_checklist, skip_general_checklist)
+    """Create a pull request with a smart description.
+    
+    This command will:
+    1. Analyze your commits
+    2. Generate a PR title and description
+    3. Add labels and checklist if requested
+    4. Create the PR and show the URL
+    """
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            # Get current branch
+            task1 = progress.add_task("🔍 Checking branch status...", total=None)
+            current_branch = get_current_branch()
+            progress.update(task1, completed=True)
+            
+            # Get commits
+            task2 = progress.add_task("📜 Analyzing commits...", total=None)
+            commits = get_commit_history()
+            if not commits:
+                console.print("[yellow]⚠️  No commits found to create PR for.[/yellow]")
+                return
+            
+            # Show commits
+            table = Table(title="📝 Commits to Include", show_header=True, header_style="bold magenta")
+            table.add_column("Hash", style="cyan")
+            table.add_column("Message", style="green")
+            table.add_column("Author", style="yellow")
+            
+            for commit in commits:
+                table.add_row(
+                    commit['hash'][:7],
+                    commit['message'],
+                    commit['author']
+                )
+            
+            console.print(Panel(table, title="[bold blue]PR Preview[/bold blue]"))
+            
+            # Generate PR
+            progress.update(task2, description="🤖 Generating PR description...")
+            pr_command(use_labels, use_checklist, skip_general_checklist)
+            progress.update(task2, completed=True)
+            
+            # Show success message
+            console.print("\n[bold green]✅ PR created successfully![/bold green]")
+            
+    except Exception as e:
+        console.print(f"[red]❌ Error: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 @app.command()
 def changelog(
@@ -195,24 +341,26 @@ def changelog(
 def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):
     """Main entry point for GitWise."""
     if list_commands:
-        typer.echo("\nGitwise-specific commands:")
+        console.print("\n[bold blue]GitWise Commands[/bold blue]")
+        console.print("\n[bold]Smart Commands:[/bold]")
         for cmd, desc in GITWISE_COMMANDS.items():
-            typer.echo(f"  {cmd:<10} {desc}")
+            console.print(f"  [cyan]{cmd:<10}[/cyan] {desc}")
         
-        typer.echo("\nGit passthrough commands:")
+        console.print("\n[bold]Git Commands:[/bold]")
         for cmd, desc in GIT_PASSTHROUGH_COMMANDS.items():
-            typer.echo(f"  {cmd:<10} {desc}")
+            console.print(f"  [cyan]{cmd:<10}[/cyan] {desc}")
         
-        typer.echo("\nExamples:")
-        typer.echo("  gitwise commit              # Create a smart commit")
-        typer.echo("  gitwise push                # Push changes with PR option")
-        typer.echo("  gitwise status              # Regular git status")
-        typer.echo("  gitwise checkout -b new     # Regular git checkout")
+        console.print("\n[bold]Examples:[/bold]")
+        console.print("  [cyan]gitwise add .[/cyan]              # Stage and prepare changes")
+        console.print("  [cyan]gitwise commit[/cyan]             # Create a smart commit")
+        console.print("  [cyan]gitwise pr[/cyan]                 # Create a PR with AI description")
+        console.print("  [cyan]gitwise status[/cyan]             # Regular git status")
+        console.print("  [cyan]gitwise checkout -b new[/cyan]    # Regular git checkout")
         raise typer.Exit()
     
     if ctx.invoked_subcommand is None:
         # If no command is provided, show help
-        typer.echo(ctx.get_help())
+        console.print(ctx.get_help())
         raise typer.Exit()
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})

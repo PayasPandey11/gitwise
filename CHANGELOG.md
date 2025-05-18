@@ -23,6 +23,7 @@
 
 ### Other
 
+- enhance add command with file staging and commit prep
 - enhance Makefile targets
 - update CI workflow
 - add unit tests for pr command and helpers
