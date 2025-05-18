@@ -5,6 +5,7 @@ import sys
 import os
 import subprocess
 import tempfile
+import re
 from typing import Optional, List, Dict, Tuple
 from gitwise.features.commit import commit_command
 from gitwise.features.push import push_command
@@ -527,7 +528,7 @@ def changelog(
                     for commit in commits:
                         table.add_row(
                             commit['hash'][:7],
-                            commit['message'],
+                            commit['message'].split('\n')[0],  # Show only first line
                             commit['author']
                         )
 
@@ -716,19 +717,47 @@ def suggest_next_version(commits: List[Dict]) -> Tuple[str, str]:
     major = minor = patch = 0
     for commit in commits:
         msg = commit["message"].lower()
-        if "breaking" in msg or "major" in msg:
+        # Check for breaking changes
+        if "breaking" in msg or "major" in msg or "!" in msg:
             major += 1
-        elif "feat" in msg or "feature" in msg:
+        # Check for features
+        elif any(x in msg for x in ["feat", "feature", "add", "new"]):
             minor += 1
+        # Everything else is a patch
         else:
             patch += 1
     
+    # Get current version from latest tag
+    current_version = "0.0.0"
+    tags = get_version_tags()
+    if tags:
+        current_version = tags[0]  # Most recent tag
+    
+    # Parse current version
+    try:
+        major_curr, minor_curr, patch_curr = map(int, current_version.lstrip('v').split('.'))
+        major += major_curr
+        minor += minor_curr
+        patch += patch_curr
+    except (ValueError, IndexError):
+        pass
+    
+    # Generate new version and reason
     if major > 0:
-        return f"{major}.0.0", "Major version bump due to breaking changes"
+        return f"v{major}.0.0", "Major version bump due to breaking changes"
     elif minor > 0:
-        return f"0.{minor}.0", "Minor version bump due to new features"
+        return f"v0.{minor}.0", "Minor version bump due to new features"
     else:
-        return f"0.0.{patch}", "Patch version bump for fixes and improvements"
+        return f"v0.0.{patch}", "Patch version bump for fixes and improvements"
+
+def format_commit_for_changelog(commit: Dict) -> str:
+    """Format a commit message for the changelog."""
+    msg = commit["message"].strip()
+    # Remove conventional commit prefix if present
+    msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
+    # Take first line only
+    msg = msg.split('\n')[0]
+    return f"- {msg}"
 
 if __name__ == "__main__":
     app() 

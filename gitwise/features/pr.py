@@ -66,7 +66,20 @@ def pr_command(
             return
 
         # Generate PR title and description
-        pr_title = title or generate_pr_title(commits)
+        if title:
+            pr_title = title
+        else:
+            # Generate a concise title from the most significant commit
+            if commits:
+                main_commit = commits[0]  # Most recent commit
+                msg = main_commit.message.strip()
+                # Remove conventional commit prefix if present
+                msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
+                # Take first line and limit length
+                pr_title = msg.split('\n')[0][:100]
+            else:
+                pr_title = "Update"
+
         pr_description = generate_pr_description(commits)
         enhanced_description, labels = enhance_pr_description(
             commits,
