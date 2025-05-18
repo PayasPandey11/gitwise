@@ -5,6 +5,7 @@ import re
 from typing import List, Dict, Optional, Tuple, NamedTuple
 from gitwise.llm import get_llm_response
 from gitwise.gitutils import get_commit_history
+from gitwise.prompts import CHANGELOG_SYSTEM_PROMPT_TEMPLATE, CHANGELOG_USER_PROMPT_TEMPLATE
 import typer
 from datetime import datetime
 import os
@@ -191,32 +192,17 @@ def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> st
     repo_name = repo_info.get("name", "the repository")
     
     # Generate changelog using LLM
-    # The prompt should guide the LLM to generate content for the *specific version* only.
     prompt_version_guidance = f"Generate the detailed changelog entries for version {version} of {repo_name}. " if version else f"Generate a summary of recent changes for {repo_name}. "
     
+    system_prompt = CHANGELOG_SYSTEM_PROMPT_TEMPLATE.format(repo_name=repo_name)
+    user_prompt = CHANGELOG_USER_PROMPT_TEMPLATE.format(
+        guidance_text=prompt_version_guidance,
+        commit_text=commit_text
+    )
+
     messages = [
-        {
-            "role": "system",
-            "content": f"""You are a technical writer creating a changelog section for {repo_name}.
-            Based on the provided commits, create clear, concise, and user-friendly changelog entries.
-            Please:
-            1. Group related changes under appropriate categories (e.g., ### 🚀 Features, ### 🐛 Bug Fixes, ### 📝 Documentation, ### 🔧 Maintenance, etc.).
-            2. Use clear, non-technical language where possible.
-            3. List individual changes as bullet points under their respective categories.
-            4. Do NOT include a version header like '## {version}' or '[Unreleased]' in your output; this will be added externally.
-            5. Focus only on the changes from the provided commits.
-
-            Example for a '### 🚀 Features' section:
-            - Added new login mechanism using OAuth2.
-            - Implemented user profile page.
-            """
-        },
-        {
-            "role": "user",
-            "content": f"""{prompt_version_guidance}Here are the commits to include:
-
-            {commit_text}"""
-        }
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
     ]
     
     try:
