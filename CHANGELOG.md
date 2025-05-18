@@ -23,6 +23,7 @@
 
 ### Other
 
+- show all operations before committing to improve UX
 - improve UX by showing all operations before committing
 - 
 - update changelog and simplify PR creation flow after push
