@@ -12,11 +12,13 @@ if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exis
     from features.commit import commit_command
     from features.push import push_command
     from features.pr import pr_command
+    from features.changelog import changelog_command
 else:
     # Running as a module from parent directory
     from gitwise.features.commit import commit_command
     from gitwise.features.push import push_command
     from gitwise.features.pr import pr_command
+    from gitwise.features.changelog import changelog_command
 
 # Define command categories
 GITWISE_COMMANDS = {
@@ -97,6 +99,17 @@ def pr(
 ) -> None:
     """Create a pull request with AI-generated description."""
     pr_command(use_labels, use_checklist, skip_general_checklist)
+
+@app.command()
+def changelog(
+    version: Optional[str] = typer.Argument(None, help="Version to generate changelog for. If not provided, generates for all versions.")
+) -> None:
+    """Generate a changelog from commit history.
+    
+    The changelog is generated based on version tags and commit messages.
+    It categorizes changes into Features, Bug Fixes, Documentation, etc.
+    """
+    changelog_command(version)
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context, list_commands: bool = typer.Option(False, "--list", "-l", help="List all available commands")):

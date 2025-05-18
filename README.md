@@ -1,204 +1,99 @@
-# GitWise 🤖
+# GitWise
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-An AI-powered Git assistant that helps you write better commit messages and pull request descriptions.
-
-## Author
-
-**Payas Pandey**  
-- GitHub: [@PayasPandey11](https://github.com/PayasPandey11)
-- LinkedIn: [payaspandey](https://www.linkedin.com/in/payaspandey/)
-- Email: rpayaspandey@gmail.com
+GitWise is an AI-powered git assistant that helps you write better commit messages, create pull requests, and manage your git workflow more efficiently.
 
 ## Features
 
-- 🤖 AI-powered commit message generation
-- 📝 Smart pull request descriptions
-- 🔄 Seamless Git command integration
-- 🎯 Conventional commit format support
-- 🚀 Easy to use CLI interface
-- 📦 Smart commit grouping for related changes
+- **Smart Commit Messages**: Generate conventional commit messages using AI
+- **Smart Commit Grouping**: Automatically group related changes into separate commits
+- **Pull Request Creation**: Create PRs with AI-generated descriptions
+- **Push with PR Option**: Push changes with the option to create a PR
 
-## Quick Start
-
-### Prerequisites
-
-- Python 3.8 or higher
-- Git
-- OpenRouter API key (get one at [openrouter.ai](https://openrouter.ai))
-
-### Installation & Setup (Recommended: Using Makefile)
-
-**All Makefile commands must be run from the project root directory.**
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/PayasPandey11/gitwise.git
-   cd gitwise
-   ```
-
-2. **Create and activate a virtual environment:**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies and the package in development mode:**
-   ```bash
-   make install
-   ```
-
-4. **(Recommended) Install development dependencies:**
-   ```bash
-   make dev-deps
-   ```
-
-5. **Set up your OpenRouter API key:**
-   ```bash
-   export OPENROUTER_API_KEY='your-api-key-here'  # On Windows: set OPENROUTER_API_KEY=your-api-key-here
-   ```
-
-### Manual Installation (Alternative)
-
-If you prefer not to use the Makefile:
+## Installation
 
 ```bash
-pip install -r requirements.txt
+# Clone the repository
+git clone https://github.com/yourusername/gitwise.git
+
+# Navigate to the project directory
+cd gitwise
+
+# Install the package
 pip install -e .
 ```
 
 ## Usage
 
-### Basic Commands
+### Smart Commit Messages
 
 ```bash
-# Stage changes and generate a commit message
-gitwise add .
+# Stage your changes
+git add .
 
-# Generate a commit message for staged changes
+# Create a commit with an AI-generated message
 gitwise commit
 
-# Generate a commit message with smart grouping of related changes
+# Or use smart commit grouping
 gitwise commit --group
-
-# Generate a PR description from commit history
-gitwise pr
-
-# Pass through to git commands
-gitwise status
-gitwise log
 ```
-
-### Examples
-
-1. Stage and commit changes:
-   ```bash
-   gitwise add .
-   # Review the generated commit message
-   gitwise commit
-   ```
-
-2. Stage and commit with smart grouping:
-   ```bash
-   gitwise add .
-   # GitWise will analyze changes and suggest logical groupings
-   gitwise commit --group
-   ```
-
-3. Generate a PR description:
-   ```bash
-   gitwise pr
-   ```
-
-4. Use standard Git commands:
-   ```bash
-   gitwise status
-   gitwise log
-   gitwise branch
-   ```
 
 ### Smart Commit Grouping
 
-GitWise can intelligently group related changes into separate commits. This is useful when you have multiple changes that should be committed separately for better organization and history tracking.
+GitWise can automatically group related changes into separate commits:
 
 ```bash
-# Stage all changes
+# Stage your changes
+git add .
+
+# The command will prompt you to use smart grouping (default: Yes)
 gitwise add .
 
-# Commit with smart grouping
+# Or explicitly use smart grouping
 gitwise commit --group
 ```
 
-The grouping feature:
-- Analyzes changes in each file
-- Groups related changes together
-- Suggests appropriate commit messages for each group
-- Lets you review and confirm each group
-- Maintains atomic commits for better history
+This will:
+1. Analyze your staged changes
+2. Group related changes together
+3. Create separate commits for each group
+4. Generate appropriate commit messages for each group
 
-## Makefile Commands
+### Pull Requests
 
-- `make install` — Install the package in editable mode (dev setup)
-- `make dev-deps` — Install development dependencies (pytest, flake8, mypy, black, isort)
-- `make test` — Run tests (if any are present)
-- `make lint` — Run code linters (flake8, mypy)
-- `make format` — Format code (black, isort)
-- `make clean` — Remove build/test artifacts
+```bash
+# Create a PR with AI-generated description
+gitwise pr
 
-**Note:** Always run these commands from the project root (where the Makefile is located).
+# Add labels based on commit types
+gitwise pr --use-labels
 
-## Configuration
+# Add a checklist based on changed files
+gitwise pr --use-checklist
+```
 
-### Environment Variables
+### Push Changes
 
-- `OPENROUTER_API_KEY`: Your OpenRouter API key
-- `GITWISE_MODEL`: (Optional) Override the default model (default: anthropic/claude-3-opus)
+```bash
+# Push changes to remote
+gitwise push
+
+# Force push if needed
+gitwise push --force
+```
 
 ## Development
 
-### Project Structure
-
-```
-gitwise/
-├── cli.py          # Command-line interface
-├── llm.py          # LLM integration
-├── git_utils.py    # Git utilities
-└── __init__.py
-```
-
-### Running Tests
-
 ```bash
-make test
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linting
+flake8
 ```
-
-### Linting & Formatting
-
-```bash
-make lint
-make format
-```
-
-### Cleaning Up
-
-```bash
-make clean
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## Troubleshooting
-
-- **Makefile errors:** Ensure you are in the project root directory when running `make` commands.
-- **ModuleNotFoundError:** Make sure you have run `make install` or `pip install -e .` in your virtual environment.
-- **API Key issues:** Double-check that `OPENROUTER_API_KEY` is set in your environment.
 
 ## License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
