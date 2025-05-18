@@ -72,6 +72,7 @@ def push_command() -> None:
                 choice = typer.prompt("", type=int, default=1)
                 
                 if choice == 1:  # Yes
+                    components.console.line()
                     try:
                         # Ask about PR options
                         components.show_prompt(

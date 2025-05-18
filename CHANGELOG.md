@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Features
+
+- show all operations before commit to improve UX
+
 ### Documentation
 
 - add changelog feature documentation and contributing guidelines
@@ -23,6 +27,16 @@
 
 ### Other
 
+- improve prompt for better commit messages
+- improve error handling for authentication failures
+- Remove automatic changelog update before pushing
+- improve changed files detection and checklist generation
+- Enhance PR creation with LLM-generated details and GitHub CLI
+- enhance commit command with grouping, unstaged checks, diffs, and confirmations
+- generate changelog content for a specific version
+- enhance add command UI and error handling
+- enhance `git` passthrough with improved pager handling
+- enhance changelog management workflow and add pre-commit hook
 - show all operations before committing to improve UX
 - improve UX by showing all operations before committing
 - 
