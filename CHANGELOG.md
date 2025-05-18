@@ -27,6 +27,8 @@
 
 ### Other
 
+- generate AI-enhanced PR descriptions and changelogs
+- Bypass PR creation prompts and always create PR
 - enhance PR description using AI-generated content
 - generate changelog and pull request details from templates
 - improve PR description prompt
