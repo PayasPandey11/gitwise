@@ -20,13 +20,6 @@ def get_staged_diff() -> str:
     except subprocess.CalledProcessError:
         raise RuntimeError("Error running git diff --cached.")
 
-def run_git_commit(message: str) -> None:
-    """Run git commit with the given message. Raises RuntimeError on failure."""
-    try:
-        subprocess.run(["git", "commit", "-m", message], check=True)
-    except subprocess.CalledProcessError:
-        raise RuntimeError("Error running git commit.")
-
 def run_git_push(target_branch: str = None) -> None:
     """Run git push command.
     
