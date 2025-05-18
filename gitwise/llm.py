@@ -44,7 +44,22 @@ def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]]) -> st
             
         return response.choices[0].message.content.strip()
     except Exception as e:
-        raise RuntimeError(f"Error getting LLM response: {str(e)}")
+        if hasattr(e, 'status_code') and e.status_code == 401:
+            error_message = (
+                "Authentication failed (401). Please ensure your OPENROUTER_API_KEY is correctly set "
+                "as an environment variable and that the key is valid. "
+                "You can get a key from OpenRouter.ai."
+            )
+            raise RuntimeError(error_message) from e
+        elif hasattr(e, 'message') and isinstance(e.message, str) and 'No auth credentials found' in e.message:
+            # Catching the specific error message structure from the log
+            error_message = (
+                "Authentication failed. No auth credentials found. Please ensure your OPENROUTER_API_KEY is correctly set "
+                "as an environment variable and that the key is valid. "
+                "You can get a key from OpenRouter.ai."
+            )
+            raise RuntimeError(error_message) from e
+        raise RuntimeError(f"Error getting LLM response: {str(e)}") from e
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
     """Generate a commit message from a git diff."""
