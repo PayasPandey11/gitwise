@@ -41,28 +41,31 @@ def push_command() -> None:
         components.console.print(commits)
 
         # Ask about pushing
+        components.console.line() # Line before prompt
         components.show_prompt(
             "Would you like to push these changes?",
             options=["Yes", "No"],
             default="Yes"
         )
         choice = typer.prompt("", type=int, default=1)
+        components.console.line() # Line after prompt
 
         if choice == 2:  # No
             components.show_warning("Push cancelled")
             return
 
         # Push changes
-        push_spinner = components.show_spinner("Pushing to remote...")
-        with push_spinner:
+        spinner = components.show_spinner("Pushing to remote...")
+        spinner.start() # Start the spinner explicitly
+        try:
             result = subprocess.run(
                 ["git", "push", "origin", current_branch],
                 capture_output=True,
                 text=True
             )
-        # Spinner is stopped here upon exiting the 'with' block. 
-        # Adding a small delay or forcing a refresh might be needed if issues persist.
-        # For now, rely on the context manager to stop it cleanly.
+        finally:
+            spinner.stop() # Stop the spinner explicitly in a finally block
+            components.console.line() # Ensure a newline after spinner stops to clear its line
 
         if result.returncode == 0:
             components.show_success("Changes pushed successfully")
@@ -73,25 +76,24 @@ def push_command() -> None:
                 options=["Yes", "No"],
                 default="Yes"
             )
-            choice = typer.prompt("", type=int, default=1)
+            pr_choice = typer.prompt("", type=int, default=1) # Renamed variable
+            components.console.line() # Line after prompt
             
-            if choice == 1:  # Yes
-                components.console.line()
+            if pr_choice == 1:  # Yes
                 try:
-                    # Ask about PR options
-                    # Ensure any spinners within pr_command also stop cleanly
                     components.show_prompt(
                         "Would you like to include labels and checklist in the PR?",
                         options=["Yes", "No"],
                         default="Yes"
                     )
-                    include_extras = typer.prompt("", type=int, default=1) == 1
+                    extras_choice = typer.prompt("", type=int, default=1) # Renamed variable
+                    include_extras = extras_choice == 1
+                    components.console.line() # Line after prompt and before pr_command
                     
-                    components.console.line() # Another line break before pr_command execution
                     pr_command(
                         use_labels=include_extras,
                         use_checklist=include_extras,
-                        skip_general_checklist=not include_extras,
+                        skip_general_checklist=not include_extras, # Corrected logic here
                         skip_prompts=True  # Skip prompts since we already asked
                     )
                 except Exception as e:
