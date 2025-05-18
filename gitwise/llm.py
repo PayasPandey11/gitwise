@@ -1,3 +1,5 @@
+"""LLM integration for GitWise."""
+
 import os
 from typing import List, Dict, Tuple, Optional
 from openai import OpenAI
@@ -9,87 +11,53 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
-def get_llm_response(messages: List[Dict[str, str]]) -> str:
-    """Get response from LLM API.
-    
-    Args:
-        messages: List of message dictionaries with role and content.
-        
-    Returns:
-        The response text from the LLM.
-    """
+def get_llm_response(prompt: str) -> str:
+    """Get response from LLM."""
     try:
         response = client.chat.completions.create(
-            model="anthropic/claude-3-opus",  # Using Claude 3 Opus for best results
-            messages=messages,
-            temperature=0.7,
-            max_tokens=1000,  # Increased from 500 to allow for longer responses
+            model="anthropic/claude-3-opus",
+            messages=[{"role": "user", "content": prompt}],
             extra_headers={
-                "HTTP-Referer": "https://github.com/PayasPandey11/gitwise",  # Your repo URL
-                "X-Title": "gitwise",  # Your project name
+                "HTTP-Referer": "https://github.com/payas/gitwise",
+                "X-Title": "GitWise"
             }
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        raise RuntimeError(f"Failed to get LLM response: {str(e)}")
+        raise RuntimeError(f"Error getting LLM response: {str(e)}")
 
-def generate_commit_message(diff: str, guidance: str = None) -> str:
-    """Generate a commit message based on the diff.
-    
-    Args:
-        diff: The git diff to analyze
-        guidance: Optional guidance for regenerating the commit message
-    """
-    system_prompt = COMMIT_MESSAGE_PROMPT
-    if guidance:
-        system_prompt += f"\n\nAdditional guidance: {guidance}"
+def generate_commit_message(diff: str, guidance: str = "") -> str:
+    """Generate a commit message from a git diff."""
+    prompt = COMMIT_MESSAGE_PROMPT.format(diff=diff, guidance=guidance)
+    return get_llm_response(prompt)
 
-    messages = [
-        {"role": "system", "content": system_prompt.format(diff=diff)},
-        {"role": "user", "content": "Please generate a commit message based only on the actual code changes shown."}
-    ]
-    
-    return get_llm_response(messages)
-
-def generate_pr_title(commits: List[Commit]) -> str:
-    """Generate a title for a pull request based on commit messages.
-    
-    Args:
-        commits: List of commits to analyze for the PR title
-        
-    Returns:
-        str: A concise, descriptive title for the PR
-    """
+def generate_pr_title(commits: List[Dict[str, str]]) -> str:
+    """Generate a PR title from a list of commits."""
     if not commits:
-        return "Update"
-        
-    # Get the first commit message as base
-    first_commit = commits[0].message.split('\n')[0]
+        return ""
     
-    # If it's a conventional commit, use the description part
-    if ':' in first_commit:
-        title = first_commit.split(':', 1)[1].strip()
-    else:
-        title = first_commit
-        
+    # Use the first commit message as the base for the title
+    first_commit = commits[0]
+    title = first_commit["message"].split("\n")[0]  # Get first line
+    
     # If there are multiple commits, indicate that
     if len(commits) > 1:
         title = f"{title} (+{len(commits)-1} more commits)"
-        
+    
     return title
 
-def generate_pr_description(prompt: str) -> str:
-    """Generate a description for a pull request using LLM.
+def generate_pr_description(commits: List[Dict[str, str]], repo_url: str, repo_name: str, guidance: str = "") -> str:
+    """Generate a PR description from a list of commits."""
+    # Format commits for the prompt
+    formatted_commits = "\n".join([
+        f"Commit: {commit['message']}\nAuthor: {commit['author']}\n"
+        for commit in commits
+    ])
     
-    Args:
-        prompt: The prompt containing commit information and instructions
-        
-    Returns:
-        str: A detailed description of the changes
-    """
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": "Please generate a concise PR description based only on the information provided."}
-    ]
-    
-    return get_llm_response(messages) 
+    prompt = PR_DESCRIPTION_PROMPT.format(
+        commits=formatted_commits,
+        repo_url=repo_url,
+        repo_name=repo_name,
+        guidance=guidance
+    )
+    return get_llm_response(prompt) 

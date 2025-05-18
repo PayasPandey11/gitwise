@@ -1,43 +1,99 @@
-import typer
-from gitwise.gitutils import get_current_branch, run_git_push
+"""Push command implementation for GitWise."""
 
-def push_command(target_branch: str = None) -> None:
-    """Handle the push command logic.
-    
-    Args:
-        target_branch: Optional target branch to push to. If not provided, will prompt user.
-    """
+import subprocess
+from typing import Optional
+from gitwise.core import git
+from gitwise.ui import components
+from gitwise.features.pr import pr_command
+import typer
+
+def push_command() -> None:
+    """Push changes and optionally create a PR."""
     try:
-        current_branch = get_current_branch()
-        
-        if target_branch is None:
-            push_same_branch = typer.confirm(
-                f"Push to the same branch ({current_branch})?",
-                default=True
+        # Get current branch
+        current_branch = git.get_current_branch()
+        if not current_branch:
+            components.show_error("Not on any branch")
+            return
+
+        # Check if there are commits to push
+        with components.show_spinner("Checking for commits..."):
+            result = subprocess.run(
+                ["git", "log", f"origin/{current_branch}..HEAD"],
+                capture_output=True,
+                text=True
             )
             
-            if not push_same_branch:
-                target_branch = typer.prompt(
-                    "Enter the target branch name",
-                    default=current_branch
+            if not result.stdout.strip():
+                components.show_warning("No commits to push")
+                return
+
+            # Get commits to be pushed
+            result = subprocess.run(
+                ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
+                capture_output=True,
+                text=True
+            )
+            commits = result.stdout.strip()
+
+        # Show changes to be pushed
+        components.show_section("Changes to Push")
+        components.console.print(commits)
+
+        # Ask about pushing
+        components.show_prompt(
+            "Would you like to push these changes?",
+            options=["Yes", "No"],
+            default="Yes"
+        )
+        choice = typer.prompt("", type=int, default=1)
+
+        if choice == 2:  # No
+            components.show_warning("Push cancelled")
+            return
+
+        # Push changes
+        with components.show_spinner("Pushing to remote..."):
+            result = subprocess.run(
+                ["git", "push", "origin", current_branch],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                components.show_success("Changes pushed successfully")
+            else:
+                components.show_error("Failed to push changes")
+                if result.stderr:
+                    components.console.print(result.stderr)
+                return
+
+        # Only ask about PR after push is complete
+        components.show_prompt(
+            "Would you like to create a pull request?",
+            options=["Yes", "No"],
+            default="Yes"
+        )
+        choice = typer.prompt("", type=int, default=1)
+        
+        if choice == 1:  # Yes
+            try:
+                # Ask about PR options
+                components.show_prompt(
+                    "Would you like to include labels and checklist in the PR?",
+                    options=["Yes", "No"],
+                    default="Yes"
                 )
-        
-        output = run_git_push(target_branch)
-        typer.echo("Changes pushed successfully.")
-        if output:
-            typer.echo(output)
-            
-        # Ask if user wants to create a PR
-        if current_branch != "main":
-            create_pr = typer.confirm(
-                "Would you like to create a pull request?",
-                default=True
-            )
-            if create_pr:
-                typer.echo("\nCreating pull request...")
-                from gitwise.features.pr import pr_command
-                pr_command()
-            
-    except RuntimeError as e:
-        typer.echo(str(e))
-        raise typer.Exit(code=1) 
+                include_extras = typer.prompt("", type=int, default=1) == 1
+                
+                # Call PR command with user preferences
+                pr_command(
+                    use_labels=include_extras,
+                    use_checklist=include_extras,
+                    skip_general_checklist=not include_extras
+                )
+            except Exception as e:
+                components.show_error(f"Failed to create PR: {str(e)}")
+
+    except Exception as e:
+        components.show_error(str(e)) 

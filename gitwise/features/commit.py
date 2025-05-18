@@ -5,6 +5,12 @@ import subprocess
 from typing import Optional, List, Dict, Tuple
 from gitwise.llm import generate_commit_message
 from gitwise.gitutils import get_staged_diff, run_git_commit, get_changed_files
+from gitwise.ui import components
+
+# Import push_command only when needed to avoid circular imports
+def get_push_command():
+    from gitwise.features.push import push_command
+    return push_command
 
 COMMIT_TYPES = {
     "feat": "A new feature",
@@ -205,151 +211,227 @@ def suggest_commit_groups() -> Optional[List[Dict[str, any]]]:
         changed_files = get_changed_files()
         staged_diff = get_staged_diff()
     except RuntimeError as e:
-        typer.echo(str(e))
+        components.show_error(str(e))
         return None
 
     if not changed_files:
-        typer.echo("No staged changes found.")
+        components.show_warning("No staged changes found.")
         return None
 
     return analyze_changes(changed_files, staged_diff)
 
-def commit_command(group: bool = False) -> None:
-    """Main logic for the commit command: gets staged diff, generates commit message, allows editing, and commits."""
-    try:
-        staged_diff = get_staged_diff()
-    except RuntimeError as e:
-        typer.echo(str(e))
-        raise typer.Exit(code=1)
-
-    if not staged_diff:
-        typer.echo("No staged changes found. Please stage your changes first.")
-        raise typer.Exit(code=0)
-
-    # Check if changes should be grouped
-    if group:
-        suggestions = suggest_commit_groups()
-        if suggestions and len(suggestions) > 1:
-            typer.echo("\nI notice your changes might be better organized into multiple commits:")
-            for i, group in enumerate(suggestions, 1):
-                typer.echo(f"\nGroup {i}:")
-                typer.echo(f"Files: {', '.join(group['files'])}")
-                typer.echo(f"Suggested commit: {group['type']}: {group['description']}")
-            
-            if typer.confirm("\nWould you like to commit these changes separately?", default=True):
-                # First, unstage all files
-                all_files = [f for group in suggestions for f in group['files']]
-                unstage_files(all_files)
-                
-                # Then commit each group
-                for group in suggestions:
-                    typer.echo(f"\nCommitting group: {', '.join(group['files'])}")
-                    typer.echo(f"Suggested message: {group['type']}: {group['description']}")
-                    
-                    if typer.confirm("Proceed with this commit?", default=True):
-                        try:
-                            # Stage only the files for this group
-                            stage_files(group['files'])
-                            run_git_commit(f"{group['type']}: {group['description']}")
-                            typer.echo("Commit created successfully.")
-                        except RuntimeError as e:
-                            typer.echo(str(e))
-                            if not typer.confirm("Continue with remaining groups?", default=True):
-                                raise typer.Exit(code=1)
-                
-                # Ask about pushing after all commits
-                if typer.confirm("\nWould you like to push these changes?", default=False):
-                    # push_command()
-                    return
-
-    # If no grouping or user chose not to group, proceed with single commit
-    typer.echo("Analyzing staged changes:\n")
-    typer.echo(staged_diff[:1000] + ("\n... (truncated) ..." if len(staged_diff) > 1000 else ""))
+def get_staged_diff(file: Optional[str] = None) -> str:
+    """Get the diff of staged changes.
     
-    while True:
-        commit_message = generate_commit_message(staged_diff)
-        typer.echo(f"\nSuggested commit message:\n{commit_message}\n")
+    Args:
+        file: Optional specific file to get diff for
+        
+    Returns:
+        The diff as a string
+    """
+    try:
+        cmd = ["git", "diff", "--cached"]
+        if file:
+            cmd.append(file)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Error getting staged diff: {e.stderr}")
 
-        action = typer.prompt(
-            "What would you like to do?",
-            type=str,
-            default="u",
-            show_choices=True,
-            show_default=True,
-            prompt_suffix="\n[u]se/[e]dit/[r]egenerate/[a]bort "
-        ).lower()
-
-        if action not in ["u", "e", "r", "a"]:
-            typer.echo("Invalid option. Please choose from: u, e, r, a")
-            continue
-
-        if action == "a":
-            typer.echo("Aborted. No commit made.")
+def commit_command(group: bool = True) -> None:
+    """Create a commit with AI-generated message.
+    
+    Args:
+        group: Whether to analyze and group changes (default: True)
+    """
+    try:
+        # Get staged files
+        staged_files = get_changed_files()
+        if not staged_files:
+            components.show_warning("No files staged for commit")
             return
 
-        if action == "r":
-            guidance = typer.prompt(
-                "Enter guidance for the commit message (optional)",
-                default="",
-                show_default=False
+        # Get unstaged files
+        unstaged_files = []
+        if unstaged_files:
+            components.show_warning("You have unstaged changes")
+            components.show_prompt(
+                "Would you like to commit changes separately?",
+                options=["Yes", "Stage all", "No"],
+                default="Yes"
             )
-            if guidance:
-                typer.echo("Regenerating commit message with guidance...")
-                commit_message = generate_commit_message(staged_diff, guidance)
-            else:
-                typer.echo("Regenerating commit message...")
-                commit_message = generate_commit_message(staged_diff)
-            continue
+            choice = typer.prompt("", type=int, default=1)
+            
+            if choice == 2:  # Stage all
+                stage_files(staged_files)
+                staged_files = get_changed_files()
+            elif choice == 3:  # No
+                components.show_warning("Commit cancelled")
+                return
 
-        if action == "e":
+        # Check if changes should be grouped
+        if group:
+            suggestions = suggest_commit_groups()
+            if suggestions and len(suggestions) > 1:
+                components.show_section("Suggested Commit Groups")
+                for i, group in enumerate(suggestions, 1):
+                    components.console.print(f"\n[bold]Group {i}:[/bold]")
+                    components.console.print(f"Files: {', '.join(group['files'])}")
+                    components.console.print(f"Suggested commit: {group['type']}: {group['description']}")
+                
+                components.show_prompt(
+                    "Would you like to commit these changes separately?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                choice = typer.prompt("", type=int, default=1)
+                
+                if choice == 1:  # Yes
+                    # First, unstage all files
+                    all_files = [f for group in suggestions for f in group['files']]
+                    unstage_files(all_files)
+                    
+                    # Then commit each group
+                    for group in suggestions:
+                        components.show_section(f"Committing Group: {', '.join(group['files'])}")
+                        components.console.print(f"Suggested message: {group['type']}: {group['description']}")
+                        
+                        components.show_prompt(
+                            "Proceed with this commit?",
+                            options=["Yes", "No"],
+                            default="Yes"
+                        )
+                        choice = typer.prompt("", type=int, default=1)
+                        
+                        if choice == 1:  # Yes
+                            try:
+                                # Stage only the files for this group
+                                stage_files(group['files'])
+                                result = subprocess.run(
+                                    ["git", "commit", "-m", f"{group['type']}: {group['description']}"],
+                                    capture_output=True,
+                                    text=True
+                                )
+                                if result.returncode == 0:
+                                    components.show_success("Commit created successfully")
+                                    components.console.print(result.stdout)
+                                else:
+                                    components.show_error("Failed to create commit")
+                                    if result.stderr:
+                                        components.console.print(result.stderr)
+                                    components.show_prompt(
+                                        "Continue with remaining groups?",
+                                        options=["Yes", "No"],
+                                        default="Yes"
+                                    )
+                                    if not typer.confirm("", default=True):
+                                        return
+                            except Exception as e:
+                                components.show_error(str(e))
+                                components.show_prompt(
+                                    "Continue with remaining groups?",
+                                    options=["Yes", "No"],
+                                    default="Yes"
+                                )
+                                if not typer.confirm("", default=True):
+                                    return
+                    
+                    # Only ask about pushing after all commits are successful
+                    components.show_prompt(
+                        "Would you like to push these changes?",
+                        options=["Yes", "No"],
+                        default="Yes"
+                    )
+                    choice = typer.prompt("", type=int, default=1)
+                    
+                    if choice == 1:  # Yes
+                        # Call push command directly without additional prompts
+                        get_push_command()()
+                    return
+
+        # If no grouping or user chose not to group, proceed with single commit
+        # Show staged changes
+        components.show_section("Staged Changes")
+        for file in staged_files:
+            diff = get_staged_diff(file)
+            components.console.print(f"\n[bold cyan]{file}[/bold cyan]")
+            components.console.print(diff)
+
+        # Generate commit message
+        components.show_section("Generating Commit Message")
+        with components.show_spinner("Analyzing changes..."):
+            diff = get_staged_diff()
+            message = generate_commit_message(diff)
+
+        # Show the generated message
+        components.show_section("Suggested Commit Message")
+        components.console.print(message)
+
+        # Ask about using the message
+        components.show_prompt(
+            "Would you like to use this commit message?",
+            options=["Use message", "Edit message", "Regenerate message", "Abort"],
+            default="Use message"
+        )
+        choice = typer.prompt("", type=int, default=1)
+
+        if choice == 4:  # Abort
+            components.show_warning("Commit cancelled")
+            return
+
+        if choice == 2:  # Edit
             with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
-                tf.write(commit_message)
+                tf.write(message)
                 tf.flush()
                 editor = os.environ.get("EDITOR", "vi")
                 os.system(f'{editor} {tf.name}')
                 tf.seek(0)
-                commit_message = tf.read().strip()
+                message = tf.read().strip()
             os.unlink(tf.name)
-            typer.echo(f"\nEdited commit message:\n{commit_message}\n")
-            action = typer.prompt(
-                "What would you like to do?",
-                type=str,
-                default="u",
-                show_choices=True,
-                show_default=True,
-                prompt_suffix="\n[u]se/[r]egenerate/[a]bort "
-            ).lower()
-            if action not in ["u", "r", "a"]:
-                typer.echo("Invalid option. Please choose from: u, r, a")
-                continue
-            if action == "a":
-                typer.echo("Aborted. No commit made.")
+            components.show_section("Edited Commit Message")
+            components.console.print(message)
+
+            components.show_prompt(
+                "Proceed with commit?",
+                options=["Yes", "No"],
+                default="Yes"
+            )
+            if not typer.confirm("", default=True):
+                components.show_warning("Commit cancelled")
                 return
-            if action == "r":
-                guidance = typer.prompt(
-                    "Enter guidance for the commit message (optional)",
-                    default="",
-                    show_default=False
+
+        if choice == 3:  # Regenerate
+            with components.show_spinner("Regenerating message..."):
+                message = generate_commit_message(diff, "Please generate a different commit message")
+
+        # Create commit
+        components.show_section("Creating Commit")
+        with components.show_spinner("Committing changes..."):
+            result = subprocess.run(
+                ["git", "commit", "-m", message],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                components.show_success("Commit created successfully")
+                components.console.print(result.stdout)
+                
+                # Only ask about pushing after commit is successful
+                components.show_prompt(
+                    "Would you like to push these changes?",
+                    options=["Yes", "No"],
+                    default="Yes"
                 )
-                if guidance:
-                    typer.echo("Regenerating commit message with guidance...")
-                    commit_message = generate_commit_message(staged_diff, guidance)
-                else:
-                    typer.echo("Regenerating commit message...")
-                    commit_message = generate_commit_message(staged_diff)
-                continue
+                choice = typer.prompt("", type=int, default=1)
+                
+                if choice == 1:  # Yes
+                    # Call push command directly without additional prompts
+                    get_push_command()()
+            else:
+                components.show_error("Failed to create commit")
+                if result.stderr:
+                    components.console.print(result.stderr)
 
-        # If we get here, action is "u"
-        break
-
-    try:
-        run_git_commit(commit_message)
-        typer.echo("Commit created successfully.")
-        
-        # Ask about pushing
-        # push = typer.confirm("Would you like to push these changes?", default=False)
-        # if push:
-        #     push_command()
-    except RuntimeError as e:
-        typer.echo(str(e))
-        raise typer.Exit(code=1) 
+    except Exception as e:
+        components.show_error(str(e)) 

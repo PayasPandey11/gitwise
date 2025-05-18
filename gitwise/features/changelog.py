@@ -9,6 +9,9 @@ import typer
 from datetime import datetime
 import os
 import json
+from gitwise.core import git
+from gitwise.ui import components
+import tempfile
 
 class VersionInfo(NamedTuple):
     """Version information with pre-release and build metadata."""
@@ -167,15 +170,15 @@ def categorize_changes(commits: List[Dict[str, str]]) -> Dict[str, List[Dict[str
     
     return categories
 
-def generate_release_notes(version: str, commits: List[Dict[str, str]]) -> str:
-    """Generate detailed release notes using LLM.
+def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> str:
+    """Generate a changelog from commits.
     
     Args:
-        version: Version string.
         commits: List of commit dictionaries.
+        version: Optional version string.
         
     Returns:
-        Formatted release notes.
+        Formatted changelog string.
     """
     # Prepare commit messages for LLM
     commit_text = "\n".join([
@@ -187,33 +190,58 @@ def generate_release_notes(version: str, commits: List[Dict[str, str]]) -> str:
     repo_info = get_repository_info()
     repo_name = repo_info.get("name", "the repository")
     
-    # Generate release notes using LLM
+    # Generate changelog using LLM
     messages = [
         {
             "role": "system",
-            "content": f"""You are a technical writer creating release notes for {repo_name}.
-            Create clear, concise, and user-friendly release notes that:
-            1. Highlight major changes and improvements
-            2. Group related changes together
-            3. Use clear, non-technical language where possible
+            "content": f"""You are a technical writer creating a changelog for {repo_name}.
+            Create clear, concise, and user-friendly changelog entries that:
+            1. Group related changes together
+            2. Use clear, non-technical language where possible
+            3. Follow conventional commit message format
             4. Include any breaking changes or migration steps
             5. Mention contributors if there are significant changes
             
-            Format the release notes in markdown with appropriate sections."""
+            Format the changelog in markdown with the following structure:
+            
+            # Changelog
+            
+            ## [Unreleased]
+            
+            ### 🚀 Features
+            - List new features here
+            
+            ### 🐛 Bug Fixes
+            - List bug fixes here
+            
+            ### 📝 Documentation
+            - List documentation changes here
+            
+            ### 🔧 Maintenance
+            - List maintenance changes here
+            
+            Use emojis for each section and keep the formatting consistent."""
         },
         {
             "role": "user",
-            "content": f"""Create release notes for version {version} with the following changes:
+            "content": f"""Create changelog entries for the following commits:
 
             {commit_text}"""
         }
     ]
     
     try:
-        release_notes = get_llm_response(messages)
-        return release_notes
+        changelog = get_llm_response(messages)
+        
+        # Add version header if provided
+        if version:
+            date = datetime.now().strftime("%Y-%m-%d")
+            version_header = f"\n## {version} ({date})\n"
+            changelog = changelog.replace("## [Unreleased]", f"## [Unreleased]\n{version_header}")
+        
+        return changelog
     except Exception as e:
-        print(f"Warning: Could not generate detailed release notes: {str(e)}")
+        components.show_error(f"Could not generate changelog: {str(e)}")
         return ""
 
 def update_changelog(version: str, commits: List[Dict[str, str]]) -> None:
@@ -224,7 +252,7 @@ def update_changelog(version: str, commits: List[Dict[str, str]]) -> None:
         commits: List of commit dictionaries.
     """
     # Generate release notes
-    release_notes = generate_release_notes(version, commits)
+    release_notes = generate_changelog(commits, version)
     
     # Read existing changelog
     changelog_path = "CHANGELOG.md"
@@ -235,7 +263,7 @@ def update_changelog(version: str, commits: List[Dict[str, str]]) -> None:
     
     # Prepare new changelog entry
     date = datetime.now().strftime("%Y-%m-%d")
-    new_entry = f"## {version}\n*Released on {date}*\n\n{release_notes}\n\n"
+    new_entry = f"## {version} ({date})\n\n{release_notes}\n\n"
     
     # Update changelog
     if existing_content:
@@ -371,107 +399,133 @@ gitwise changelog --auto-update
     os.chmod(hook_path, 0o755)
     print("✅ Git commit hook installed for automatic changelog updates")
 
+def get_commits_since_last_tag() -> List[Dict]:
+    """Get commits since the last tag."""
+    try:
+        # Get the last tag
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            capture_output=True,
+            text=True
+        )
+        last_tag = result.stdout.strip() if result.stdout.strip() else None
+
+        # Get commits since last tag
+        if last_tag:
+            result = subprocess.run(
+                ["git", "log", f"{last_tag}..HEAD", "--pretty=format:%H|%s|%an"],
+                capture_output=True,
+                text=True
+            )
+        else:
+            # If no tags, get all commits
+            result = subprocess.run(
+                ["git", "log", "--pretty=format:%H|%s|%an"],
+                capture_output=True,
+                text=True
+            )
+
+        if not result.stdout.strip():
+            return []
+
+        commits = []
+        for line in result.stdout.strip().split('\n'):
+            hash_, message, author = line.split('|')
+            commits.append({
+                'hash': hash_,
+                'message': message,
+                'author': author
+            })
+
+        return commits
+    except Exception as e:
+        components.show_error(f"Failed to get commits: {str(e)}")
+        return []
+
 def changelog_command(
     version: Optional[str] = None,
-    create_tag: bool = False,
-    auto_update: bool = False,
-    setup_hook: bool = False
+    output_file: Optional[str] = None,
+    format: str = "markdown",
+    auto_update: bool = False
 ) -> None:
-    """Generate a changelog for the repository.
+    """Generate a changelog from commits since the last tag.
     
     Args:
-        version: Optional version to generate changelog for. If not provided,
-                generates for all versions.
-        create_tag: Whether to create a new version tag if none exists.
-        auto_update: Whether to update the unreleased section.
-        setup_hook: Whether to set up the git commit hook.
+        version: Optional version string for the changelog
+        output_file: Optional output file path
+        format: Output format (markdown or json)
+        auto_update: Whether to automatically update the changelog without prompts
     """
     try:
-        if setup_hook:
-            setup_commit_hook()
-            return
-        
-        if auto_update:
-            update_unreleased_changelog()
-            print("✅ Updated unreleased section in CHANGELOG.md")
-            return
-        
-        # Get version tags
-        tags = get_version_tags()
-        
-        if not tags:
-            if create_tag:
-                # Get commits since last tag
-                commits = get_commits_between_tags(None, "HEAD")
-                if not commits:
-                    print("No commits found to create a version tag.")
-                    return
-                
-                # Suggest next version
-                suggested_version, explanation = suggest_next_version(commits)
-                print(f"\nSuggested version: {suggested_version}")
-                print(f"Reason: {explanation}")
-                print("\nEnter version number or press Enter to use suggested version.")
-                print("You can use pre-release versions (e.g., v1.0.0-alpha.1) or build metadata (e.g., v1.0.0+build.123)")
-                print("For pre-releases, you can use:")
-                print("  alpha - for early development releases")
-                print("  beta  - for testing releases")
-                print("  rc    - for release candidates")
-                manual_version = input().strip()
-                
-                if manual_version:
-                    # Check if it's a pre-release type shortcut
-                    if manual_version.lower() in ['alpha', 'beta', 'rc']:
-                        pre_release_type = manual_version.lower()
-                        suggested_base = parse_version(suggested_version)
-                        pre_release = get_latest_pre_release(pre_release_type)
-                        manual_version = f"v{suggested_base.major}.{suggested_base.minor}.{suggested_base.patch}-{pre_release}"
-                        print(f"Using pre-release version: {manual_version}")
-                    
-                    version_to_use = validate_version_input(manual_version)
-                    if not version_to_use:
-                        return
-                else:
-                    version_to_use = suggested_version
-                
-                if typer.confirm(f"Create version tag {version_to_use}?", default=True):
-                    # Update changelog first
-                    update_changelog(version_to_use, commits)
-                    
-                    # Create tag with release notes
-                    create_version_tag(version_to_use)
-                    tags = [version_to_use]
-                else:
-                    print("No version tag created. Changelog generation cancelled.")
-                    return
-            else:
-                print("No version tags found in the repository.")
-                print("Run 'gitwise changelog --create-tag' to create a version tag.")
+        # Get commits since last tag
+        components.show_section("Analyzing Changes")
+        with components.show_spinner("Checking for commits...") as progress:
+            commits = get_commits_since_last_tag()
+            if not commits:
+                components.show_warning("No commits found to generate changelog")
                 return
-        
-        if version:
-            if version not in tags:
-                print(f"Version {version} not found in repository tags.")
-                print("Available versions:", ", ".join(tags))
+
+        # Show commits that will be included
+        components.show_section("Commits to Include")
+        for commit in commits:
+            components.console.print(f"[bold cyan]{commit['hash'][:7]}[/bold cyan] {commit['message']}")
+
+        # Generate changelog
+        components.show_section("Generating Changelog")
+        with components.show_spinner("Analyzing changes...") as progress:
+            changelog = generate_changelog(commits, version)
+
+        # Show the generated changelog
+        components.show_section("Generated Changelog")
+        components.console.print(changelog)
+
+        if not auto_update:
+            # Ask about saving
+            components.show_prompt(
+                "Would you like to save this changelog?",
+                options=["Yes", "Edit", "No"],
+                default="Yes"
+            )
+            choice = typer.prompt("", type=int, default=1)
+
+            if choice == 3:  # No
+                components.show_warning("Changelog generation cancelled")
                 return
-            tags = [version]
-        
-        # Generate changelog for all versions
-        changelog = "# Changelog\n\n"
-        
-        # Process each version
-        for i, tag in enumerate(tags):
-            start_tag = tags[i + 1] if i + 1 < len(tags) else None
-            commits = get_commits_between_tags(start_tag, tag)
-            if commits:
-                # Update changelog for this version
-                update_changelog(tag, commits)
-        
-        print(f"✅ Changelog generated successfully: CHANGELOG.md")
-        
+
+            if choice == 2:  # Edit
+                with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
+                    tf.write(changelog)
+                    tf.flush()
+                    editor = os.environ.get("EDITOR", "vi")
+                    os.system(f'{editor} {tf.name}')
+                    tf.seek(0)
+                    changelog = tf.read().strip()
+                os.unlink(tf.name)
+                components.show_section("Edited Changelog")
+                components.console.print(changelog)
+
+                components.show_prompt(
+                    "Proceed with saving?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                if not typer.confirm("", default=True):
+                    components.show_warning("Changelog generation cancelled")
+                    return
+
+        # Save the changelog
+        output_file = output_file or "CHANGELOG.md"
+        components.show_section("Saving Changelog")
+        with components.show_spinner(f"Saving to {output_file}...") as progress:
+            try:
+                with open(output_file, "w") as f:
+                    f.write(changelog)
+                components.show_success(f"Changelog saved to {output_file}")
+            except Exception as e:
+                components.show_error(f"Failed to save changelog: {str(e)}")
+
     except Exception as e:
-        print(f"❌ Error generating changelog: {str(e)}")
-        print("Please make sure you have version tags in your repository.")
+        components.show_error(str(e))
 
 def get_latest_version() -> Optional[str]:
     """Get the latest version tag from the repository.
