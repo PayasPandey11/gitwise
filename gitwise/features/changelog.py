@@ -6,6 +6,9 @@ from typing import List, Dict, Optional, Tuple, NamedTuple
 from gitwise.llm import get_llm_response
 from gitwise.gitutils import get_commit_history
 import typer
+from datetime import datetime
+import os
+import json
 
 class VersionInfo(NamedTuple):
     """Version information with pre-release and build metadata."""
@@ -53,6 +56,31 @@ class VersionInfo(NamedTuple):
                     return self_parts[i] < other_parts[i]
         
         return False
+
+def get_repository_info() -> Dict[str, str]:
+    """Get repository information.
+    
+    Returns:
+        Dictionary with repository information.
+    """
+    info = {}
+    
+    # Get repository URL
+    result = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"],
+        capture_output=True,
+        text=True
+    )
+    info["url"] = result.stdout.strip()
+    
+    # Get repository name
+    if info["url"]:
+        # Extract name from URL
+        match = re.search(r"[:/]([^/]+/[^/]+?)(?:\.git)?$", info["url"])
+        if match:
+            info["name"] = match.group(1)
+    
+    return info
 
 def get_version_tags() -> List[str]:
     """Get all version tags from the repository.
@@ -139,44 +167,311 @@ def categorize_changes(commits: List[Dict[str, str]]) -> Dict[str, List[Dict[str
     
     return categories
 
-def generate_changelog_entry(version: str, commits: List[Dict[str, str]]) -> str:
-    """Generate a changelog entry for a version.
+def generate_release_notes(version: str, commits: List[Dict[str, str]]) -> str:
+    """Generate detailed release notes using LLM.
     
     Args:
-        version: Version number.
+        version: Version string.
         commits: List of commit dictionaries.
         
     Returns:
-        Markdown formatted changelog entry.
+        Formatted release notes.
     """
-    # Categorize commits
-    categories = categorize_changes(commits)
+    # Prepare commit messages for LLM
+    commit_text = "\n".join([
+        f"- {commit['message']} ({commit['author']})"
+        for commit in commits
+    ])
     
-    # Generate changelog entry
-    changelog = f"## {version}\n\n"
+    # Get repository info
+    repo_info = get_repository_info()
+    repo_name = repo_info.get("name", "the repository")
     
-    # Add date
-    result = subprocess.run(
-        ["git", "log", "-1", "--format=%ad", "--date=short", f"v{version}"],
-        capture_output=True,
-        text=True
+    # Generate release notes using LLM
+    messages = [
+        {
+            "role": "system",
+            "content": f"""You are a technical writer creating release notes for {repo_name}.
+            Create clear, concise, and user-friendly release notes that:
+            1. Highlight major changes and improvements
+            2. Group related changes together
+            3. Use clear, non-technical language where possible
+            4. Include any breaking changes or migration steps
+            5. Mention contributors if there are significant changes
+            
+            Format the release notes in markdown with appropriate sections."""
+        },
+        {
+            "role": "user",
+            "content": f"""Create release notes for version {version} with the following changes:
+
+            {commit_text}"""
+        }
+    ]
+    
+    try:
+        release_notes = get_llm_response(messages)
+        return release_notes
+    except Exception as e:
+        print(f"Warning: Could not generate detailed release notes: {str(e)}")
+        return ""
+
+def update_changelog(version: str, commits: List[Dict[str, str]]) -> None:
+    """Update the changelog file.
+    
+    Args:
+        version: Version string.
+        commits: List of commit dictionaries.
+    """
+    # Generate release notes
+    release_notes = generate_release_notes(version, commits)
+    
+    # Read existing changelog
+    changelog_path = "CHANGELOG.md"
+    existing_content = ""
+    if os.path.exists(changelog_path):
+        with open(changelog_path, "r") as f:
+            existing_content = f.read()
+    
+    # Prepare new changelog entry
+    date = datetime.now().strftime("%Y-%m-%d")
+    new_entry = f"## {version}\n*Released on {date}*\n\n{release_notes}\n\n"
+    
+    # Update changelog
+    if existing_content:
+        # Insert new entry after the title
+        if existing_content.startswith("# "):
+            title_end = existing_content.find("\n", existing_content.find("\n") + 1)
+            updated_content = existing_content[:title_end + 1] + "\n" + new_entry + existing_content[title_end + 1:]
+        else:
+            updated_content = new_entry + existing_content
+    else:
+        updated_content = f"# Changelog\n\n{new_entry}"
+    
+    # Write updated changelog
+    with open(changelog_path, "w") as f:
+        f.write(updated_content)
+
+def create_version_tag(version: str, message: Optional[str] = None) -> None:
+    """Create a version tag.
+    
+    Args:
+        version: Version string.
+        message: Optional tag message.
+    """
+    if not message:
+        # Generate tag message from commits
+        commits = get_commits_between_tags(get_latest_version(), "HEAD")
+        categories = categorize_changes(commits)
+        
+        message_parts = []
+        for category, category_commits in categories.items():
+            if category_commits:
+                message_parts.append(f"{category}:")
+                for commit in category_commits[:3]:  # Show top 3 commits per category
+                    msg = commit["message"]
+                    if ":" in msg:
+                        msg = msg.split(":", 1)[1].strip()
+                    message_parts.append(f"- {msg}")
+                if len(category_commits) > 3:
+                    message_parts.append(f"- ... and {len(category_commits) - 3} more")
+                message_parts.append("")
+        
+        message = "\n".join(message_parts)
+    
+    # Create annotated tag
+    subprocess.run(
+        ["git", "tag", "-a", version, "-m", message],
+        check=True
     )
-    date = result.stdout.strip()
-    changelog += f"*Released on {date}*\n\n"
+    print(f"✅ Created version tag: {version}")
+
+def get_unreleased_changes() -> List[Dict[str, str]]:
+    """Get all commits since the last version tag.
+    
+    Returns:
+        List of commit dictionaries.
+    """
+    latest_version = get_latest_version()
+    return get_commits_between_tags(latest_version, "HEAD")
+
+def update_unreleased_changelog() -> None:
+    """Update the unreleased section of the changelog."""
+    # Get unreleased changes
+    commits = get_unreleased_changes()
+    if not commits:
+        return
+    
+    # Read existing changelog
+    changelog_path = "CHANGELOG.md"
+    existing_content = ""
+    if os.path.exists(changelog_path):
+        with open(changelog_path, "r") as f:
+            existing_content = f.read()
+    
+    # Generate unreleased section
+    categories = categorize_changes(commits)
+    unreleased_content = "## [Unreleased]\n\n"
     
     # Add categorized changes
     for category, category_commits in categories.items():
         if category_commits:
-            changelog += f"### {category}\n\n"
+            unreleased_content += f"### {category}\n\n"
             for commit in category_commits:
-                # Extract the description part after the type
-                message = commit["message"]
-                if ":" in message:
-                    message = message.split(":", 1)[1].strip()
-                changelog += f"- {message}\n"
-            changelog += "\n"
+                msg = commit["message"]
+                if ":" in msg:
+                    msg = msg.split(":", 1)[1].strip()
+                unreleased_content += f"- {msg}\n"
+            unreleased_content += "\n"
     
-    return changelog
+    # Update changelog
+    if existing_content:
+        # Check if unreleased section exists
+        if "## [Unreleased]" in existing_content:
+            # Replace existing unreleased section
+            pattern = r"## \[Unreleased\].*?(?=## \[|\Z)"
+            updated_content = re.sub(pattern, unreleased_content, existing_content, flags=re.DOTALL)
+        else:
+            # Add unreleased section after title
+            if existing_content.startswith("# "):
+                title_end = existing_content.find("\n", existing_content.find("\n") + 1)
+                updated_content = existing_content[:title_end + 1] + "\n" + unreleased_content + existing_content[title_end + 1:]
+            else:
+                updated_content = unreleased_content + existing_content
+    else:
+        updated_content = f"# Changelog\n\n{unreleased_content}"
+    
+    # Write updated changelog
+    with open(changelog_path, "w") as f:
+        f.write(updated_content)
+
+def commit_hook() -> None:
+    """Git commit hook to update changelog."""
+    try:
+        update_unreleased_changelog()
+    except Exception as e:
+        print(f"Warning: Could not update changelog: {str(e)}")
+
+def setup_commit_hook() -> None:
+    """Set up git commit hook for automatic changelog updates."""
+    hook_path = ".git/hooks/pre-commit"
+    hook_content = """#!/bin/sh
+# Update changelog before commit
+gitwise changelog --auto-update
+"""
+    
+    # Create hook directory if it doesn't exist
+    os.makedirs(os.path.dirname(hook_path), exist_ok=True)
+    
+    # Write hook file
+    with open(hook_path, "w") as f:
+        f.write(hook_content)
+    
+    # Make hook executable
+    os.chmod(hook_path, 0o755)
+    print("✅ Git commit hook installed for automatic changelog updates")
+
+def changelog_command(
+    version: Optional[str] = None,
+    create_tag: bool = False,
+    auto_update: bool = False,
+    setup_hook: bool = False
+) -> None:
+    """Generate a changelog for the repository.
+    
+    Args:
+        version: Optional version to generate changelog for. If not provided,
+                generates for all versions.
+        create_tag: Whether to create a new version tag if none exists.
+        auto_update: Whether to update the unreleased section.
+        setup_hook: Whether to set up the git commit hook.
+    """
+    try:
+        if setup_hook:
+            setup_commit_hook()
+            return
+        
+        if auto_update:
+            update_unreleased_changelog()
+            print("✅ Updated unreleased section in CHANGELOG.md")
+            return
+        
+        # Get version tags
+        tags = get_version_tags()
+        
+        if not tags:
+            if create_tag:
+                # Get commits since last tag
+                commits = get_commits_between_tags(None, "HEAD")
+                if not commits:
+                    print("No commits found to create a version tag.")
+                    return
+                
+                # Suggest next version
+                suggested_version, explanation = suggest_next_version(commits)
+                print(f"\nSuggested version: {suggested_version}")
+                print(f"Reason: {explanation}")
+                print("\nEnter version number or press Enter to use suggested version.")
+                print("You can use pre-release versions (e.g., v1.0.0-alpha.1) or build metadata (e.g., v1.0.0+build.123)")
+                print("For pre-releases, you can use:")
+                print("  alpha - for early development releases")
+                print("  beta  - for testing releases")
+                print("  rc    - for release candidates")
+                manual_version = input().strip()
+                
+                if manual_version:
+                    # Check if it's a pre-release type shortcut
+                    if manual_version.lower() in ['alpha', 'beta', 'rc']:
+                        pre_release_type = manual_version.lower()
+                        suggested_base = parse_version(suggested_version)
+                        pre_release = get_latest_pre_release(pre_release_type)
+                        manual_version = f"v{suggested_base.major}.{suggested_base.minor}.{suggested_base.patch}-{pre_release}"
+                        print(f"Using pre-release version: {manual_version}")
+                    
+                    version_to_use = validate_version_input(manual_version)
+                    if not version_to_use:
+                        return
+                else:
+                    version_to_use = suggested_version
+                
+                if typer.confirm(f"Create version tag {version_to_use}?", default=True):
+                    # Update changelog first
+                    update_changelog(version_to_use, commits)
+                    
+                    # Create tag with release notes
+                    create_version_tag(version_to_use)
+                    tags = [version_to_use]
+                else:
+                    print("No version tag created. Changelog generation cancelled.")
+                    return
+            else:
+                print("No version tags found in the repository.")
+                print("Run 'gitwise changelog --create-tag' to create a version tag.")
+                return
+        
+        if version:
+            if version not in tags:
+                print(f"Version {version} not found in repository tags.")
+                print("Available versions:", ", ".join(tags))
+                return
+            tags = [version]
+        
+        # Generate changelog for all versions
+        changelog = "# Changelog\n\n"
+        
+        # Process each version
+        for i, tag in enumerate(tags):
+            start_tag = tags[i + 1] if i + 1 < len(tags) else None
+            commits = get_commits_between_tags(start_tag, tag)
+            if commits:
+                # Update changelog for this version
+                update_changelog(tag, commits)
+        
+        print(f"✅ Changelog generated successfully: CHANGELOG.md")
+        
+    except Exception as e:
+        print(f"❌ Error generating changelog: {str(e)}")
+        print("Please make sure you have version tags in your repository.")
 
 def get_latest_version() -> Optional[str]:
     """Get the latest version tag from the repository.
@@ -389,123 +684,4 @@ def validate_version_input(version: str, current_version: Optional[VersionInfo] 
         print("  v1.0.0-beta.2")
         print("  v1.0.0-rc.1")
         print("  v1.0.0+build.123")
-        return None
-
-def create_version_tag(version: str, message: Optional[str] = None) -> None:
-    """Create a version tag.
-    
-    Args:
-        version: Version string.
-        message: Optional tag message.
-    """
-    if not message:
-        # Generate tag message from commits
-        commits = get_commits_between_tags(get_latest_version(), "HEAD")
-        categories = categorize_changes(commits)
-        
-        message_parts = []
-        for category, category_commits in categories.items():
-            if category_commits:
-                message_parts.append(f"{category}:")
-                for commit in category_commits[:3]:  # Show top 3 commits per category
-                    msg = commit["message"]
-                    if ":" in msg:
-                        msg = msg.split(":", 1)[1].strip()
-                    message_parts.append(f"- {msg}")
-                if len(category_commits) > 3:
-                    message_parts.append(f"- ... and {len(category_commits) - 3} more")
-                message_parts.append("")
-        
-        message = "\n".join(message_parts)
-    
-    # Create annotated tag
-    subprocess.run(
-        ["git", "tag", "-a", version, "-m", message],
-        check=True
-    )
-    print(f"✅ Created version tag: {version}")
-
-def changelog_command(version: Optional[str] = None, create_tag: bool = False) -> None:
-    """Generate a changelog for the repository.
-    
-    Args:
-        version: Optional version to generate changelog for. If not provided,
-                generates for all versions.
-        create_tag: Whether to create a new version tag if none exists.
-    """
-    try:
-        # Get version tags
-        tags = get_version_tags()
-        
-        if not tags:
-            if create_tag:
-                # Get commits since last tag
-                commits = get_commits_between_tags(None, "HEAD")
-                if not commits:
-                    print("No commits found to create a version tag.")
-                    return
-                
-                # Suggest next version
-                suggested_version, explanation = suggest_next_version(commits)
-                print(f"\nSuggested version: {suggested_version}")
-                print(f"Reason: {explanation}")
-                print("\nEnter version number or press Enter to use suggested version.")
-                print("You can use pre-release versions (e.g., v1.0.0-alpha.1) or build metadata (e.g., v1.0.0+build.123)")
-                print("For pre-releases, you can use:")
-                print("  alpha - for early development releases")
-                print("  beta  - for testing releases")
-                print("  rc    - for release candidates")
-                manual_version = input().strip()
-                
-                if manual_version:
-                    # Check if it's a pre-release type shortcut
-                    if manual_version.lower() in ['alpha', 'beta', 'rc']:
-                        pre_release_type = manual_version.lower()
-                        suggested_base = parse_version(suggested_version)
-                        pre_release = get_latest_pre_release(pre_release_type)
-                        manual_version = f"v{suggested_base.major}.{suggested_base.minor}.{suggested_base.patch}-{pre_release}"
-                        print(f"Using pre-release version: {manual_version}")
-                    
-                    version_to_use = validate_version_input(manual_version)
-                    if not version_to_use:
-                        return
-                else:
-                    version_to_use = suggested_version
-                
-                if typer.confirm(f"Create version tag {version_to_use}?", default=True):
-                    create_version_tag(version_to_use)
-                    tags = [version_to_use]
-                else:
-                    print("No version tag created. Changelog generation cancelled.")
-                    return
-            else:
-                print("No version tags found in the repository.")
-                print("Run 'gitwise changelog --create-tag' to create a version tag.")
-                return
-        
-        if version:
-            if version not in tags:
-                print(f"Version {version} not found in repository tags.")
-                print("Available versions:", ", ".join(tags))
-                return
-            tags = [version]
-        
-        # Generate changelog
-        changelog = "# Changelog\n\n"
-        
-        # Process each version
-        for i, tag in enumerate(tags):
-            start_tag = tags[i + 1] if i + 1 < len(tags) else None
-            commits = get_commits_between_tags(start_tag, tag)
-            if commits:
-                changelog += generate_changelog_entry(tag, commits)
-        
-        # Write to CHANGELOG.md
-        with open("CHANGELOG.md", "w") as f:
-            f.write(changelog)
-        
-        print(f"✅ Changelog generated successfully: CHANGELOG.md")
-        
-    except Exception as e:
-        print(f"❌ Error generating changelog: {str(e)}")
-        print("Please make sure you have version tags in your repository.") 
+        return None 
