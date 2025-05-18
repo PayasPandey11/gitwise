@@ -52,14 +52,6 @@ def push_command() -> None:
             components.show_warning("Push cancelled")
             return
 
-        # Update changelog before pushing
-        with components.show_spinner("Updating changelog..."):
-            try:
-                from gitwise.features.changelog import update_unreleased_changelog
-                update_unreleased_changelog()
-            except Exception as e:
-                components.show_warning(f"Could not update changelog: {str(e)}")
-
         # Push changes
         with components.show_spinner("Pushing to remote..."):
             result = subprocess.run(
