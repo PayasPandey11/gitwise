@@ -17,24 +17,28 @@ def push_command() -> None:
             return
 
         # Check if there are commits to push
-        result = subprocess.run(
-            ["git", "log", f"origin/{current_branch}..HEAD"],
-            capture_output=True,
-            text=True
-        )
-        
-        if not result.stdout.strip():
-            components.show_warning("No commits to push")
-            return
+        with components.show_spinner("Checking for commits..."):
+            result = subprocess.run(
+                ["git", "log", f"origin/{current_branch}..HEAD"],
+                capture_output=True,
+                text=True
+            )
+            
+            if not result.stdout.strip():
+                components.show_warning("No commits to push")
+                return
+
+            # Get commits to be pushed
+            result = subprocess.run(
+                ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
+                capture_output=True,
+                text=True
+            )
+            commits = result.stdout.strip()
 
         # Show changes to be pushed
         components.show_section("Changes to Push")
-        result = subprocess.run(
-            ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
-            capture_output=True,
-            text=True
-        )
-        components.console.print(result.stdout)
+        components.console.print(commits)
 
         # Ask about pushing
         components.show_prompt(
@@ -49,8 +53,7 @@ def push_command() -> None:
             return
 
         # Push changes
-        components.show_section("Pushing Changes")
-        with components.show_spinner("Pushing to remote...") as progress:
+        with components.show_spinner("Pushing to remote..."):
             result = subprocess.run(
                 ["git", "push", "origin", current_branch],
                 capture_output=True,
@@ -69,6 +72,8 @@ def push_command() -> None:
                 choice = typer.prompt("", type=int, default=1)
                 
                 if choice == 1:  # Yes
+                    # Close any existing spinners before starting PR creation
+                    components.console.clear()
                     pr_command()
             else:
                 components.show_error("Failed to push changes")
