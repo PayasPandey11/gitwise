@@ -73,7 +73,7 @@ def get_staged_diff() -> str:
     return result.stdout if result.returncode == 0 else ""
 
 def get_file_diff(file: str) -> str:
-    """Get diff for a specific file."""
+    """Get diff for a specific staged (cached) file."""
     result = subprocess.run(
         ["git", "diff", "--cached", file],
         capture_output=True,
