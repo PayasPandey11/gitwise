@@ -4,7 +4,6 @@ import os
 from typing import List, Dict, Tuple, Optional, Union
 from openai import OpenAI
 from gitwise.prompts import COMMIT_MESSAGE_PROMPT, PR_DESCRIPTION_PROMPT
-from git import Commit
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",

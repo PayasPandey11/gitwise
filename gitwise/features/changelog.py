@@ -214,9 +214,9 @@ def generate_changelog(commits: List[Dict], version: Optional[str] = None) -> st
             version_header = f"## {version} ({date})\n"
             full_version_block = f"{version_header}{llm_content.strip()}\n\n"
         else:
-            # This case is for generating content not tied to a specific new version tag (e.g. for an unreleased section if we used LLM there)
-            # For now, generate_changelog is mainly called with a version by changelog_command.
-            # If called without version, it implies general summary.
+            # This case is for generating content not tied to a specific new version tag.
+            # For example, if used for a general summary not part of a formal release.
+            # The main `changelog_command` function typically calls this with a version.
             full_version_block = f"{llm_content.strip()}\n\n"
             
         return full_version_block
@@ -551,20 +551,25 @@ def changelog_command(
                         existing_content = f.read()
                 
                 updated_content = ""
-                changelog_title = "# Changelog\n\n"
+                changelog_title = "# Changelog\n\n" # Expected main title of the changelog
+                # Regex to find the [Unreleased] section, matching from its start to just before the next version or end of file.
                 unreleased_section_regex = re.compile(r"(^##\s+\[Unreleased\].*?)(?=^##\s+v?\d+\.\d+\.\d+|^\Z)", re.MULTILINE | re.DOTALL)
                 
                 unreleased_match = unreleased_section_regex.search(existing_content)
                 
+                # Determine how to structure the updated content based on what already exists.
                 if existing_content.startswith(changelog_title):
+                    # Changelog exists and has the expected title.
                     if unreleased_match:
-                        # Insert after unreleased section
+                        # An [Unreleased] section exists. Insert the new version's content immediately after it.
                         insert_point = unreleased_match.end(0)
                         updated_content = existing_content[:insert_point] + new_version_changelog_content + existing_content[insert_point:]
                     else:
-                        # Insert after title
+                        # No [Unreleased] section. Insert the new version's content after the main changelog title.
                         updated_content = changelog_title + new_version_changelog_content + existing_content[len(changelog_title):]
-                else: # No existing changelog or no title
+                else: 
+                    # No existing changelog file, or it doesn't start with the expected title.
+                    # Prepend the title, then the new version content, then any pre-existing content.
                     updated_content = changelog_title + new_version_changelog_content + existing_content
 
                 with open(target_changelog_file, "w") as f:

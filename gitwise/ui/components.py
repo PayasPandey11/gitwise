@@ -54,7 +54,7 @@ def show_diff(diff: str, title: str = "Changes") -> None:
         else:
             lines.append(line)
     
-    # Show only first 20 lines to keep it concise
+    # Show only first 20 lines to keep it concise, append ellipsis if longer.
     content = "\n".join(lines[:20])
     if len(lines) > 20:
         content += "\n..."
