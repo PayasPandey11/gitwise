@@ -5,6 +5,15 @@ import sys
 import os
 import subprocess
 from typing import Optional, List
+from gitwise.features.commit import commit_command
+from gitwise.features.push import push_command
+from gitwise.features.pr import pr_command
+from gitwise.features.changelog import changelog_command
+from gitwise.gitutils import get_staged_files, get_unstaged_files
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.panel import Panel
+from rich.table import Table
 
 # Support running from both the package and directly as a script
 if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exists(os.path.join(os.path.dirname(__file__), "__init__.py"))):
@@ -13,12 +22,14 @@ if __name__ == "__main__" and ("gitwise" not in sys.modules and not os.path.exis
     from features.push import push_command
     from features.pr import pr_command
     from features.changelog import changelog_command
+    from gitutils import get_staged_files, get_unstaged_files
 else:
     # Running as a module from parent directory
     from gitwise.features.commit import commit_command
     from gitwise.features.push import push_command
     from gitwise.features.pr import pr_command
     from gitwise.features.changelog import changelog_command
+    from gitwise.gitutils import get_staged_files, get_unstaged_files
 
 # Define command categories
 GITWISE_COMMANDS = {
@@ -48,20 +59,99 @@ app = typer.Typer(
     add_completion=False
 )
 
+console = Console()
+
 @app.command()
 def add(
-    files: str = typer.Argument(..., help="Files to stage"),
-    group: bool = typer.Option(True, "--group/--no-group", help="Group related changes into logical commits")
+    files: List[str] = typer.Argument(None, help="Files to stage. Use '.' for all files."),
+    group: bool = typer.Option(False, "--group", "-g", help="Group related changes in commit message")
 ) -> None:
-    """Stage files and create a commit with a smart message."""
-    # Stage files
-    result = subprocess.run(["git", "add", files], capture_output=True, text=True)
-    if result.returncode != 0:
-        typer.echo(f"Error staging {files}: {result.stderr}")
-        raise typer.Exit(code=1)
-    
-    # Create commit with smart message
-    commit_command(group=group)
+    """Stage files and prepare for commit with smart grouping."""
+    try:
+        # Show initial status
+        unstaged = get_unstaged_files()
+        if not unstaged:
+            console.print("[yellow]No changes to stage.[/yellow]")
+            return
+
+        # Create progress display
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Staging files...", total=None)
+            
+            if not files or (len(files) == 1 and files[0] == '.'):
+                # Stage all files
+                subprocess.run(["git", "add", "."], capture_output=True)
+            else:
+                # Stage specific files
+                for file in files:
+                    if os.path.exists(file):
+                        subprocess.run(["git", "add", file], capture_output=True)
+                    else:
+                        console.print(f"[red]Warning: File not found - {file}[/red]")
+            
+            progress.update(task, completed=True)
+
+        # Show staged changes
+        staged = get_staged_files()
+        if staged:
+            table = Table(title="Staged Changes", show_header=True, header_style="bold magenta")
+            table.add_column("Status", style="cyan")
+            table.add_column("File", style="green")
+            
+            for status, file in staged:
+                table.add_row(status, file)
+            
+            console.print(Panel(table, title="[bold green]Successfully staged files[/bold green]"))
+            
+            # Show next steps and handle user input
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print("1. Review staged changes above")
+            console.print("2. Run [cyan]gitwise commit[/cyan] to commit changes")
+            if group:
+                console.print("   (Changes will be automatically grouped)")
+            
+            # Handle user input
+            choice = typer.prompt(
+                "What would you like to do?",
+                type=str,
+                default="2",
+                show_choices=True,
+                show_default=True,
+                prompt_suffix="\n[1]review/[2]commit/[q]uit "
+            ).lower()
+            
+            if choice == "1":
+                # Show diff of staged changes
+                result = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True)
+                console.print("\n[bold]Staged Changes Diff:[/bold]")
+                console.print(result.stdout)
+                # Ask again what to do
+                choice = typer.prompt(
+                    "What would you like to do?",
+                    type=str,
+                    default="2",
+                    show_choices=True,
+                    show_default=True,
+                    prompt_suffix="\n[2]commit/[q]uit "
+                ).lower()
+            
+            if choice == "2":
+                # Call commit command
+                commit_command(group=group)
+            elif choice == "q":
+                console.print("[yellow]Operation cancelled.[/yellow]")
+            else:
+                console.print("[red]Invalid choice.[/red]")
+        else:
+            console.print("[yellow]No files were staged.[/yellow]")
+            
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print("Please try again or use [cyan]git add[/cyan] directly.")
 
 @app.command()
 def commit(
