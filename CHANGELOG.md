@@ -3,29 +3,31 @@
 ## [Unreleased]
 
 ### 🚀 Features
-- Enhanced `add` command UI and workflow with smart file preview, staging, and commit preparation (payas)
-- Added `changelog` command for generating changelogs (payas)
-  - Enhanced changelog generation with version parsing, comparison, and `--create-tag` option (payas)
-- Improved `push` command workflow (payas)
-- Added pull request creation functionality with enhanced PR title and description generation (payas)
-  - Improved PR creation flow, error handling, and remote branch handling for commit retrieval (payas)
-- Added tests for `commit`, `changelog`, and `pr` features (payas)
+- Add changelog generation command with version parsing and comparison (payas)
+- Enhance pull request creation flow with improved title generation and error handling (payas) 
+- Add smart file preview and diff table to `add` command for better staging visualization (payas)
+- Introduce `--create-tag` option to `changelog` command for tagging releases (payas)
 
-### 📝 Documentation
-- Added API documentation for GitWise (payas)
-- Added changelog feature documentation and contributing guidelines (payas)
-- Enhanced README with detailed feature descriptions and changelog guide (payas)
-- Added contributor covenant code of conduct (payas)
+### 🐛 Bug Fixes
+- None
+
+### 📝 Documentation  
+- Add changelog feature documentation and usage guide to README (payas)
+- Create API documentation for GitWise (payas)
+- Add contributing guidelines and contributor covenant code of conduct (payas)
 
 ### 🔧 Maintenance
-- Updated CI workflow with GitHub Actions for testing and deployment (payas)
-- Enhanced Makefile targets (payas)
-- Added MANIFEST.in for packaging (payas)
+- Enhance Makefile targets for improved development workflow (payas)
+- Update CI workflow to include testing and deployment (payas)
+- Add MANIFEST.in for proper packaging (payas)
 
-### 🎨 Refactoring
-- Simplified `add` and `commit` commands (payas)
-- Improved `add` command UX and flow (payas)
-- Enhanced `push` command workflow (payas)
+### ♻️ Refactoring  
+- Simplify `add` and `commit` command flows and prompts (payas)
+- Improve remote branch handling for commit retrieval in `pr` command (payas)
+- Streamline `add` command workflow and UI (payas)
+- Enhance `push` command workflow (payas)
 
-### 📦 Chores
-- Added CHANGELOG.md (payas)
+### ✅ Tests
+- Add unit tests for `pr` command and helpers (payas)  
+- Introduce tests for `commit` feature (payas)
+- Create tests for `changelog` feature (payas)

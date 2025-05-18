@@ -45,12 +45,16 @@ def add(
     """Stage files with interactive selection."""
     add_command(files)
 
-@app.command()
+@app.command(name="commit", help="Create a commit with AI-generated message")
 def commit(
-    group: bool = typer.Option(False, "--group", "-g", help="Group related changes into separate commits")
+    no_group: bool = typer.Option(
+        False,
+        "--no-group",
+        help="Disable automatic grouping of changes"
+    )
 ) -> None:
     """Create a commit with AI-generated message."""
-    commit_command(group)
+    commit_command(group=not no_group)
 
 @app.command()
 def push() -> None:
