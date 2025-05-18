@@ -415,7 +415,9 @@ def commit_command(group: bool = True) -> None:
         components.console.print("2. Updating changelog")
         components.console.print("3. Running commit hooks (if any)")
         
-        with components.show_spinner("Creating git commit..."):
+        # Operation 1: Git Commit
+        components.show_section("1. Creating Git Commit")
+        with components.show_spinner("Running git commit..."):
             result = subprocess.run(
                 ["git", "commit", "-m", message],
                 capture_output=True,
@@ -423,27 +425,49 @@ def commit_command(group: bool = True) -> None:
             )
             
             if result.returncode == 0:
-                components.show_success("Git commit created successfully")
+                components.show_success("✓ Git commit created successfully")
                 components.console.print(result.stdout)
                 commit_success = True
             else:
-                components.show_error("Failed to create commit")
+                components.show_error("✗ Failed to create commit")
                 if result.stderr:
                     components.console.print(result.stderr)
                 return
 
-        # Update changelog after successful commit
+        # Operation 2: Update Changelog
         if commit_success:
+            components.show_section("2. Updating Changelog")
             with components.show_spinner("Updating changelog..."):
                 try:
                     from gitwise.features.changelog import update_unreleased_changelog
                     update_unreleased_changelog()
-                    components.show_success("Changelog updated successfully")
+                    components.show_success("✓ Changelog updated successfully")
                 except Exception as e:
-                    components.show_warning(f"Could not update changelog: {str(e)}")
+                    components.show_warning(f"⚠ Could not update changelog: {str(e)}")
+
+        # Operation 3: Commit Hooks
+        if commit_success:
+            components.show_section("3. Running Commit Hooks")
+            with components.show_spinner("Checking for commit hooks..."):
+                try:
+                    # Check if there are any commit hooks
+                    result = subprocess.run(
+                        ["git", "rev-parse", "--git-path", "hooks"],
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
+                    hooks_dir = result.stdout.strip()
+                    if os.path.exists(hooks_dir):
+                        components.show_success("✓ Commit hooks checked")
+                    else:
+                        components.console.print("No commit hooks found")
+                except Exception as e:
+                    components.show_warning(f"⚠ Could not check commit hooks: {str(e)}")
 
         # Only ask about pushing after all operations are complete
         if commit_success:
+            components.show_section("Push Changes")
             components.show_prompt(
                 "Would you like to push these changes?",
                 options=["Yes", "No"],

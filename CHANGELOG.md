@@ -23,6 +23,7 @@
 
 ### Other
 
+- improve UX by showing all operations before committing
 - 
 - update changelog and simplify PR creation flow after push
 - handle empty commit list and improve error handling
