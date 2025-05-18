@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Tuple, Optional
 from git import Repo, Commit
 from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
-from gitwise.llm import generate_pr_description as llm_generate_pr_description, generate_pr_title
+from gitwise.llm import generate_pr_title, generate_pr_description as llm_generate_pr_description
 from gitwise.features.pr_enhancements import enhance_pr_description
 from gitwise.prompts import PR_DESCRIPTION_PROMPT
 from rich.console import Console
@@ -110,7 +110,7 @@ def create_pull_request(repo: Repo, base_branch: str = "main", labels: List[str]
             base_branch=base_branch,
             current_branch=repo.active_branch.name
         )
-        description = generate_pr_description(prompt)
+        description = llm_generate_pr_description(prompt)
         progress.update(task, completed=True)
         
         # Show preview
@@ -173,19 +173,21 @@ def pr_command(
         if title:
             pr_title = title
         else:
-            # Generate a concise title from the most significant commit
-            if commits:
-                main_commit = commits[0]  # Most recent commit
-                msg = main_commit.message.strip()
-                # Remove conventional commit prefix if present
-                msg = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?:\s*', '', msg)
-                # Take first line and limit length
-                pr_title = msg.split('\n')[0][:100]
-            else:
-                pr_title = "Update"
+            pr_title = generate_pr_title(commits)
 
+        # Prepare commit information for LLM
+        commit_info = []
+        for commit in commits:
+            message = commit.message.split('\n')[0]
+            commit_info.append(f"Commit: {commit.hexsha[:7]}\nMessage: {message}\nAuthor: {commit.author.name}\nDate: {commit.committed_datetime}\n")
+        
         # Generate PR description using LLM
-        pr_description = generate_pr_description(commits)
+        prompt = PR_DESCRIPTION_PROMPT.format(
+            commits="\n".join(commit_info),
+            base_branch=base_branch,
+            current_branch=current_branch
+        )
+        pr_description = llm_generate_pr_description(prompt)
         
         # Enhance the description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
