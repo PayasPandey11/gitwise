@@ -83,6 +83,7 @@ Special thanks to the following contributors for their significant contributions
 
 ### Other
 
+- add PR title generation and enhance PR description
 - improve add command UX
 - add PR title generation and enhance PR description generation
 - improve PR creation flow and error handling

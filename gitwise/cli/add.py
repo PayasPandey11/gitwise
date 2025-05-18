@@ -18,7 +18,9 @@ def add_command(
         with components.show_spinner("Checking for changes...") as progress:
             unstaged = git.get_unstaged_files()
             if not unstaged:
-                components.show_warning("No changes to stage.")
+                components.show_section("Status")
+                components.show_warning("No changes found to stage.")
+                components.console.print("\n[dim]Use [cyan]git status[/cyan] to see repository state[/dim]")
                 return
 
         # Stage files
@@ -38,7 +40,8 @@ def add_command(
         # Show staged changes
         staged = git.get_staged_files()
         if staged:
-            components.show_files_table(staged, "Staged Changes")
+            components.show_section("Staged Changes")
+            components.show_files_table(staged)
 
             # Show diff for each file
             for status, file in staged:
@@ -54,23 +57,27 @@ def add_command(
             ]
             components.show_menu(options)
             
-            choice = typer.prompt("Select an option", type=int, default=1)
+            choice = typer.prompt("", type=int, default=1)
             
             if choice == 1:
                 commit_command(group=group)
                 # After commit, offer to push
-                if typer.confirm("Push these changes?", default=True):
+                components.show_prompt("Push these changes?", default="yes")
+                if typer.confirm("", default=True):
                     push_command()
             elif choice == 2:
                 # Show full diff
                 diff = git.get_staged_diff()
                 if diff:
-                    components.show_diff(diff, "Full Changes")
+                    components.show_section("Full Changes")
+                    components.show_diff(diff)
             else:
                 components.show_warning("Operation cancelled.")
         else:
+            components.show_section("Status")
             components.show_warning("No files were staged.")
+            components.console.print("\n[dim]Use [cyan]git status[/cyan] to see repository state[/dim]")
             
     except Exception as e:
         components.show_error(str(e))
-        components.console.print("Please try again or use [cyan]git add[/cyan] directly.") 
+        components.console.print("\n[dim]Please try again or use [cyan]git add[/cyan] directly.[/dim]") 
