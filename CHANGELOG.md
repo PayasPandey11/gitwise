@@ -5,6 +5,7 @@
 
 ### Documentation
 
+- add changelog feature documentation and contributing guidelines
 - add changelog feature documentation
 - add API documentation for GitWise
 - add contributing guidelines
@@ -22,6 +23,8 @@
 
 ### Other
 
+- enhance Makefile targets
+- update CI workflow
 - add unit tests for pr command and helpers
 - add tests for commit feature
 - simplify add and commit commands, add changelog generation

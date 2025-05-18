@@ -1,7 +1,8 @@
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from openai import OpenAI
 from gitwise.prompts import COMMIT_MESSAGE_PROMPT, PR_DESCRIPTION_PROMPT
+from git import Commit
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -50,38 +51,74 @@ def generate_commit_message(diff: str, guidance: str = None) -> str:
     
     return get_llm_response(messages)
 
-def generate_pr_description(commits: List[Dict[str, str]]) -> Tuple[str, str]:
-    """Generate a PR title and description from commit history.
+def generate_pr_title(commits: List[Commit]) -> str:
+    """Generate a title for a pull request based on commit messages.
     
     Args:
-        commits: List of commit dictionaries containing hash, message, and author.
+        commits: List of commits to analyze for the PR title
         
     Returns:
-        Tuple of (title, description)
+        str: A concise, descriptive title for the PR
     """
-    # Format commits for the prompt
-    commit_text = "\n".join([
-        f"Commit: {c['hash']}\n"
-        f"Author: {c['author']}\n"
-        f"Message: {c['message']}\n"
-        for c in commits
-    ])
+    if not commits:
+        return "Update"
+        
+    # Get the first commit message as base
+    first_commit = commits[0].message.split('\n')[0]
     
-    messages = [
-        {"role": "system", "content": PR_DESCRIPTION_PROMPT.format(commits=commit_text)},
-        {"role": "user", "content": "Please generate a PR title and description based only on the actual changes shown in the commits."}
-    ]
-    
-    response = get_llm_response(messages)
-    
-    # Split response into title and description
-    parts = response.split("\n\n", 1)
-    if len(parts) == 2:
-        title = parts[0].strip()
-        description = parts[1].strip()
+    # If it's a conventional commit, use the description part
+    if ':' in first_commit:
+        title = first_commit.split(':', 1)[1].strip()
     else:
-        # If we can't split properly, use the whole response as description
-        title = "Update codebase"
-        description = response.strip()
+        title = first_commit
+        
+    # If there are multiple commits, indicate that
+    if len(commits) > 1:
+        title = f"{title} (+{len(commits)-1} more commits)"
+        
+    return title
+
+def generate_pr_description(commits: List[Commit]) -> str:
+    """Generate a description for a pull request based on commit messages.
     
-    return title, description 
+    Args:
+        commits: List of commits to analyze for the PR description
+        
+    Returns:
+        str: A detailed description of the changes
+    """
+    if not commits:
+        return "No changes to describe."
+        
+    # Group commits by type
+    commit_groups = {}
+    for commit in commits:
+        message = commit.message.split('\n')[0]
+        if ':' in message:
+            commit_type = message.split(':', 1)[0].strip()
+            description = message.split(':', 1)[1].strip()
+        else:
+            commit_type = "other"
+            description = message
+            
+        if commit_type not in commit_groups:
+            commit_groups[commit_type] = []
+        commit_groups[commit_type].append(description)
+    
+    # Build the description
+    description = "## Changes\n"
+    
+    # Add each group of changes
+    for commit_type, messages in commit_groups.items():
+        if commit_type != "other":
+            description += f"\n### {commit_type.title()}\n"
+            for msg in messages:
+                description += f"- {msg}\n"
+    
+    # Add other changes if any
+    if "other" in commit_groups:
+        description += "\n### Other Changes\n"
+        for msg in commit_groups["other"]:
+            description += f"- {msg}\n"
+            
+    return description 

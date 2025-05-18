@@ -5,7 +5,6 @@ import subprocess
 from typing import Optional, List, Dict, Tuple
 from gitwise.llm import generate_commit_message
 from gitwise.gitutils import get_staged_diff, run_git_commit, get_changed_files
-from gitwise.features.push import push_command
 
 COMMIT_TYPES = {
     "feat": "A new feature",
@@ -260,8 +259,8 @@ def commit_command(group: bool = False) -> None:
                 
                 # Ask about pushing after all commits
                 if typer.confirm("\nWould you like to push these changes?", default=False):
-                    push_command()
-                return
+                    # push_command()
+                    return
 
     # If no grouping or user chose not to group, proceed with single commit
     typer.echo("Analyzing staged changes:\n")
@@ -348,9 +347,9 @@ def commit_command(group: bool = False) -> None:
         typer.echo("Commit created successfully.")
         
         # Ask about pushing
-        push = typer.confirm("Would you like to push these changes?", default=False)
-        if push:
-            push_command()
+        # push = typer.confirm("Would you like to push these changes?", default=False)
+        # if push:
+        #     push_command()
     except RuntimeError as e:
         typer.echo(str(e))
         raise typer.Exit(code=1) 

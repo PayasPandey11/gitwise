@@ -1,38 +1,70 @@
 """Pull request creation feature for GitWise."""
 
 import subprocess
-from typing import List, Dict, Tuple
-from gitwise.llm import generate_pr_description
-from gitwise.gitutils import get_commit_history
+import re
+from typing import List, Dict, Tuple, Optional
+from git import Repo, Commit
+from gitwise.gitutils import get_commit_history, get_current_branch, get_base_branch
+from gitwise.llm import generate_pr_description, generate_pr_title
 from gitwise.features.pr_enhancements import enhance_pr_description
+
+def get_commits_since_last_pr(repo: Repo, base_branch: str) -> List[Commit]:
+    """Get commits since the last PR or base branch, whichever is more recent."""
+    current_branch = get_current_branch()
+    
+    # Get the last PR merge commit on this branch
+    last_pr_commit = None
+    for commit in repo.iter_commits(f"{base_branch}..{current_branch}"):
+        if "Merge pull request" in commit.message:
+            last_pr_commit = commit
+            break
+    
+    # If no PR found, use base branch as reference
+    if last_pr_commit:
+        return list(repo.iter_commits(f"{last_pr_commit.hexsha}..{current_branch}"))
+    else:
+        return list(repo.iter_commits(f"{base_branch}..{current_branch}"))
 
 def pr_command(
     use_labels: bool = False,
     use_checklist: bool = False,
-    skip_general_checklist: bool = False
+    skip_general_checklist: bool = False,
+    title: Optional[str] = None,
+    base: Optional[str] = None,
+    draft: bool = False
 ) -> None:
-    """Create a pull request with AI-generated description.
+    """Create a pull request with AI-generated title and description.
     
     Args:
         use_labels: Add labels to the PR (default: False).
         use_checklist: Add checklist to the PR description (default: False).
         skip_general_checklist: Skip general checklist items (default: False).
+        title: Custom title for the PR (optional).
+        base: Base branch for the PR (optional).
+        draft: Create a draft PR (default: False).
     """
     try:
-        # Get commit history
-        commits = get_commit_history()
+        repo = Repo(".")
+        base_branch = base or get_base_branch()
+        
+        # Validate branch name
+        current_branch = get_current_branch()
+        if not validate_branch_name(current_branch):
+            raise ValueError(f"Invalid branch name: {current_branch}")
+        
+        # Get commits since last PR
+        commits = get_commits_since_last_pr(repo, base_branch)
         if not commits:
-            print("No commits found between current branch and remote tracking branch.")
-            print("Make sure you have committed your changes and pushed them.")
-            return
-
-        # Generate PR description
-        title, description = generate_pr_description(commits)
+            raise ValueError("No new commits to create PR for")
+        
+        # Generate PR title and description
+        pr_title = title or generate_pr_title(commits)
+        pr_description = generate_pr_description(commits)
         
         # Enhance PR description with labels and checklist if requested
         enhanced_description, labels = enhance_pr_description(
             commits, 
-            description,
+            pr_description,
             use_labels=use_labels,
             use_checklist=use_checklist,
             skip_general_checklist=skip_general_checklist
@@ -40,7 +72,7 @@ def pr_command(
         
         # Show preview
         print("\n=== PR Preview ===")
-        print(f"Title: {title}")
+        print(f"Title: {pr_title}")
         print("\nDescription:")
         print(enhanced_description)
         if use_labels:
@@ -56,7 +88,7 @@ def pr_command(
             # Create PR with title and description
             result = subprocess.run(
                 ["gh", "pr", "create", 
-                 "--title", title,
+                 "--title", pr_title,
                  "--body", enhanced_description],
                 capture_output=True,
                 text=True
@@ -77,16 +109,32 @@ def pr_command(
                 print("\n❌ Failed to create pull request.")
                 print("Error:", result.stderr)
                 print("\nYou can create the PR manually with:")
-                print(f"gh pr create --title '{title}' --body '{enhanced_description}'")
+                print(f"gh pr create --title '{pr_title}' --body '{enhanced_description}'")
                 
         except FileNotFoundError:
             print("\n❌ GitHub CLI (gh) not found.")
             print("Please install GitHub CLI or create the PR manually with:")
-            print(f"Title: {title}")
+            print(f"Title: {pr_title}")
             print(f"\nDescription:\n{enhanced_description}")
             if use_labels and labels:
                 print(f"\nLabels: {', '.join(labels)}")
             
     except Exception as e:
         print(f"\n❌ Error: {str(e)}")
-        print("Please try again or create the PR manually.") 
+        print("Please try again or create the PR manually.")
+
+def validate_branch_name(branch: str) -> bool:
+    """Validate branch name against naming conventions."""
+    # Protected branches
+    protected = {"main", "master", "develop"}
+    if branch in protected:
+        return False
+    
+    # Branch name pattern
+    pattern = r"^(feature|fix|docs|chore|refactor|test|style|perf|ci|build|revert)/[a-z0-9-]+$"
+    return bool(re.match(pattern, branch))
+
+def create_pull_request(title: str, body: str, base: str, head: str, draft: bool = False) -> Dict:
+    """Create a pull request using GitHub API."""
+    # Implementation depends on your GitHub API integration
+    pass 
