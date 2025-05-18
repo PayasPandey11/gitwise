@@ -406,6 +406,9 @@ def generate_pr_description(commits: List[Dict]) -> str:
     Returns:
         Formatted PR description string.
     """
+    if not commits:
+        return ""
+        
     # Prepare commit messages for LLM
     commit_text = "\n".join([
         f"- {commit['message']} ({commit['author']})"
@@ -415,6 +418,7 @@ def generate_pr_description(commits: List[Dict]) -> str:
     # Get repository info
     repo_info = get_repository_info()
     repo_name = repo_info.get("name", "the repository")
+    repo_url = repo_info.get("url", "")
     
     # Generate PR description using LLM
     messages = [
@@ -440,6 +444,8 @@ def generate_pr_description(commits: List[Dict]) -> str:
     
     try:
         description = get_llm_response(messages)
+        if not description:
+            raise ValueError("Empty PR description generated")
         return description
     except Exception as e:
         components.show_error(f"Could not generate PR description: {str(e)}")
