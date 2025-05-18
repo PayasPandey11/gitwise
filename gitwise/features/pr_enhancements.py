@@ -230,8 +230,8 @@ def generate_checklist(files: List[str], skip_general: bool = False) -> str:
 def enhance_pr_description(
     commits: List[Dict[str, str]], 
     description: str,
-    use_labels: bool = True,
-    use_checklist: bool = True,
+    use_labels: bool = False,
+    use_checklist: bool = False,
     skip_general_checklist: bool = False
 ) -> Tuple[str, List[str]]:
     """Enhance PR description with labels and checklist.
@@ -239,9 +239,9 @@ def enhance_pr_description(
     Args:
         commits: List of commit dictionaries.
         description: Original PR description.
-        use_labels: Whether to add labels.
-        use_checklist: Whether to add checklist.
-        skip_general_checklist: Whether to skip general checklist items.
+        use_labels: Whether to add labels (default: False).
+        use_checklist: Whether to add checklist (default: False).
+        skip_general_checklist: Whether to skip general checklist items (default: False).
         
     Returns:
         Tuple of (enhanced description, labels)
