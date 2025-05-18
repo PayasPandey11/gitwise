@@ -27,6 +27,7 @@
 
 ### Other
 
+- enhance setup.py for flexibility and maintainability
 - improve prompt for better commit messages
 - improve error handling for authentication failures
 - Remove automatic changelog update before pushing

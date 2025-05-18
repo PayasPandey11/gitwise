@@ -53,49 +53,54 @@ def push_command() -> None:
             return
 
         # Push changes
-        with components.show_spinner("Pushing to remote..."):
+        push_spinner = components.show_spinner("Pushing to remote...")
+        with push_spinner:
             result = subprocess.run(
                 ["git", "push", "origin", current_branch],
                 capture_output=True,
                 text=True
             )
+        # Spinner is stopped here upon exiting the 'with' block. 
+        # Adding a small delay or forcing a refresh might be needed if issues persist.
+        # For now, rely on the context manager to stop it cleanly.
+
+        if result.returncode == 0:
+            components.show_success("Changes pushed successfully")
             
-            if result.returncode == 0:
-                components.show_success("Changes pushed successfully")
-                
-                # Only ask about PR after successful push
-                components.show_prompt(
-                    "Would you like to create a pull request?",
-                    options=["Yes", "No"],
-                    default="Yes"
-                )
-                choice = typer.prompt("", type=int, default=1)
-                
-                if choice == 1:  # Yes
-                    components.console.line()
-                    try:
-                        # Ask about PR options
-                        components.show_prompt(
-                            "Would you like to include labels and checklist in the PR?",
-                            options=["Yes", "No"],
-                            default="Yes"
-                        )
-                        include_extras = typer.prompt("", type=int, default=1) == 1
-                        
-                        # Call PR command with user preferences
-                        pr_command(
-                            use_labels=include_extras,
-                            use_checklist=include_extras,
-                            skip_general_checklist=not include_extras,
-                            skip_prompts=True  # Skip prompts since we already asked
-                        )
-                    except Exception as e:
-                        components.show_error(f"Failed to create PR: {str(e)}")
-            else:
-                components.show_error("Failed to push changes")
-                if result.stderr:
-                    components.console.print(result.stderr)
-                return
+            components.console.line() # Ensure clean line before next prompt
+            components.show_prompt(
+                "Would you like to create a pull request?",
+                options=["Yes", "No"],
+                default="Yes"
+            )
+            choice = typer.prompt("", type=int, default=1)
+            
+            if choice == 1:  # Yes
+                components.console.line()
+                try:
+                    # Ask about PR options
+                    # Ensure any spinners within pr_command also stop cleanly
+                    components.show_prompt(
+                        "Would you like to include labels and checklist in the PR?",
+                        options=["Yes", "No"],
+                        default="Yes"
+                    )
+                    include_extras = typer.prompt("", type=int, default=1) == 1
+                    
+                    components.console.line() # Another line break before pr_command execution
+                    pr_command(
+                        use_labels=include_extras,
+                        use_checklist=include_extras,
+                        skip_general_checklist=not include_extras,
+                        skip_prompts=True  # Skip prompts since we already asked
+                    )
+                except Exception as e:
+                    components.show_error(f"Failed to create PR: {str(e)}")
+        else:
+            components.show_error("Failed to push changes")
+            if result.stderr:
+                components.console.print(result.stderr)
+            return
 
     except Exception as e:
         components.show_error(str(e)) 

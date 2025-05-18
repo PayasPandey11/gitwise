@@ -324,13 +324,16 @@ def commit_command(group: bool = True) -> None:
 
         # Check if changes should be grouped
         if group:
-            suggestions = suggest_commit_groups()
+            suggestions = None
+            with components.show_spinner("Analyzing changes for potential commit groups..."):
+                suggestions = suggest_commit_groups()
+                
             if suggestions and len(suggestions) > 1:
                 components.show_section("Suggested Commit Groups")
-                for i, group in enumerate(suggestions, 1):
+                for i, group_suggestion in enumerate(suggestions, 1): # Renamed to avoid conflict
                     components.console.print(f"\n[bold]Group {i}:[/bold]")
-                    components.console.print(f"Files: {', '.join(group['files'])}")
-                    components.console.print(f"Suggested commit: {group['type']}: {group['description']}")
+                    components.console.print(f"Files: {', '.join(group_suggestion['files'])}")
+                    components.console.print(f"Suggested commit: {group_suggestion['type']}: {group_suggestion['description']}")
                 
                 choice = safe_prompt(
                     "Would you like to commit these changes separately, or consolidate them into a single commit?",
