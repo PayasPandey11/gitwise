@@ -63,6 +63,33 @@ def push_command() -> None:
             )
             if not result.stdout.strip():
                 components.show_warning("No commits to push")
+                # After confirming there are no commits to push, still prompt for PR
+                components.console.line()
+                components.show_prompt(
+                    "Would you like to create a pull request?",
+                    options=["Yes", "No"],
+                    default="Yes"
+                )
+                pr_choice = typer.prompt("", type=int, default=1)
+                components.console.line()
+                if pr_choice == 1:
+                    try:
+                        components.show_prompt(
+                            "Would you like to include labels and checklist in the PR?",
+                            options=["Yes", "No"],
+                            default="Yes"
+                        )
+                        extras_choice = typer.prompt("", type=int, default=1)
+                        include_extras = extras_choice == 1
+                        components.console.line()
+                        pr_command(
+                            use_labels=include_extras,
+                            use_checklist=include_extras,
+                            skip_general_checklist=not include_extras,
+                            skip_prompts=False
+                        )
+                    except Exception as e:
+                        components.show_error(f"Failed to create PR: {str(e)}")
                 return
             # Get commits to be pushed
             result = subprocess.run(
