@@ -21,6 +21,7 @@ import os
 import tempfile
 import typer
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.core.git import get_default_remote_branch
 
 console = Console()
 
@@ -95,7 +96,7 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
             # Log a warning but proceed; could be an offline scenario or base_branch is purely local.
             components.show_warning(f"Could not fetch remote state for base branch '{base_branch}'. Commit list might be inaccurate. Error: {fetch_result.stderr.strip()}")
 
-        # Always use origin/main as the base unless explicitly overridden
+        # Always use the detected default remote branch as the base unless explicitly overridden
         effective_base_for_diff = base_branch
 
         diff_range = f"{effective_base_for_diff}..HEAD"
@@ -182,7 +183,11 @@ def pr_command(
             return
 
         # Get base branch
-        base_branch = base or "origin/main"
+        try:
+            base_branch = base or get_default_remote_branch()
+        except Exception as e:
+            components.show_error(f"Could not determine default remote branch: {e}")
+            return
         
         # Get commits since last PR
         components.show_section("Analyzing Changes")

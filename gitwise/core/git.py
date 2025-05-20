@@ -124,4 +124,30 @@ def push_changes() -> bool:
         capture_output=True,
         text=True
     )
-    return result.returncode == 0 
+    return result.returncode == 0
+
+def get_default_remote_branch() -> str:
+    """Detect the default branch of the remote (origin) and return as 'origin/<branch>'."""
+    # Try symbolic-ref first
+    try:
+        result = subprocess.run([
+            "git", "symbolic-ref", "refs/remotes/origin/HEAD"
+        ], capture_output=True, text=True, check=True)
+        ref = result.stdout.strip()
+        if ref.startswith("refs/remotes/origin/"):
+            branch = ref[len("refs/remotes/origin/"):]
+            return f"origin/{branch}"
+    except subprocess.CalledProcessError:
+        pass
+    # Fallback: parse 'git remote show origin'
+    try:
+        result = subprocess.run([
+            "git", "remote", "show", "origin"
+        ], capture_output=True, text=True, check=True)
+        for line in result.stdout.splitlines():
+            if "HEAD branch:" in line:
+                branch = line.split(":", 1)[1].strip()
+                return f"origin/{branch}"
+    except Exception:
+        pass
+    raise RuntimeError("Could not determine the default remote branch (origin). Please check your remote configuration.") 
