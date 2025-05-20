@@ -30,6 +30,7 @@
 
 ### Other
 
+- 
 - Merge pull request #44 from PayasPandey11/fix/ux
 - integrate OpenAI API for generating commit messages and PR content
 - Merge pull request #43 from PayasPandey11/fix/ux
