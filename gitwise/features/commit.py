@@ -4,9 +4,11 @@ import os
 import subprocess
 import sys
 from typing import Optional, List, Dict, Tuple
-from gitwise.llm import generate_commit_message
+from gitwise.llm import get_llm_response
+from gitwise.prompts import COMMIT_MESSAGE_PROMPT
 from gitwise.gitutils import get_staged_diff, get_changed_files, get_staged_files # get_unstaged_files is also in gitutils
 from gitwise.ui import components
+from gitwise.llm.offline import ensure_offline_model_ready
 
 # Import push_command only when needed to avoid circular imports
 def get_push_command():
@@ -210,6 +212,14 @@ def suggest_commit_groups() -> Optional[List[Dict[str, any]]]:
 def commit_command(group: bool = True) -> None:
     """Create a commit, with an option for AI-assisted message generation and change grouping."""
     try:
+        # Pre-check for offline model if not in online mode
+        if os.environ.get("GITWISE_ONLINE") != "1":
+            try:
+                ensure_offline_model_ready()
+            except Exception as e:
+                components.show_error(f"Failed to load offline model: {e}")
+                return
+
         # Initial check for staged files to commit
         # Using get_changed_files (which is git diff --cached --name-only) for paths
         current_staged_files_paths = get_changed_files()
@@ -459,3 +469,7 @@ def commit_command(group: bool = True) -> None:
         components.show_error(f"A critical Git operation failed: {str(e)}")
     except Exception as e:
         components.show_error(f"An unexpected error occurred: {str(e)}") 
+
+def generate_commit_message(diff: str, guidance: str = "") -> str:
+    prompt = COMMIT_MESSAGE_PROMPT.format(diff=diff, guidance=guidance)
+    return get_llm_response(prompt) 

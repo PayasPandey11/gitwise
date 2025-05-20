@@ -1,3 +1,6 @@
+"""DEPRECATED: Use gitwise.llm instead."""
+raise ImportError("gitwise.llm.py is deprecated. Use 'from gitwise.llm import get_llm_response'.")
+
 """LLM integration for GitWise."""
 
 import os
