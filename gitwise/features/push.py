@@ -3,6 +3,7 @@
 import subprocess
 from typing import Optional
 from gitwise.core import git
+from gitwise.core.git import get_default_remote_branch
 from gitwise.ui import components
 from gitwise.features.pr import pr_command
 import typer
@@ -54,10 +55,17 @@ def push_command() -> None:
                 components.show_warning("Push cancelled (no upstream set).")
                 return
 
+        # Detect default remote branch for diffs
+        try:
+            default_remote_branch = get_default_remote_branch()
+        except Exception as e:
+            components.show_error(f"Could not determine default remote branch: {e}")
+            return
+
         # Check if there are commits to push (now that remote is refreshed and tracking is ensured)
         with components.show_spinner("Checking for commits..."):
             result = subprocess.run(
-                ["git", "log", f"origin/{current_branch}..HEAD"],
+                ["git", "log", f"{default_remote_branch}..HEAD"],
                 capture_output=True,
                 text=True
             )
@@ -86,7 +94,8 @@ def push_command() -> None:
                             use_labels=include_extras,
                             use_checklist=include_extras,
                             skip_general_checklist=not include_extras,
-                            skip_prompts=False
+                            skip_prompts=False,
+                            base=default_remote_branch.replace("origin/", "")
                         )
                     except Exception as e:
                         components.show_error(f"Failed to create PR: {str(e)}")
@@ -94,7 +103,7 @@ def push_command() -> None:
                 return
             # Get commits to be pushed
             result = subprocess.run(
-                ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
+                ["git", "log", f"{default_remote_branch}..HEAD", "--oneline"],
                 capture_output=True,
                 text=True
             )
@@ -155,11 +164,13 @@ def push_command() -> None:
                         use_labels=include_extras,
                         use_checklist=include_extras,
                         skip_general_checklist=not include_extras, # Corrected logic here
-                        skip_prompts=False  # CHANGED: Now allows pr_command to run its full interactive flow
+                        skip_prompts=False,
+                        base=default_remote_branch.replace("origin/", "")
                     )
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
                 return
+            return
         else:
             components.show_error("Failed to push changes")
             if result.stderr:

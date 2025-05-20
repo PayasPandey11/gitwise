@@ -5,6 +5,7 @@ import json
 import os
 from typing import List, Dict, Set, Tuple, Optional
 from gitwise.llm import get_llm_response
+from gitwise.core.git import get_default_remote_branch
 
 # Default mapping of commit types to GitHub labels
 DEFAULT_COMMIT_TYPE_LABELS = {
@@ -180,7 +181,7 @@ def get_pr_labels(commits: List[Dict[str, str]], use_custom_labels: bool = True)
     
     return [labels[type_] for type_ in commit_types if type_ in labels]
 
-def get_changed_files(base_branch: str = "origin/main") -> List[str]:
+def get_changed_files(base_branch: str = None) -> List[str]:
     """Get list of files changed in the PR.
     
     Args:
@@ -190,6 +191,12 @@ def get_changed_files(base_branch: str = "origin/main") -> List[str]:
         List of changed file paths.
     """
     import subprocess
+    if base_branch is None:
+        try:
+            base_branch = get_default_remote_branch().replace("origin/", "")
+        except Exception as e:
+            print(f"Error: Could not determine default remote branch for checklist: {e}")
+            return []
     # Ensure base_branch is prefixed with origin/ if not already, for comparison with remote
     # However, for local diffs against a local base branch, origin/ might not be correct.
     # Assuming base_branch parameter is the correct reference for diffing.

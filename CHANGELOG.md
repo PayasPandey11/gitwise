@@ -32,6 +32,10 @@
 
 ### Other
 
+- - Use a concise and descriptive message that accurately reflects the change. - Avoid excessive adjectives or adverbs, as they can be difficult to understand. - Use a clear and descriptive commit title.
+- [gitwise] Add offline LLM inference support
+- - Adds new feature X - Fixes bug in function Y - Updates README.md Z - Adds new test suite with T - Adds new dependency with A
+- Commit messages should be descriptive and provide a summary of the changes being made. Use present tense and avoid jargon or technical terms. Include a short summary of the goal or motivation behind the changes. Avoid including details that can be inferred from the diff.
 - fix(bug): Fixes bug in function that caused unexpected behavior
 - "Merge pull request #44 from PayasPandey11/fix/ux"
 - `Add feature X` instead of `Added feature X`. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257

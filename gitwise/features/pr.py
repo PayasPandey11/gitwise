@@ -21,6 +21,7 @@ import os
 import tempfile
 import typer
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.core.git import get_default_remote_branch
 
 console = Console()
 
@@ -95,23 +96,8 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
             # Log a warning but proceed; could be an offline scenario or base_branch is purely local.
             components.show_warning(f"Could not fetch remote state for base branch '{base_branch}'. Commit list might be inaccurate. Error: {fetch_result.stderr.strip()}")
 
-        # Determine the correct reference for the base branch for comparison.
-        # If base_branch is a simple name like "main", we usually want to compare against "origin/main".
-        # If it already contains "/", like "origin/main", use it as is.
-        # This ensures we're comparing against the fetched remote state.
+        # Always use the detected default remote branch as the base unless explicitly overridden
         effective_base_for_diff = base_branch
-        if "/" not in base_branch:
-            effective_base_for_diff = f"origin/{base_branch}"
-            # However, ensure that this remote ref exists locally after fetch.
-            # `git rev-parse --verify origin/main` would check.
-            # For now, assume fetch makes it available.
-            # A `git rev-parse --verify {effective_base_for_diff}` could be added for robustness.
-        
-        # If fetch failed, effective_base_for_diff (e.g. origin/main) might not be updated or exist.
-        # In such a case, falling back to just `base_branch` (local) might be safer than a non-existent `origin/base_branch`.
-        if fetch_result.returncode != 0:
-             effective_base_for_diff = base_branch # Fallback to local base if fetch failed
-             components.show_warning(f"Using local '{base_branch}' for commit comparison due to fetch issue.")
 
         diff_range = f"{effective_base_for_diff}..HEAD"
         components.console.print(f"[dim]Analyzing commits in range: {diff_range} (Base: '{base_branch}', Effective for diff: '{effective_base_for_diff}')[/dim]")
@@ -197,7 +183,11 @@ def pr_command(
             return
 
         # Get base branch
-        base_branch = base or "main"
+        try:
+            base_branch = base or get_default_remote_branch()
+        except Exception as e:
+            components.show_error(f"Could not determine default remote branch: {e}")
+            return
         
         # Get commits since last PR
         components.show_section("Analyzing Changes")
