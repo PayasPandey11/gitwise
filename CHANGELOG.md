@@ -4,6 +4,7 @@
 
 ### Features
 
+- add .internal/ to .gitignore
 - add meta-level Cursor ruleset
 - generate PR descriptions and changelogs using AI
 - show all operations before commit to improve UX
@@ -29,6 +30,9 @@
 
 ### Other
 
+- Merge pull request #44 from PayasPandey11/fix/ux
+- integrate OpenAI API for generating commit messages and PR content
+- Merge pull request #43 from PayasPandey11/fix/ux
 - truncate diff display to first 20 lines
 - integrate OpenAI API for generating commit messages and PR descriptions
 - remove unused run_git_commit function
@@ -41,8 +45,10 @@
 - Generate AI-enhanced PR descriptions with edit option
 - Allow interactive PR creation flow
 - Generate AI-enhanced PR descriptions with edit option
+- Merge pull request #42 from PayasPandey11/fix/ux
 - Split PR creation into separate function, add skip prompt option
 - generate AI-enhanced PR descriptions and changelogs
+- Merge pull request #41 from PayasPandey11/fix/ux
 - add option to edit PR description before creation
 - generate PR descriptions and changelogs using AI
 - enhance PR description generation
@@ -50,6 +56,7 @@
 - generate AI-enhanced PR descriptions and changelogs
 - Bypass PR creation prompts and always create PR
 - enhance PR description using AI-generated content
+- Merge pull request #40 from PayasPandey11/fix/ux
 - generate changelog and pull request details from templates
 - improve PR description prompt
 - enhance commit list for PR by fetching latest base branch state
@@ -77,9 +84,12 @@
 - improve UX by showing all operations before committing
 - 
 - update changelog and simplify PR creation flow after push
+- Merge pull request #39 from PayasPandey11/fix/ux
 - handle empty commit list and improve error handling
 - improve error handling and user experience when creating PRs
+- Merge pull request #38 from PayasPandey11/fix/ux
 - improve push prompt flow for better user experience
+- Merge pull request #37 from PayasPandey11/fix/ux
 - Avoid circular imports when calling push command
 - adjust push flow for better user experience
 - simplify PR creation flow after pushing changes
@@ -95,33 +105,56 @@
 - improve add command UX
 - add PR title generation and enhance PR description
 - improve add command UX
+- Merge pull request #36 from PayasPandey11/fix/pr
 - add PR title generation and enhance PR description generation
 - improve PR creation flow and error handling
 - add pull request creation functionality
+- Merge pull request #35 from PayasPandey11/fix/pr
 - add changelog generation command
+- Merge pull request #34 from PayasPandey11/fix/pr
+- Merge pull request #33 from PayasPandey11/fix/pr
 - 
 - add changelog generation command
+- Merge pull request #32 from PayasPandey11/fix/pr
 - enhance add command UI and workflow
+- Merge pull request #31 from PayasPandey11/fix/pr
 - add changelog generation command
+- Merge pull request #30 from PayasPandey11/fix/pr
 - enhance add command UI and workflow
 - simplify add command flow and prompts
 - enhance add command UI with diff table
 - enhance remote branch handling for commit retrieval
 - enhance add command workflow and UI
+- Merge pull request #29 from PayasPandey11/fix/pr
 - enhance add command with smart file preview
+- Merge pull request #28 from PayasPandey11/fix/pr
 - enhance add command workflow
 - enhance add command with smart file preview
+- Merge pull request #27 from PayasPandey11/fix/pr
 - enhance add command workflow
 - enhance add command with file staging and commit prep
+- Merge pull request #26 from PayasPandey11/feat/docs-and-tests
 - enhance Makefile targets
 - update CI workflow
+- Merge pull request #25 from PayasPandey11/feat/docs-and-tests
 - add unit tests for pr command and helpers
 - add tests for commit feature
 - simplify add and commit commands, add changelog generation
 - add GitHub Actions workflow for testing and deployment
+- Merge pull request #24 from PayasPandey11/tests
 - enhance changelog generation
 - simplify add and commit commands
+- Merge pull request #23 from PayasPandey11/tests
 - enhance feature descriptions and add changelog guide
+- Merge pull request #22 from PayasPandey11/tests
 - add version parsing and comparison
 - add --create-tag option to changelog command
+- Merge pull request #21 from PayasPandey11/tests
+- Merge pull request #20 from PayasPandey11/tests
+- Merge pull request #19 from PayasPandey11/tests
+- Merge pull request #18 from PayasPandey11/tests
+- Merge pull request #17 from PayasPandey11/tests
+- Merge pull request #16 from PayasPandey11/tests
+- Merge pull request #15 from PayasPandey11/tests
+- Merge pull request #14 from PayasPandey11/tests
 
