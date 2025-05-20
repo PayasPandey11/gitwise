@@ -1,0 +1,108 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# 🧠 Cursor Ruleset
+
+This document defines how Cursor AI should behave and how developers should structure their workflow for efficient, modular, and clean development.
+
+---
+
+## ⚙️ IDE Behavior Rules (Cursor AI)
+
+### 📐 Structure & Organization
+- Always propose the file/folder/component structure before writing code.
+- Follow modular design principles: separate UI, logic, API, state, and utils.
+- Avoid boilerplate unless explicitly requested.
+
+### 🛠️ Code Generation
+- Generate human readable and easily understable code. Like humans write.
+- Use simple code which is easy to debug.
+- Generate only what is asked for. No extras.
+- Never modify unrelated files or code.
+- Use clean, idiomatic code aligned with the target tech stack.
+- Respect project conventions and naming styles.
+
+### 🔄 Iteration & Control
+- Pause after each step and ask for confirmation before proceeding.
+- Ask clarifying questions if requirements are unclear.
+
+### 🧪 Comments & Testability
+- Comment only when necessary (for complex or non-obvious logic).
+- Provide usage examples or test stubs when helpful.
+
+### 🚫 Restrictions
+- Never introduce new dependencies unless explicitly approved.
+- Do not refactor or make global changes without permission.
+- Keep responses short and focused unless teaching is requested.
+
+---
+
+## 🧭 Coding Workflow Rules (Human + Cursor)
+
+### 1. Start With Clear Intent
+Each new task should include:
+```
+[Feature]: Descriptive title  
+[Goal]: What the feature should accomplish  
+[Scope]: What's included/excluded  
+```
+
+### 2. Define Structure First
+Always begin by requesting:
+```
+Follow the Cursor Rules. Propose structure for [Feature Name].
+```
+Approve or edit the structure before writing any code.
+
+### 3. Build in Confirmed Steps
+Development must proceed in small, reviewed steps:
+1. Approve structure  
+2. Build one logical part  
+3. Confirm before moving on
+
+### 4. Test and Validate As You Go
+- Frontend: Visual check or dev server
+- Backend: Endpoint test
+- Logic/agents: Output verification
+
+Ask:
+```
+Generate a usage/test example for this code.
+```
+
+### 5. Commit in Small, Named Chunks
+Use atomic, well-labeled commits:
+```
+feat(auth): add login form  
+fix(user): handle null profile issue
+```
+
+### 6. Keep Refactors Separate
+Don’t refactor during feature development. Use separate tasks or PRs.
+
+### 7. Review Loop With Cursor or Peers
+Use:
+```
+Review this file for clarity and best practices.
+```
+or
+```
+Suggest improvements using the Cursor Rules.
+```
+
+### 8. Wrap With a Completion Checklist
+- ✅ Structure matches approved plan  
+- ✅ Feature logic is complete and testable  
+- ✅ No unrelated changes  
+- ✅ Code is clean and modular  
+- ✅ No leftover TODOs, logs, or mocks
+
+---
+
+## 🎯 Final Objective
+
+Use Cursor as a precise, minimalistic AI pair programmer.  
+This ruleset ensures clarity, control, and scalable software development.
