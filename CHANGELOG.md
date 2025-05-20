@@ -31,6 +31,8 @@
 
 ### Other
 
+- "Merge pull request #44 from PayasPandey11/fix/ux"
+- `Add feature X` instead of `Added feature X`. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257
 - Please include a clear description of the change you made. Ensure that your message is clear, concise, and follows the conventions followed by other open source projects. Additionally, please include relevant issues or pull requests that are included in the commit.
 - 
 - Merge pull request #44 from PayasPandey11/fix/ux
