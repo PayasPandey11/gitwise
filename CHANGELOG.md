@@ -32,6 +32,7 @@
 
 ### Other
 
+- Git commit messages are written as a concise description of the changes made. They should be between 50 and 72 characters.
 - - Use a concise and descriptive message that accurately reflects the change. - Avoid excessive adjectives or adverbs, as they can be difficult to understand. - Use a clear and descriptive commit title.
 - [gitwise] Add offline LLM inference support
 - - Adds new feature X - Fixes bug in function Y - Updates README.md Z - Adds new test suite with T - Adds new dependency with A

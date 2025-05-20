@@ -315,7 +315,31 @@ def _create_gh_pr(title: str, body: str, base: str, labels: List[str], draft: bo
     components.show_section("Creating Pull Request via gh CLI")
     with components.show_spinner("Running `gh pr create`...") as progress: # Changed spinner message
         try:
-            # print("debug: trying to create PR with gh") # For local debugging if needed
+            # Check if a PR already exists for this branch into the base branch
+            current_branch_result = subprocess.run([
+                "git", "rev-parse", "--abbrev-ref", "HEAD"
+            ], capture_output=True, text=True, check=True)
+            current_branch = current_branch_result.stdout.strip()
+            pr_list_cmd = [
+                "gh", "pr", "list",
+                "--head", current_branch,
+                "--base", base,
+                "--state", "open",
+                "--json", "url"
+            ]
+            pr_list_result = subprocess.run(
+                pr_list_cmd,
+                capture_output=True,
+                text=True
+            )
+            if pr_list_result.returncode == 0 and pr_list_result.stdout.strip():
+                import json
+                pr_list = json.loads(pr_list_result.stdout)
+                if pr_list:
+                    pr_url = pr_list[0].get("url")
+                    components.show_success(f"A pull request for this branch already exists: {pr_url}")
+                    return
+            # If no existing PR, proceed to create
             cmd = [
                 "gh", "pr", "create",
                 "--title", title, 
@@ -326,13 +350,11 @@ def _create_gh_pr(title: str, body: str, base: str, labels: List[str], draft: bo
                 cmd.append("--draft")
             for label in labels:
                 cmd.extend(["--label", label])
-            
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True
             )
-    
             if result.returncode == 0:
                 components.show_success("Pull request created successfully by gh CLI.")
                 components.console.print(result.stdout)
@@ -346,7 +368,6 @@ def _create_gh_pr(title: str, body: str, base: str, labels: List[str], draft: bo
                 if result.stdout: # Log stdout too if stderr is empty but command failed
                     error_details += f"\nStdout:\n{result.stdout}"
                 components.console.print(error_details)
-                # Not returning anything specific as pr_command doesn't use it.
         except FileNotFoundError:
             components.show_error("GitHub CLI (gh) not found. Please install it to create PRs.")
             components.console.print("\n[dim]You can install it from: https://cli.github.com/[/dim]")
