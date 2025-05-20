@@ -23,6 +23,7 @@
 
 ### Chores
 
+- [TITLE]
 - add changelog generation command
 - add MANIFEST.in for packaging
 - add CHANGELOG.md
@@ -30,6 +31,7 @@
 
 ### Other
 
+- Please include a clear description of the change you made. Ensure that your message is clear, concise, and follows the conventions followed by other open source projects. Additionally, please include relevant issues or pull requests that are included in the commit.
 - 
 - Merge pull request #44 from PayasPandey11/fix/ux
 - integrate OpenAI API for generating commit messages and PR content
