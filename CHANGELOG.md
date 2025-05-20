@@ -4,6 +4,7 @@
 
 ### Features
 
+- add meta-level Cursor ruleset
 - generate PR descriptions and changelogs using AI
 - show all operations before commit to improve UX
 
@@ -28,6 +29,17 @@
 
 ### Other
 
+- truncate diff display to first 20 lines
+- integrate OpenAI API for generating commit messages and PR descriptions
+- remove unused run_git_commit function
+- Generate PR description using centralized function
+- generate conventional commit message interactively with AI assistance
+- intelligently insert new version content into changelog
+- add support for getting diff of specific staged file
+- Simplify add command and improve error handling
+- Simplify pager handling for git subcommand
+- Generate AI-enhanced PR descriptions with edit option
+- Allow interactive PR creation flow
 - Generate AI-enhanced PR descriptions with edit option
 - Split PR creation into separate function, add skip prompt option
 - generate AI-enhanced PR descriptions and changelogs
