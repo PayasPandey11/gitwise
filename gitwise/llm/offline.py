@@ -1,6 +1,12 @@
 """Offline LLM support for GitWise (default mode, using microsoft/phi-2)."""
 import os
 import sys
+import warnings
+import contextlib
+import io
+
+# Suppress HuggingFace tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 MODEL_NAME = os.environ.get("GITWISE_OFFLINE_MODEL", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
@@ -42,9 +48,13 @@ else:
                 print(f"[gitwise] Download failed: {e}")
                 sys.exit(1)
         print(f"[gitwise] Loading offline model '{MODEL_NAME}' (this may take a minute the first time)...")
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype=torch.float32)
-        _pipe = pipeline("text-generation", model=_model, tokenizer=_tokenizer, device=-1)
+        # Suppress transformers/tokenizers info and warnings during model load
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+                _model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype=torch.float32)
+                _pipe = pipeline("text-generation", model=_model, tokenizer=_tokenizer, device=-1)
         _model_ready = True
 
     def get_llm_response(prompt: str, **kwargs) -> str:
@@ -52,7 +62,8 @@ else:
         # At this point, model is ready. Only now should any spinner/analysis message be shown by the caller.
         prompt = prompt[-2048:]
         try:
-            outputs = _pipe(prompt, max_new_tokens=128, do_sample=True, temperature=0.7)
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                outputs = _pipe(prompt, max_new_tokens=128, do_sample=True, temperature=0.7)
             return outputs[0]["generated_text"][len(prompt):].strip()
         except Exception as e:
             raise RuntimeError(f"Offline LLM inference failed: {e}")
