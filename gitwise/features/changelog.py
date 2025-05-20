@@ -13,6 +13,7 @@ import json
 from gitwise.core import git
 from gitwise.ui import components
 import tempfile
+from gitwise.llm.offline import ensure_offline_model_ready
 
 class VersionInfo(NamedTuple):
     """Version information with pre-release and build metadata."""
@@ -436,6 +437,14 @@ def changelog_command(
         format: Output format (markdown or json)
         auto_update: Whether to automatically update the changelog without prompts
     """
+    # Pre-check for offline model if not in online mode
+    if os.environ.get("GITWISE_ONLINE") != "1":
+        try:
+            ensure_offline_model_ready()
+        except Exception as e:
+            components.show_error(f"Failed to load offline model: {e}")
+            return
+
     try:
         if auto_update and not version:
             # If auto-update is called (likely by a hook) and no version is specified,

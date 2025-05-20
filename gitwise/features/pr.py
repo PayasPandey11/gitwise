@@ -6,9 +6,9 @@ import re
 from typing import List, Dict, Tuple, Optional
 # from git import Repo, Commit # No longer needed
 # from gitwise.gitutils import get_current_branch # Using core.git.get_current_branch
-from gitwise.llm import generate_pr_title, get_llm_response, generate_pr_description as llm_generate_pr_description
-from gitwise.features.pr_enhancements import enhance_pr_description, get_pr_labels
+from gitwise.llm import get_llm_response
 from gitwise.prompts import PR_DESCRIPTION_PROMPT
+from gitwise.features.pr_enhancements import enhance_pr_description, get_pr_labels
 from rich.console import Console
 # from rich.panel import Panel # Unused
 # from rich.table import Table # Unused
@@ -20,6 +20,7 @@ from gitwise.ui import components
 import os
 import tempfile
 import typer
+from gitwise.llm.offline import ensure_offline_model_ready
 
 console = Console()
 
@@ -138,6 +139,28 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
         components.show_error(f"Failed to get commits: {str(e)}")
         return []
 
+def generate_pr_title(commits: List[Dict[str, str]]) -> str:
+    if not commits:
+        return ""
+    first_commit = commits[0]
+    title = first_commit["message"].split("\n")[0]
+    if len(commits) > 1:
+        title = f"{title} (+{len(commits)-1} more commits)"
+    return title
+
+def generate_pr_description(commits: List[Dict[str, str]], repo_url: str, repo_name: str, guidance: str = "") -> str:
+    formatted_commits = "\n".join([
+        f"Commit: {commit['message']}\nAuthor: {commit['author']}\n"
+        for commit in commits
+    ])
+    prompt = PR_DESCRIPTION_PROMPT.format(
+        commits=formatted_commits,
+        repo_url=repo_url,
+        repo_name=repo_name,
+        guidance=guidance
+    )
+    return get_llm_response(prompt)
+
 def pr_command(
     use_labels: bool = False,
     use_checklist: bool = False,
@@ -159,6 +182,14 @@ def pr_command(
         skip_prompts: Whether to skip interactive prompts (used when called from push)
     """
     try:
+        # Pre-check for offline model if not in online mode
+        if os.environ.get("GITWISE_ONLINE") != "1":
+            try:
+                ensure_offline_model_ready()
+            except Exception as e:
+                components.show_error(f"Failed to load offline model: {e}")
+                return
+
         # Get current branch
         current_branch = git.get_current_branch()
         if not current_branch:
@@ -196,7 +227,7 @@ def pr_command(
 
         try:
             with components.show_spinner("Analyzing changes...") as progress:
-                raw_pr_body = llm_generate_pr_description(commits, repo_url=repo_url, repo_name=repo_name) 
+                raw_pr_body = generate_pr_description(commits, repo_url, repo_name) 
                 if not raw_pr_body:
                     raise ValueError("Failed to generate PR description (empty LLM response)")
                 pr_body = _clean_pr_body(raw_pr_body)
@@ -212,7 +243,7 @@ def pr_command(
             # Try one more time
             try:
                 with components.show_spinner("Retrying...") as progress:
-                    raw_pr_body = llm_generate_pr_description(commits, repo_url=repo_url, repo_name=repo_name)
+                    raw_pr_body = generate_pr_description(commits, repo_url, repo_name)
                     if not raw_pr_body:
                         components.show_error("Failed to generate PR description again (empty LLM response)")
                         return

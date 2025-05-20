@@ -20,6 +20,26 @@ GitWise aims to make your `add -> commit -> push -> PR` cycle more efficient and
 - **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
 - **⚙️ Git Command Passthrough**: Use `gitwise` as a wrapper for any `git` command (e.g., `gitwise status`, `gitwise log`).
 
+## 🧠 Offline Mode (Local LLM)
+
+GitWise runs all AI features fully offline by default using a local model (`microsoft/phi-2`). This is fast, private, and works great on MacBooks (Apple Silicon and Intel).
+
+### How offline mode works:
+
+- **No setup required:** The first time you use any AI feature (e.g., `gitwise commit`), GitWise will automatically prompt you to download the model (~1.7GB) if it is not already present.
+- **Manual download (optional):** Advanced users can pre-download the model with:
+  ```bash
+  gitwise offline-model
+  ```
+- **After download:** All AI features will use the local model by default. To force online mode, set the environment variable:
+  ```bash
+  export GITWISE_ONLINE=1
+  ```
+
+**Tip:**
+- You can override the model with `GITWISE_OFFLINE_MODEL` (e.g., TinyLlama).
+- If you see warnings about OpenSSL/LibreSSL, they are safe to ignore for most users.
+
 ## Installation
 
 Ensure you have Python 3.8+ installed.

@@ -1,8 +1,6 @@
 """Command-line interface for GitWise."""
 
 import typer
-import sys
-import os
 import subprocess
 from typing import List
 from gitwise.ui import components
@@ -11,14 +9,7 @@ from gitwise.features.commit import commit_command
 from gitwise.features.push import push_command
 from gitwise.features.pr import pr_command
 from gitwise.features.changelog import changelog_command
-
-# Define command categories with emojis
-# COMMIT_COMMANDS = {
-#     "commit": "Create a commit with AI-generated message",
-#     "push": "Push changes and optionally create a PR",
-#     "pr": "Create a pull request with AI-generated description",
-#     "changelog": "Generate a changelog from commits"
-# }
+import sys
 
 # Create the main app
 app = typer.Typer(
@@ -36,6 +27,30 @@ app = typer.Typer(
     """,
     add_completion=False
 )
+
+def check_and_install_offline_deps():
+    missing = []
+    try:
+        import transformers
+    except ImportError:
+        missing.append('transformers')
+    try:
+        import torch
+    except ImportError:
+        missing.append('torch')
+    if missing:
+        print(f"[gitwise] Required dependencies for offline mode are missing: {', '.join(missing)}")
+        auto = input("Would you like to install them now? [Y/n]: ").strip().lower()
+        if auto in ('', 'y', 'yes'):
+            cmd = [sys.executable, '-m', 'pip', 'install'] + missing
+            print(f"[gitwise] Running: {' '.join(cmd)}")
+            subprocess.run(cmd)
+            print("[gitwise] Dependencies installed! Please re-run your command.")
+        else:
+            print("[gitwise] Cannot proceed without required dependencies. Exiting.")
+        sys.exit(1)
+
+check_and_install_offline_deps()
 
 # Add commands
 @app.command()
@@ -139,6 +154,13 @@ def git(
     except Exception as e:
         components.show_error(str(e))
         raise typer.Exit(code=1)
+
+@app.command("offline-model", help="Check and download the offline LLM model for offline mode.")
+def offline_model_cmd():
+    """Check/download the offline LLM model (microsoft/phi-2 by default)."""
+    from gitwise.llm.download import download_offline_model
+    download_offline_model()
+    raise typer.Exit()
 
 def main() -> None:
     """Main entry point for the application."""
