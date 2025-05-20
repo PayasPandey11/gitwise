@@ -23,6 +23,7 @@
 
 ### Chores
 
+- - Ensure your commit message is clear. - Use a concise subject line. - Keep the message short and to the point. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257 - Please include a clear description of the change you made. Ensure that your message is clear, conc
 - [TITLE]
 - add changelog generation command
 - add MANIFEST.in for packaging
@@ -31,6 +32,7 @@
 
 ### Other
 
+- fix(bug): Fixes bug in function that caused unexpected behavior
 - "Merge pull request #44 from PayasPandey11/fix/ux"
 - `Add feature X` instead of `Added feature X`. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257
 - Please include a clear description of the change you made. Ensure that your message is clear, concise, and follows the conventions followed by other open source projects. Additionally, please include relevant issues or pull requests that are included in the commit.
