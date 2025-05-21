@@ -84,10 +84,12 @@ def add_command(
 
                 if action == "commit":
                     commit_command()
-                    # After commit, offer to push
+                    # After commit, offer to push only if PR was not created
                     if git.get_current_branch():
                         if typer.confirm("Push these changes?", default=True):
                             push_command()
+                            # If push_command creates a PR, it will return after PR. Break loop.
+                            break
                     break
                 elif action == "diff":
                     full_diff = git.get_staged_diff()

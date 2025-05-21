@@ -41,6 +41,12 @@
 
 ### Chores
 
+- Add LLM-based commit message and PR description generation
+- Add prompt for generating Git commit messages
+- Add LLM-based PR description generation
+- Add generate_commit_message() using LLM prompt only
+- Add AI-generated commit messages and PR descriptions
+- Enhance PR description template
 - Add PR description generation using LLM
 - Add AI-generated commit messages to CHANGELOG
 - Refactor commit message template
