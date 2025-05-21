@@ -122,7 +122,41 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
 
 def get_pr_commits(base_branch: str) -> List[Dict]:
     """Return commits unique to the current branch (not yet merged into base_branch)."""
-    return get_commits_since_last_pr(base_branch)
+    import subprocess
+    from gitwise.ui import components
+    try:
+        # Find the merge base (common ancestor) between base_branch and HEAD
+        merge_base_result = subprocess.run([
+            "git", "merge-base", base_branch, "HEAD"
+        ], capture_output=True, text=True)
+        if merge_base_result.returncode != 0 or not merge_base_result.stdout.strip():
+            components.show_error(f"Could not determine merge base with {base_branch}: {merge_base_result.stderr.strip()}")
+            return []
+        merge_base = merge_base_result.stdout.strip()
+
+        # Get commits in HEAD that are not in base_branch (i.e., not reachable from merge base)
+        log_range = f"{merge_base}..HEAD"
+        components.console.print(f"[dim]Analyzing commits in range: {log_range} (Base: '{base_branch}', Merge base: '{merge_base}')[/dim]")
+
+        result = subprocess.run(
+            ["git", "log", log_range, "--pretty=format:%H|%s|%an"],
+            capture_output=True,
+            text=True
+        )
+        if not result.stdout.strip():
+            return []
+        commits = []
+        for line in result.stdout.strip().split('\n'):
+            hash_, message, author = line.split('|')
+            commits.append({
+                'hash': hash_,
+                'message': message,
+                'author': author
+            })
+        return commits
+    except Exception as e:
+        components.show_error(f"Failed to get commits: {str(e)}")
+        return []
 
 def generate_pr_title(commits: List[Dict]) -> str:
     """Generate a PR title from a list of commits."""
