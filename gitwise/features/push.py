@@ -179,10 +179,12 @@ def push_command() -> None:
                         skip_prompts=False,
                         base=default_remote_branch.replace("origin/", "")
                     )
+                    # End flow after PR creation
                     return
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
                     return
+            # End flow after PR prompt
             return
         else:
             components.show_error("Failed to push changes")
