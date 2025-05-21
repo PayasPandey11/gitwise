@@ -50,6 +50,15 @@ def add_command(
             components.show_section("Staged Changes")
             components.show_files_table(staged)
 
+            # Show current LLM backend to the user
+            backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+            backend_display = {
+                "ollama": "Ollama (local server)",
+                "offline": "Offline (local model)",
+                "online": "Online (OpenRouter)"
+            }.get(backend, backend)
+            components.show_section(f"[AI] LLM Backend: {backend_display}")
+
             while True:
                 options = [
                     ("commit", "Create commit with these changes"),
