@@ -7,10 +7,21 @@ from gitwise.core.git import get_default_remote_branch
 from gitwise.ui import components
 from gitwise.features.pr import pr_command
 import typer
+from gitwise.config import get_llm_backend, load_config, ConfigError
 
 def push_command() -> None:
     """Push changes and optionally create a PR."""
     try:
+        # Config check
+        try:
+            load_config()
+        except ConfigError as e:
+            components.show_error(str(e))
+            if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
+                from gitwise.cli.init import init_command
+                init_command()
+            return
+
         # Get current branch
         current_branch = git.get_current_branch()
         if not current_branch:
