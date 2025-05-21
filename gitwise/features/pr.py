@@ -23,6 +23,7 @@ import typer
 from gitwise.llm.offline import ensure_offline_model_ready
 from gitwise.core.git import get_default_remote_branch
 from gitwise.config import get_llm_backend, load_config, ConfigError
+from gitwise.features.pr_templates import render_pr_description
 
 console = Console()
 
@@ -136,18 +137,20 @@ def generate_pr_title(commits: List[Dict]) -> str:
 def generate_pr_description(
     commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
-    """Generate a PR description using the LLM, given commits and repo info."""
-    formatted_commits = "\n".join([
-        f"Commit: {commit['message']}\nAuthor: {commit['author']}\n"
-        for commit in commits
-    ])
-    prompt = PR_DESCRIPTION_PROMPT.format(
-        commits=formatted_commits,
-        repo_url=repo_url,
-        repo_name=repo_name,
-        guidance=guidance
+    """Generate a PR description using the template, given commits and repo info."""
+    # For now, use the first commit message as summary, and leave motivation/checklist empty.
+    pr_title = commits[0]["message"].split("\n")[0] if commits else "Pull Request"
+    summary = pr_title
+    # TODO: Optionally use LLM to generate summary/motivation/checklist if needed
+    motivation = ""
+    checklist = ""
+    return render_pr_description(
+        pr_title=pr_title,
+        summary=summary,
+        commits=commits,
+        motivation=motivation,
+        checklist=checklist
     )
-    return get_llm_response(prompt)
 
 def create_github_pr(
     title: str, body: str, base: str, labels: List[str], draft: bool = False
