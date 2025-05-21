@@ -39,7 +39,11 @@ setup(
         "GitPython>=3.1.0",
         "transformers>=4.36.0",
         "torch>=2.0.0",
+        # 'requests' is optional for Ollama backend, but recommended for better HTTP support
     ],
+    extras_require={
+        "ollama": ["requests>=2.0.0"],
+    },
     entry_points={
         "console_scripts": [
             "gitwise=gitwise.cli:main",
@@ -51,4 +55,7 @@ setup(
         "Source": "https://github.com/PayasPandey11/gitwise",
         "Documentation": "https://github.com/PayasPandey11/gitwise/blob/main/README.md",
     },
-) 
+)
+
+# Post-install message for user
+print("\n[gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online.\n") 
