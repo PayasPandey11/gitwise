@@ -4,6 +4,7 @@
 
 ### Features
 
+- update OpenRouter API key
 - Add config module for loading and saving GitWise settings
 - add Gitwise configuration file
 - add .internal/ to .gitignore
@@ -34,6 +35,9 @@
 
 ### Other
 
+- load OpenRouter API key from config file or env var
+- streamline push flow by ending after PR creation
+- add config module for loading and saving GitWise settings
 - clarify changelog generation prompt guidance
 - Simplify LLM backend routing logic
 - add config check before pushing changes

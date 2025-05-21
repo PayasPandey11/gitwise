@@ -36,5 +36,9 @@ def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]]) -> st
         return response.choices[0].message.content.strip()
     except Exception as e:
         if hasattr(e, 'status_code') and e.status_code == 401:
-            raise RuntimeError("Authentication failed (401). Please set OPENROUTER_API_KEY.") from e
+            raise RuntimeError(
+                "Authentication failed (401). Your OpenRouter API key was found, but was rejected by the server. "
+                "This may mean your key is invalid, disabled, revoked, a provisioning key, or you lack access to the requested model. "
+                "Please check your OpenRouter dashboard or try generating a new key."
+            ) from e
         raise RuntimeError(f"Error getting LLM response: {str(e)}") from e 
