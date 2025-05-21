@@ -20,25 +20,48 @@ GitWise aims to make your `add -> commit -> push -> PR` cycle more efficient and
 - **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
 - **⚙️ Git Command Passthrough**: Use `gitwise` as a wrapper for any `git` command (e.g., `gitwise status`, `gitwise log`).
 
-## 🧠 Offline Mode (Local LLM)
+## 🧠 Local LLM Mode (Ollama Default)
 
-GitWise runs all AI features fully offline by default using a local model (`microsoft/phi-2`). This is fast, private, and works great on MacBooks (Apple Silicon and Intel).
+GitWise now uses [Ollama](https://ollama.com/) as the **default** backend for all local AI features. This provides fast, private, and fully offline LLM inference.
 
-### How offline mode works:
+### How Ollama mode works:
 
-- **No setup required:** The first time you use any AI feature (e.g., `gitwise commit`), GitWise will automatically prompt you to download the model (~1.7GB) if it is not already present.
-- **Manual download (optional):** Advanced users can pre-download the model with:
+- **Ollama must be running locally** (see [Ollama install docs](https://ollama.com/download)).
+- By default, GitWise sends prompts to Ollama at `http://localhost:11434` using the model specified by `OLLAMA_MODEL` (default: `llama3`).
+- If Ollama is not running or not available, GitWise will automatically fall back to its previous offline backend (e.g., `microsoft/phi-2`).
+- You can override the backend selection with the environment variable:
   ```bash
-  gitwise offline-model
+  export GITWISE_LLM_BACKEND=ollama   # (default)
+  export GITWISE_LLM_BACKEND=offline  # Use built-in offline model
+  export GITWISE_LLM_BACKEND=online   # Use OpenRouter/online LLM
   ```
-- **After download:** All AI features will use the local model by default. To force online mode, set the environment variable:
+- To change the Ollama model:
   ```bash
-  export GITWISE_ONLINE=1
+  export OLLAMA_MODEL="llama3"  # or any model you have pulled in Ollama
   ```
 
 **Tip:**
-- You can override the model with `GITWISE_OFFLINE_MODEL` (e.g., TinyLlama).
-- If you see warnings about OpenSSL/LibreSSL, they are safe to ignore for most users.
+- If you see connection errors, make sure the Ollama server is running locally and the model is available. See [Ollama troubleshooting](https://ollama.com/docs/troubleshooting) for help.
+- You can still use the previous offline mode by setting `GITWISE_LLM_BACKEND=offline`.
+
+## Ollama Troubleshooting & FAQ
+
+**Q: What happens if Ollama is not installed or not running?**
+- GitWise will automatically fall back to its offline backend (e.g., `microsoft/phi-2`) and show a warning. No AI features will work with Ollama until it is running.
+
+**Q: What if the specified model (e.g., `llama2:latest`) is not available in Ollama?**
+- Ollama will return an error. You should pull the model with:
+  ```bash
+  ollama pull llama2
+  ```
+  or the appropriate model name.
+
+**Q: Do I need the `requests` library?**
+- GitWise will use `requests` for Ollama HTTP calls if available (recommended for best compatibility). If not, it will fall back to Python's standard library HTTP support.
+- To ensure requests is installed:
+  ```bash
+  pip install .[ollama]
+  ```
 
 ## Installation
 
