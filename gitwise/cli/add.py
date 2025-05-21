@@ -91,6 +91,9 @@ def add_command(
                             if pr_or_pushed:
                                 # If PR was created or already exists, end the flow
                                 break
+                            # If not, continue (e.g., push failed, no PR created)
+                        else:
+                            break
                     break
                 elif action == "diff":
                     full_diff = git.get_staged_diff()
