@@ -4,6 +4,14 @@
 
 ### Features
 
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- add config module for loading and saving GitWise settings
 - update OpenRouter API key
 - Add config module for loading and saving GitWise settings
 - add Gitwise configuration file
@@ -11,6 +19,7 @@
 - add meta-level Cursor ruleset
 - generate PR descriptions and changelogs using AI
 - show all operations before commit to improve UX
+- add new feature (placeholder message)
 
 ### Documentation
 
@@ -19,6 +28,12 @@
 - add API documentation for GitWise
 - add contributing guidelines
 - add contributor covenant code of conduct
+- update README with new changelog command
+- update author and contact information in README, setup.py, and OpenAI API calls
+
+### Refactor
+
+- update AI model to GPT for commit message generation
 
 ### Tests
 
@@ -26,15 +41,29 @@
 
 ### Chores
 
+- Add PR description generation using LLM
+- Add AI-generated commit messages to CHANGELOG
+- Refactor commit message template
+- Add AI-generated commit messages to CHANGELOG
+- remove .gitwise config from repository
 - - Ensure your commit message is clear. - Use a concise subject line. - Keep the message short and to the point. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257 - Please include a clear description of the change you made. Ensure that your message is clear, conc
 - [TITLE]
 - add changelog generation command
 - add MANIFEST.in for packaging
 - add CHANGELOG.md
 - add CHANGELOG.md
+- add MIT license file
 
 ### Other
 
+- Simplify render_commit_message parameters
+- Enhance commit message generation using LLM
+- improve PR creation flow and commit analysis
+- add .gitwise directory to ignored paths
+- Merge pull request #53 from PayasPandey11/setup
+- Improve OpenRouter API key error message
+- update OpenRouter API key
+- Merge pull request #52 from PayasPandey11/setup
 - load OpenRouter API key from config file or env var
 - streamline push flow by ending after PR creation
 - add config module for loading and saving GitWise settings
@@ -204,10 +233,70 @@
 - add --create-tag option to changelog command
 - Merge pull request #21 from PayasPandey11/tests
 - Merge pull request #20 from PayasPandey11/tests
+- enhance add command and update CLI
 - Merge pull request #19 from PayasPandey11/tests
+- make labels and checklist opt-in
+- improve PR command options
+- add PR enhancement features
+- enhance PR creation with labels and checklist
 - Merge pull request #18 from PayasPandey11/tests
+- add prompts for commit messages and PR descriptions
+- add prompts and refactor commit message generation
 - Merge pull request #17 from PayasPandey11/tests
+- implement PR creation using GitHub CLI
+- extract LLM API call to separate function
+- simplify generate_pr_description function
+- simplify get_commit_history function
+- simplify PR command, remove GitHub CLI integration
+- pass group flag to commit_command based on user input
+- update get_commit_history to compare against remote
 - Merge pull request #16 from PayasPandey11/tests
+- add smart commit grouping option
 - Merge pull request #15 from PayasPandey11/tests
+- add license and project URLs
+- update analyze_changes to group related file changes
+- add MIT license badge
 - Merge pull request #14 from PayasPandey11/tests
+- Add stage_files and unstage_files functions for selective staging
+- Update commit command description
+- Merge pull request #13 from PayasPandey11/new_1
+- simplify get_commit_history to use main..HEAD
+- Merge pull request #12 from PayasPandey11/new_1
+- update installation instructions, add Makefile commands, and troubleshooting section
+- Merge pull request #11 from PayasPandey11/new_1
+- Simplify catch-all command handling
+- Merge pull request #10 from PayasPandey11/new_1
+- add Makefile, update README, and update dependencies
+- Merge pull request #9 from PayasPandey11/new_1
+- switch to OpenRouter API and Claude model
+- Merge pull request #8 from PayasPandey11/new_1
+- Improve error handling in 'add' command
+- Merge pull request #7 from PayasPandey11/new_1
+- Updated comments in llm.py to focus on code changes, not functionality or features. Updated generation of PR description to emphasize functionality and features, not code changes.
+- Merge pull request #6 from PayasPandey11/new_1
+- Improve gitwise CLI command handling
+- Merge pull request #5 from PayasPandey11/new_1
+- Enhance gitwise CLI for direct git command usage
+- Merge pull request #4 from PayasPandey11/new_1
+- improve commit message guidelines
+- Merge pull request #3 from PayasPandey11/new_1
+- add command categories for gitwise
+- Merge pull request #2 from PayasPandey11/new_1
+- Ensure proper exit code when no git command is provided
+- prompt user to create pull request if not on main branch
+- Add setup.py for project configuration
+- Merge pull request #1 from PayasPandey11/dev
+- Improve error messages for no commits found
+- improve commit message to include branch details
+- Add validation checks before creating a pull request
+- add command for creating pull requests
+- improve commit message generation logic
+- implement user authentication system
+- Add push command to handle pushing changes to remote repository.
+- Refactor git push logic to allow pushing to different branches
+- Add option to push changes after committing.
+- Refactor CLI to support running as a script from gitwise/ directory.
+- Add AI-powered git assistant for generating smart commit messages, PR descriptions, and changelogs using open-source LLMs.
+- Generate commit message using BitNet LLM
+- Initial commit
 

@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple, Optional
 # from git import Repo, Commit # No longer needed
 # from gitwise.gitutils import get_current_branch # Using core.git.get_current_branch
 from gitwise.llm import get_llm_response
-from gitwise.prompts import PR_DESCRIPTION_PROMPT
+from gitwise.prompts import PR_DESCRIPTION_PROMPT, PROMPT_PR_DESCRIPTION
 from gitwise.features.pr_enhancements import enhance_pr_description, get_pr_labels
 from rich.console import Console
 # from rich.panel import Panel # Unused
@@ -23,6 +23,7 @@ import typer
 from gitwise.llm.offline import ensure_offline_model_ready
 from gitwise.core.git import get_default_remote_branch
 from gitwise.config import get_llm_backend, load_config, ConfigError
+from gitwise.features.pr_templates import render_pr_description
 
 console = Console()
 
@@ -136,18 +137,13 @@ def generate_pr_title(commits: List[Dict]) -> str:
 def generate_pr_description(
     commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
-    """Generate a PR description using the LLM, given commits and repo info."""
+    """Generate a PR description using LLM prompt only. The LLM outputs the full Markdown body."""
     formatted_commits = "\n".join([
-        f"Commit: {commit['message']}\nAuthor: {commit['author']}\n"
-        for commit in commits
+        f"- {commit['message']} ({commit['author']})" for commit in commits
     ])
-    prompt = PR_DESCRIPTION_PROMPT.format(
-        commits=formatted_commits,
-        repo_url=repo_url,
-        repo_name=repo_name,
-        guidance=guidance
-    )
-    return get_llm_response(prompt)
+    prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace("{{guidance}}", guidance)
+    llm_output = get_llm_response(prompt)
+    return llm_output.strip()
 
 def create_github_pr(
     title: str, body: str, base: str, labels: List[str], draft: bool = False

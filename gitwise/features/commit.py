@@ -5,11 +5,12 @@ import subprocess
 import sys
 from typing import Optional, List, Dict, Tuple
 from gitwise.llm import get_llm_response
-from gitwise.prompts import COMMIT_MESSAGE_PROMPT
+from gitwise.prompts import COMMIT_MESSAGE_PROMPT, PROMPT_COMMIT_MESSAGE
 from gitwise.gitutils import get_staged_diff, get_changed_files, get_staged_files # get_unstaged_files is also in gitutils
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
 from gitwise.config import get_llm_backend, load_config, ConfigError
+from gitwise.features.pr_templates import render_commit_message
 
 # Import push_command only when needed to avoid circular imports
 def get_push_command():
@@ -490,5 +491,7 @@ def commit_command(group: bool = True) -> None:
         components.show_error(f"An unexpected error occurred: {str(e)}") 
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
-    prompt = COMMIT_MESSAGE_PROMPT.format(diff=diff, guidance=guidance)
-    return get_llm_response(prompt) 
+    """Generate a commit message using LLM prompt only. The LLM outputs the full message."""
+    prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace("{{guidance}}", guidance)
+    llm_output = get_llm_response(prompt)
+    return llm_output.strip() 
