@@ -4,6 +4,8 @@
 
 ### Features
 
+- Add config module for loading and saving GitWise settings
+- add Gitwise configuration file
 - add .internal/ to .gitignore
 - add meta-level Cursor ruleset
 - generate PR descriptions and changelogs using AI
@@ -32,6 +34,25 @@
 
 ### Other
 
+- clarify changelog generation prompt guidance
+- Simplify LLM backend routing logic
+- add config check before pushing changes
+- Add config check and LLM backend detection for PR command
+- add config check and LLM backend detection to commit command
+- add config check and improve offline model handling
+- add init command for gitwise setup
+- check config and offer init on add command
+- add init command for interactive setup
+- add Ollama backend support and offline mode
+- add documentation guidelines to meta-level rules
+- `diff --git a/setup.py b/setup.py`
+- **Type:** Changed file (rule update)
+- Merge pull request #51 from PayasPandey11/ollama
+- `type(scope): description`
+- `type(scope): description`
+- Fixes #3861637: Updates for offline mode and Ollama backend support
+- Merge pull request #50 from PayasPandey11/ollama
+- integrate ollama as lLM backend (#432) =============================================
 - diff --git a/setup.py b/setup.py index cafeefd..5363a3b 100644 --- a/setup.py +++ b/setup.py @@ -39,7 +39,11 @@ setup(          "GitPython>=3.1.0",          "transformers>=4.36.0",          "torch>=2.0.0", +        # Add 'requests' as an optional dependency for Ollama backend support      ], +    extras_require={ +        "ollama": ["requests>=2.0.0"], +    },      entry_points={          "console_scripts": [              "gitwise=gitwise.cli:main", @@ -51,4 +55,7 @@ setup(          "Source": "https://github.com/PayasPandey11/gitwise",          "Documentation": "https://github.com/PayasPandey11/gitwise/blob/main/README.md",      }, -) \ No newline at end of file +) + +# Post-install message for user, added to inform them about Ollama backend support +print("
 [gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online.
 ") \ No newline at end of file
@@ -41,13 +62,18 @@
 - `type: update`
 - `type: updates for offline mode and Ollama backend`
 - Type: Feature Scope: CHANGELOG.md
+- Merge pull request #49 from PayasPandey11/offline-support
 - 
+- Merge pull request #48 from PayasPandey11/offline-support
 - The commit message should include a brief summary of the changes being made, followed by a clear and descriptive commit message. The commit message should also include the commit message template provided in the repository's `.github/commit_template.md` file.
 - Git commit messages are written as a concise description of the changes made. They should be between 50 and 72 characters.
 - - Use a concise and descriptive message that accurately reflects the change. - Avoid excessive adjectives or adverbs, as they can be difficult to understand. - Use a clear and descriptive commit title.
+- Merge pull request #47 from PayasPandey11/offline-support
 - [gitwise] Add offline LLM inference support
 - - Adds new feature X - Fixes bug in function Y - Updates README.md Z - Adds new test suite with T - Adds new dependency with A
+- Merge pull request #46 from PayasPandey11/offline-support
 - Commit messages should be descriptive and provide a summary of the changes being made. Use present tense and avoid jargon or technical terms. Include a short summary of the goal or motivation behind the changes. Avoid including details that can be inferred from the diff.
+- Merge pull request #45 from PayasPandey11/offline-support
 - fix(bug): Fixes bug in function that caused unexpected behavior
 - "Merge pull request #44 from PayasPandey11/fix/ux"
 - `Add feature X` instead of `Added feature X`. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257

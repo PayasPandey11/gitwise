@@ -9,6 +9,7 @@ from gitwise.prompts import COMMIT_MESSAGE_PROMPT
 from gitwise.gitutils import get_staged_diff, get_changed_files, get_staged_files # get_unstaged_files is also in gitutils
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.config import get_llm_backend, load_config, ConfigError
 
 # Import push_command only when needed to avoid circular imports
 def get_push_command():
@@ -212,8 +213,17 @@ def suggest_commit_groups() -> Optional[List[Dict[str, any]]]:
 def commit_command(group: bool = True) -> None:
     """Create a commit, with an option for AI-assisted message generation and change grouping."""
     try:
+        # Config check
+        try:
+            load_config()
+        except ConfigError as e:
+            components.show_error(str(e))
+            if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
+                from gitwise.cli.init import init_command
+                init_command()
+            return
         # Detect and show current LLM backend
-        backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+        backend = get_llm_backend()
         backend_display = {
             "ollama": "Ollama (local server)",
             "offline": "Offline (local model)",

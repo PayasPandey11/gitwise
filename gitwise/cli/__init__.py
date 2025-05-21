@@ -9,6 +9,7 @@ from gitwise.features.commit import commit_command
 from gitwise.features.push import push_command
 from gitwise.features.pr import pr_command
 from gitwise.features.changelog import changelog_command
+from gitwise.cli.init import init_command
 import sys
 
 # Create the main app
@@ -161,6 +162,11 @@ def offline_model_cmd():
     from gitwise.llm.download import download_offline_model
     download_offline_model()
     raise typer.Exit()
+
+@app.command()
+def init() -> None:
+    """Interactively set up GitWise in this repo or globally."""
+    init_command()
 
 def main() -> None:
     """Main entry point for the application."""

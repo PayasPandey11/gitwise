@@ -41,7 +41,7 @@ This document defines how Cursor AI should behave and how developers should stru
 ---
 
 ## 🧭 Coding Workflow Rules (Human + Cursor)
-
+ALways create and update task list for any major task. task list should be in .internal
 ### 1. Start With Clear Intent
 Each new task should include:
 ```
@@ -68,6 +68,10 @@ Development must proceed in small, reviewed steps:
 - Backend: Endpoint test
 - Logic/agents: Output verification
 
+## 5. Documentation
+- Always have types
+- Always write docstrings
+- Write comment if needed for complicated code block.
 Ask:
 ```
 Generate a usage/test example for this code.

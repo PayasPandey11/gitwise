@@ -1,61 +1,72 @@
 from setuptools import setup, find_packages
+import os
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="gitwise",
-    version="0.1.0",
-    author="Payas Pandey",
-    author_email="rpayaspandey@gmail.com",
-    description="An AI-powered Git command-line assistant to streamline your workflow.",
+    version="0.1.0",  # Update as needed
+    description="AI-powered Git workflow assistant for fast, smart commits, PRs, and changelogs.",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    author="Payas Pandey",
+    author_email="rpayaspandey@gmail.com",
     url="https://github.com/PayasPandey11/gitwise",
-    packages=find_packages(exclude=["tests", "tests.*"]),
-    include_package_data=True,  # Ensures non-Python files are included if present
+    project_urls={
+        "Source": "https://github.com/PayasPandey11/gitwise",
+        "Documentation": "https://github.com/PayasPandey11/gitwise/blob/main/README.md",
+        "Issues": "https://github.com/PayasPandey11/gitwise/issues",
+    },
+    license="MIT",
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Topic :: Software Development :: Version Control :: Git",
-        "Topic :: Software Development :: Build Tools",
-        "Topic :: Utilities",
-        "Environment :: Console",
-        "Natural Language :: English",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+        "Topic :: Software Development :: Version Control :: Git",
+        "Topic :: Utilities",
     ],
+    packages=find_packages(exclude=["tests*", ".internal*", ".venv*", "docs*", "examples*"]),
     python_requires=">=3.8",
     install_requires=[
-        "typer[all]>=0.9.0",
-        "openai>=1.0.0",
-        "rich>=13.0.0",
         "GitPython>=3.1.0",
         "transformers>=4.36.0",
         "torch>=2.0.0",
-        # 'requests' is optional for Ollama backend, but recommended for better HTTP support
+        "typer>=0.9.0",
+        "rich>=13.0.0",
     ],
     extras_require={
-        "ollama": ["requests>=2.0.0"],
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "flake8",
+            "black",
+            "isort",
+            "mypy",
+        ],
+        "ollama": [
+            "requests>=2.0.0",
+        ],
     },
     entry_points={
         "console_scripts": [
             "gitwise=gitwise.cli:main",
         ],
     },
-    license="MIT",
-    project_urls={
-        "Bug Reports": "https://github.com/PayasPandey11/gitwise/issues",
-        "Source": "https://github.com/PayasPandey11/gitwise",
-        "Documentation": "https://github.com/PayasPandey11/gitwise/blob/main/README.md",
+    include_package_data=True,
+    package_data={
+        # Add non-Python files if needed
     },
+    zip_safe=False,
 )
 
-# Post-install message for user
-print("\n[gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online.\n") 
+# Minimal post-install message for user
+if os.environ.get("GITWISE_SETUP_MESSAGE", "1") == "1":
+    print("\n[gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online. See README for details.\n") 

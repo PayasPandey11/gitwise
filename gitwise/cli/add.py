@@ -7,6 +7,7 @@ from ..core import git
 from ..ui import components
 from ..features.commit import commit_command
 from ..features.push import push_command
+from gitwise.config import get_llm_backend, load_config, ConfigError
 
 def add_command(
     files: List[str] = None,
@@ -14,6 +15,16 @@ def add_command(
 ) -> None:
     """Stage files and prepare for commit with smart grouping."""
     try:
+        # Config check
+        try:
+            load_config()
+        except ConfigError as e:
+            components.show_error(str(e))
+            if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
+                from gitwise.cli.init import init_command
+                init_command()
+            return
+
         # Check for unstaged changes
         with components.show_spinner("Checking for changes...") as progress:
             unstaged = git.get_unstaged_files()
@@ -51,7 +62,7 @@ def add_command(
             components.show_files_table(staged)
 
             # Show current LLM backend to the user
-            backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+            backend = get_llm_backend()
             backend_display = {
                 "ollama": "Ollama (local server)",
                 "offline": "Offline (local model)",

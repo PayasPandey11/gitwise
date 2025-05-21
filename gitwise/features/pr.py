@@ -22,6 +22,7 @@ import tempfile
 import typer
 from gitwise.llm.offline import ensure_offline_model_ready
 from gitwise.core.git import get_default_remote_branch
+from gitwise.config import get_llm_backend, load_config, ConfigError
 
 console = Console()
 
@@ -168,8 +169,17 @@ def pr_command(
         skip_prompts: Whether to skip interactive prompts (used when called from push)
     """
     try:
+        # Config check
+        try:
+            load_config()
+        except ConfigError as e:
+            components.show_error(str(e))
+            if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
+                from gitwise.cli.init import init_command
+                init_command()
+            return
         # Detect and show current LLM backend
-        backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+        backend = get_llm_backend()
         backend_display = {
             "ollama": "Ollama (local server)",
             "offline": "Offline (local model)",
