@@ -88,8 +88,7 @@ def add_command(
                     # After commit, offer to push only if PR was not created
                     if git.get_current_branch():
                         if has_uncommitted_changes():
-                            components.show_warning("You have uncommitted changes. Please commit all changes before pushing or creating a PR.")
-                            return
+                            components.show_warning("You have uncommitted changes. These will not be included in the PR unless you commit them. Proceeding to push/PR with committed changes only.")
                         if typer.confirm("Push these changes?", default=True):
                             pr_or_pushed = push_command()
                             if pr_or_pushed:

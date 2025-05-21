@@ -41,6 +41,8 @@
 
 ### Chores
 
+- Add interactive mode for pushing and creating PRs
+- Add has_uncommitted_changes() to check for local changes
 - Add interactive workflow for staging, committing and pushing
 - Add interactive mode for committing and pushing changes
 - Refactor push and PR creation flow with interactive mode
