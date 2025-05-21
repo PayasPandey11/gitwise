@@ -41,6 +41,7 @@
 
 ### Chores
 
+- Add PR creation and exit after pushing new branch
 - Add LLM-based commit message and PR description generation
 - Add prompt for generating Git commit messages
 - Add LLM-based PR description generation
@@ -62,6 +63,8 @@
 
 ### Other
 
+- Add push command after commit
+- Add LLM-based commit message generation
 - Simplify render_commit_message parameters
 - Enhance commit message generation using LLM
 - improve PR creation flow and commit analysis
