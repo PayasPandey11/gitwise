@@ -59,3 +59,36 @@ Example for a '### 🚀 Features' section:
 CHANGELOG_USER_PROMPT_TEMPLATE = """{guidance_text}Here are the commits to include:
 
 {commit_text}"""
+
+PROMPT_COMMIT_MESSAGE = """
+Write a Git commit message for the following diff.
+
+Rules:
+- The first line (subject) must be ≤50 characters, imperative, capitalized, and have no period.
+- Add a blank line after the subject.
+- The body (if needed) should explain what and why, wrapped at 72 characters.
+- Do not describe how (the diff shows that).
+- If there are breaking changes, add a 'BREAKING CHANGE:' section.
+- If there are issue references, add them at the end.
+- Output only the commit message, no preamble or explanation.
+
+Diff:
+{{diff}}
+{{guidance}}
+"""
+
+PROMPT_PR_DESCRIPTION = """
+Write a GitHub Pull Request description for the following commits.
+
+Rules:
+- Use Markdown.
+- Start with a one-line summary.
+- Add sections: Motivation, Changes (bulleted), Breaking Changes (if any), Testing, Related Issues.
+- Be concise but clear.
+- Do not include conversational text or preambles.
+
+Commits:
+{{commits}}
+
+{{guidance}}
+"""
