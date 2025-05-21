@@ -14,6 +14,7 @@ from gitwise.core import git
 from gitwise.ui import components
 import tempfile
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.config import get_llm_backend, load_config, ConfigError
 
 class VersionInfo(NamedTuple):
     """Version information with pre-release and build metadata."""
@@ -437,8 +438,17 @@ def changelog_command(
         format: Output format (markdown or json)
         auto_update: Whether to automatically update the changelog without prompts
     """
+    # Config check
+    try:
+        load_config()
+    except ConfigError as e:
+        components.show_error(str(e))
+        if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
+            from gitwise.cli.init import init_command
+            init_command()
+        return
     # Pre-check for offline model if not in online mode
-    if os.environ.get("GITWISE_ONLINE") != "1":
+    if get_llm_backend() != "online":
         try:
             ensure_offline_model_ready()
         except Exception as e:
