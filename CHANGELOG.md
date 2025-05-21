@@ -41,6 +41,8 @@
 
 ### Chores
 
+- Refactor push and PR creation flow with interactive mode
+- Refactor push command to first push then prompt for PR
 - Refactor pr_command to return success status
 - Add interactive mode to handle push and PR failures
 - Refactor push command to return PR creation status
