@@ -4,6 +4,12 @@
 
 ### Features
 
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
+- AI-generated commit message
 - add config module for loading and saving GitWise settings
 - update OpenRouter API key
 - Add config module for loading and saving GitWise settings
@@ -45,6 +51,7 @@
 
 ### Other
 
+- improve PR creation flow and commit analysis
 - add .gitwise directory to ignored paths
 - Merge pull request #53 from PayasPandey11/setup
 - Improve OpenRouter API key error message
