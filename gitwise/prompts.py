@@ -9,7 +9,7 @@ Please analyze the following git diff and write a commit message that:
 5. Is concise but informative.
 6. Uses present tense for the subject line.
 7. Focuses on the "why" rather than the "what" for the changes.
-
+8. Only have commit message, no other text or explanation.
 Git diff:
 {diff}
 
@@ -59,6 +59,3 @@ Example for a '### 🚀 Features' section:
 CHANGELOG_USER_PROMPT_TEMPLATE = """{guidance_text}Here are the commits to include:
 
 {commit_text}"""
-
-# CHANGELOG_PROMPT was unused and has been removed.
-# The actual prompt used for changelog generation is constructed within gitwise/features/changelog.py 
