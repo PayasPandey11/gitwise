@@ -10,6 +10,7 @@ from gitwise.gitutils import get_staged_diff, get_changed_files, get_staged_file
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
 from gitwise.config import get_llm_backend, load_config, ConfigError
+from gitwise.features.pr_templates import render_commit_message
 
 # Import push_command only when needed to avoid circular imports
 def get_push_command():
@@ -490,5 +491,18 @@ def commit_command(group: bool = True) -> None:
         components.show_error(f"An unexpected error occurred: {str(e)}") 
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
-    prompt = COMMIT_MESSAGE_PROMPT.format(diff=diff, guidance=guidance)
-    return get_llm_response(prompt) 
+    # For now, use LLM to generate a single string, but structure for future field extraction.
+    # TODO: Optionally use LLM to extract type, scope, description, body, breaking_change.
+    # For now, just pass the diff and guidance as the body, and leave other fields empty.
+    type_ = "feat"
+    scope = None
+    description = "AI-generated commit message"
+    body = diff
+    breaking_change = ""
+    return render_commit_message(
+        type_=type_,
+        scope=scope,
+        description=description,
+        body=body,
+        breaking_change=breaking_change
+    ) 
