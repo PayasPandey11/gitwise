@@ -17,6 +17,7 @@ def check_git_repo() -> bool:
 
 def check_ollama_running() -> bool:
     try:
+        import requests
         r = requests.get("http://localhost:11434", timeout=2)
         return r.status_code == 200
     except Exception:
