@@ -168,8 +168,17 @@ def pr_command(
         skip_prompts: Whether to skip interactive prompts (used when called from push)
     """
     try:
-        # Pre-check for offline model if not in online mode
-        if os.environ.get("GITWISE_ONLINE") != "1":
+        # Detect and show current LLM backend
+        backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+        backend_display = {
+            "ollama": "Ollama (local server)",
+            "offline": "Offline (local model)",
+            "online": "Online (OpenRouter)"
+        }.get(backend, backend)
+        components.show_section(f"[AI] LLM Backend: {backend_display}")
+
+        # Only check for offline model if backend is offline
+        if backend == "offline":
             try:
                 ensure_offline_model_ready()
             except Exception as e:
