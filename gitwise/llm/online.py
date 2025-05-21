@@ -3,15 +3,22 @@ import os
 from typing import List, Dict, Union
 from openai import OpenAI
 from gitwise.prompts import COMMIT_MESSAGE_PROMPT, PR_DESCRIPTION_PROMPT
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY")
-)
+from gitwise.config import load_config, ConfigError
 
 def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]]) -> str:
     """Get response from online LLM (OpenRouter/OpenAI)."""
     try:
+        try:
+            config = load_config()
+            api_key = config.get("openrouter_api_key")
+        except ConfigError:
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise RuntimeError("OpenRouter API key not found in config or environment. Please run 'gitwise init' or set OPENROUTER_API_KEY.")
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key
+        )
         if isinstance(prompt_or_messages, str):
             messages = [{"role": "user", "content": prompt_or_messages}]
         else:
