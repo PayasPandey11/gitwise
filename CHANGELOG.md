@@ -41,6 +41,8 @@
 
 ### Chores
 
+- Add utility to print PR commit hashes and messages
+- Add interactive prompt to push and open PR after commit
 - Add PR creation and exit after pushing new branch
 - Add LLM-based commit message and PR description generation
 - Add prompt for generating Git commit messages
@@ -63,6 +65,8 @@
 
 ### Other
 
+- Add PR creation and LLM-based commit message generation
+- Refactor get_pr_commits to use git log for unique commits
 - Add push command after commit
 - Add LLM-based commit message generation
 - Simplify render_commit_message parameters
