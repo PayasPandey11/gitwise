@@ -1,5 +1,10 @@
-{{ type }}{{ scope }}: {{ description }}
+{{ subject }}
 
-{{ body }}
+{% if body %}{{ body }}
+{% endif %}
 
-{{ breaking_change }} 
+{% if breaking_change %}BREAKING CHANGE: {{ breaking_change }}
+{% endif %}
+
+{% if issues %}{{ issues }}
+{% endif %} 
