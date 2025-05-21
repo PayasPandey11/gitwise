@@ -97,9 +97,10 @@ def push_command() -> None:
                             skip_prompts=False,
                             base=default_remote_branch.replace("origin/", "")
                         )
+                        return
                     except Exception as e:
                         components.show_error(f"Failed to create PR: {str(e)}")
-                    return
+                        return
                 return
             # Get commits to be pushed
             result = subprocess.run(
@@ -167,9 +168,10 @@ def push_command() -> None:
                         skip_prompts=False,
                         base=default_remote_branch.replace("origin/", "")
                     )
+                    return
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
-                return
+                    return
             return
         else:
             components.show_error("Failed to push changes")
