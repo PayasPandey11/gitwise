@@ -26,21 +26,18 @@ def render_pr_description(
     )
 
 def render_commit_message(
-    type_: str,
-    scope: Optional[str],
-    description: str,
+    subject: str,
     body: str = "",
-    breaking_change: str = ""
+    breaking_change: str = "",
+    issues: str = ""
 ) -> str:
     """
     Render the commit message template with the given variables.
     """
     template = env.get_template("commit_message.md")
-    scope_str = f"({scope})" if scope else ""
     return template.render(
-        type=type_,
-        scope=scope_str,
-        description=description,
+        subject=subject,
         body=body,
-        breaking_change=breaking_change
+        breaking_change=breaking_change,
+        issues=issues
     ) 
