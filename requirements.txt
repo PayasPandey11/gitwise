@@ -4,6 +4,7 @@ transformers
 torch
 gitpython
 openai
+jinja2
 
 # Development dependencies
 pytest
