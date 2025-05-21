@@ -1,5 +1,0 @@
-{
-  "llm_backend": "online",
-  "openrouter_api_key": "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",
-  "openrouter_model": "mistralai/mixtral-8x7b"
-}
