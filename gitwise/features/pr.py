@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple, Optional
 # from git import Repo, Commit # No longer needed
 # from gitwise.gitutils import get_current_branch # Using core.git.get_current_branch
 from gitwise.llm import get_llm_response
-from gitwise.prompts import PR_DESCRIPTION_PROMPT
+from gitwise.prompts import PR_DESCRIPTION_PROMPT, PROMPT_PR_DESCRIPTION
 from gitwise.features.pr_enhancements import enhance_pr_description, get_pr_labels
 from rich.console import Console
 # from rich.panel import Panel # Unused
@@ -137,64 +137,13 @@ def generate_pr_title(commits: List[Dict]) -> str:
 def generate_pr_description(
     commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
-    """Generate a PR description using the template, given commits and repo info."""
-    # Improved LLM prompt for PRs
+    """Generate a PR description using LLM prompt only. The LLM outputs the full Markdown body."""
     formatted_commits = "\n".join([
         f"- {commit['message']} ({commit['author']})" for commit in commits
     ])
-    prompt = f"""
-Write a GitHub Pull Request description for the following commits.
-
-Rules:
-- Fill out each section: Summary, Motivation, Changes (bulleted list), Breaking Changes (if any), Testing (how to verify), and Related Issues (if any).
-- Be concise but clear. Use Markdown formatting.
-- Do not include conversational text or preambles.
-
-Commits:
-{formatted_commits}
-
-{guidance}
-"""
+    prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace("{{guidance}}", guidance)
     llm_output = get_llm_response(prompt)
-    # Parse the LLM output for Markdown section headers
-    section_pattern = re.compile(r"^##+\s*(.+)", re.MULTILINE)
-    sections = {}
-    last_header = None
-    for line in llm_output.splitlines():
-        header_match = section_pattern.match(line)
-        if header_match:
-            last_header = header_match.group(1).strip().lower()
-            sections[last_header] = []
-        elif last_header:
-            sections[last_header].append(line)
-    # Helper to get section text
-    def get_section(name):
-        lines = sections.get(name.lower(), [])
-        return "\n".join([l for l in lines if l.strip()]).strip()
-    pr_title = commits[0]["message"].split("\n")[0] if commits else "Pull Request"
-    summary = get_section("summary")
-    motivation = get_section("motivation")
-    # Parse changes as a list
-    changes_raw = get_section("changes")
-    changes = []
-    for l in changes_raw.splitlines():
-        l = l.strip()
-        if l.startswith("- "):
-            changes.append(l[2:].strip())
-        elif l.startswith("* "):
-            changes.append(l[2:].strip())
-    breaking_changes = get_section("breaking changes")
-    testing = get_section("testing")
-    issues = get_section("related issues")
-    return render_pr_description(
-        pr_title=pr_title,
-        summary=summary,
-        motivation=motivation,
-        changes=changes,
-        breaking_changes=breaking_changes,
-        testing=testing,
-        issues=issues
-    )
+    return llm_output.strip()
 
 def create_github_pr(
     title: str, body: str, base: str, labels: List[str], draft: bool = False
