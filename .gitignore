@@ -175,3 +175,5 @@ cython_debug/
 
 # Personal planning – ignored by GitWise
 .internal/
+.gitwise/
+.gitwise/config.json

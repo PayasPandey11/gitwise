@@ -84,34 +84,28 @@ def validate_branch_name(branch: str) -> bool:
     return bool(re.match(pattern, branch))
 
 def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
-    """Get commits that haven't been included in a PR yet, relative to the given base_branch."""
+    """Get commits unique to the current branch (not yet merged into base_branch)."""
     try:
-        # Ensure the local reference of the base branch is up-to-date with its remote counterpart.
-        # This helps in getting an accurate commit list similar to what GitHub would show.
-        # We fetch the specific base branch from origin.
-        # Only run fetch if base_branch is likely a remote-tracking branch or can be fetched.
-        # For simplicity, always try to fetch the base branch ref from origin.
-        # This assumes 'origin' is the relevant remote.
-        fetch_result = subprocess.run(["git", "fetch", "origin", base_branch], capture_output=True, text=True)
-        if fetch_result.returncode != 0:
-            # Log a warning but proceed; could be an offline scenario or base_branch is purely local.
-            components.show_warning(f"Could not fetch remote state for base branch '{base_branch}'. Commit list might be inaccurate. Error: {fetch_result.stderr.strip()}")
+        # Find the merge base (common ancestor) between base_branch and HEAD
+        merge_base_result = subprocess.run([
+            "git", "merge-base", base_branch, "HEAD"
+        ], capture_output=True, text=True)
+        if merge_base_result.returncode != 0 or not merge_base_result.stdout.strip():
+            components.show_error(f"Could not determine merge base with {base_branch}: {merge_base_result.stderr.strip()}")
+            return []
+        merge_base = merge_base_result.stdout.strip()
 
-        # Always use the detected default remote branch as the base unless explicitly overridden
-        effective_base_for_diff = base_branch
-
-        diff_range = f"{effective_base_for_diff}..HEAD"
-        components.console.print(f"[dim]Analyzing commits in range: {diff_range} (Base: '{base_branch}', Effective for diff: '{effective_base_for_diff}')[/dim]")
+        # Get commits in HEAD that are not in base_branch (i.e., not reachable from merge base)
+        log_range = f"{merge_base}..HEAD"
+        components.console.print(f"[dim]Analyzing commits in range: {log_range} (Base: '{base_branch}', Merge base: '{merge_base}')[/dim]")
 
         result = subprocess.run(
-            ["git", "log", diff_range, "--pretty=format:%H|%s|%an"],
+            ["git", "log", log_range, "--pretty=format:%H|%s|%an"],
             capture_output=True,
             text=True
         )
-        
         if not result.stdout.strip():
             return []
-            
         commits = []
         for line in result.stdout.strip().split('\n'):
             hash_, message, author = line.split('|')
@@ -120,13 +114,17 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
                 'message': message,
                 'author': author
             })
-            
         return commits
     except Exception as e:
         components.show_error(f"Failed to get commits: {str(e)}")
         return []
 
-def generate_pr_title(commits: List[Dict[str, str]]) -> str:
+def get_pr_commits(base_branch: str) -> List[Dict]:
+    """Return commits unique to the current branch (not yet merged into base_branch)."""
+    return get_commits_since_last_pr(base_branch)
+
+def generate_pr_title(commits: List[Dict]) -> str:
+    """Generate a PR title from a list of commits."""
     if not commits:
         return ""
     first_commit = commits[0]
@@ -135,7 +133,10 @@ def generate_pr_title(commits: List[Dict[str, str]]) -> str:
         title = f"{title} (+{len(commits)-1} more commits)"
     return title
 
-def generate_pr_description(commits: List[Dict[str, str]], repo_url: str, repo_name: str, guidance: str = "") -> str:
+def generate_pr_description(
+    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
+) -> str:
+    """Generate a PR description using the LLM, given commits and repo info."""
     formatted_commits = "\n".join([
         f"Commit: {commit['message']}\nAuthor: {commit['author']}\n"
         for commit in commits
@@ -148,6 +149,12 @@ def generate_pr_description(commits: List[Dict[str, str]], repo_url: str, repo_n
     )
     return get_llm_response(prompt)
 
+def create_github_pr(
+    title: str, body: str, base: str, labels: List[str], draft: bool = False
+) -> None:
+    """Create a pull request using the GitHub CLI."""
+    _create_gh_pr(title, body, base, labels, draft)
+
 def pr_command(
     use_labels: bool = False,
     use_checklist: bool = False,
@@ -158,15 +165,7 @@ def pr_command(
     skip_prompts: bool = False
 ) -> None:
     """Create a pull request with AI-generated description.
-    
-    Args:
-        use_labels: Whether to add labels to the PR
-        use_checklist: Whether to add a checklist to the PR description
-        skip_general_checklist: Whether to skip general checklist items
-        title: Custom title for the PR
-        base: Base branch for the PR
-        draft: Whether to create a draft PR
-        skip_prompts: Whether to skip interactive prompts (used when called from push)
+    Orchestrates commit collection, title/description generation, and PR creation.
     """
     try:
         # Config check
@@ -208,19 +207,16 @@ def pr_command(
             components.show_error(f"Could not determine default remote branch: {e}")
             return
         
-        # Get commits since last PR
+        # Get commits for PR
         components.show_section("Analyzing Changes")
         with components.show_spinner("Checking for commits...") as progress:
-            commits = get_commits_since_last_pr(base_branch)
+            commits = get_pr_commits(base_branch)
             if not commits:
                 components.show_warning("No commits to create PR for")
                 return
 
-        # Generate PR title using LLM
-        pr_generated_title = title
-        if not pr_generated_title:
-            with components.show_spinner("Generating PR title..."):
-                pr_generated_title = generate_pr_title(commits)
+        # Generate PR title
+        pr_generated_title = title or generate_pr_title(commits)
 
         # Show commits that will be included
         components.show_section("Commits to Include")
@@ -262,7 +258,6 @@ def pr_command(
                 return
 
         # Enhance PR description with checklist if requested
-        # Labels will be handled separately with gh command
         final_labels = []
         if use_labels:
             with components.show_spinner("Generating labels..."):
@@ -270,7 +265,6 @@ def pr_command(
         
         if use_checklist:
             with components.show_spinner("Generating checklist..."):
-                # Pass base_branch to enhance_pr_description for accurate checklist generation
                 pr_body, _ = enhance_pr_description(commits, pr_body, use_labels=False, use_checklist=True, skip_general_checklist=skip_general_checklist, base_branch_for_checklist=base_branch)
 
         # Show the generated/enhanced description
@@ -281,10 +275,8 @@ def pr_command(
         components.console.print(f"[bold]Body:[/bold]\n{pr_body}")
 
         if skip_prompts:
-            # If skipping prompts (e.g., called from push), directly attempt PR creation.
-            _create_gh_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
         else:
-            # Interactive mode: ask user for confirmation and allow editing.
             components.show_prompt(
                 "Would you like to create this pull request?",
                 options=["Yes", "Edit description", "No"],
@@ -297,6 +289,7 @@ def pr_command(
                 return
 
             if choice == 2:  # Edit
+                import tempfile, os, subprocess
                 with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
                     tf.write(pr_body) # Edit the potentially enhanced body
                     tf.flush()
@@ -322,8 +315,7 @@ def pr_command(
                     components.show_warning("PR creation cancelled")
                     return
             
-            # If choice was 1 (Yes) or after editing and confirming Yes:
-            _create_gh_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
 
     except Exception as e:
         components.show_error(str(e))
