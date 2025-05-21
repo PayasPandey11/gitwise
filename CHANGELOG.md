@@ -32,6 +32,7 @@
 
 ### Other
 
+- The commit message should include a brief summary of the changes being made, followed by a clear and descriptive commit message. The commit message should also include the commit message template provided in the repository's `.github/commit_template.md` file.
 - Git commit messages are written as a concise description of the changes made. They should be between 50 and 72 characters.
 - - Use a concise and descriptive message that accurately reflects the change. - Avoid excessive adjectives or adverbs, as they can be difficult to understand. - Use a clear and descriptive commit title.
 - [gitwise] Add offline LLM inference support
