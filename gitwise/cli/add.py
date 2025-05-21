@@ -8,6 +8,7 @@ from ..ui import components
 from ..features.commit import commit_command
 from ..features.push import push_command
 from gitwise.config import get_llm_backend, load_config, ConfigError
+from gitwise.core.git import has_uncommitted_changes
 
 def add_command(
     files: List[str] = None,
@@ -86,11 +87,16 @@ def add_command(
                     commit_command()
                     # After commit, offer to push only if PR was not created
                     if git.get_current_branch():
+                        if has_uncommitted_changes():
+                            components.show_warning("You have uncommitted changes. These will not be included in the PR unless you commit them. Proceeding to push/PR with committed changes only.")
                         if typer.confirm("Push these changes?", default=True):
                             pr_or_pushed = push_command()
                             if pr_or_pushed:
                                 # If PR was created or already exists, end the flow
-                                break
+                                return
+                            # If not, continue (e.g., push failed, no PR created)
+                        else:
+                            return
                     break
                 elif action == "diff":
                     full_diff = git.get_staged_diff()

@@ -194,9 +194,10 @@ def pr_command(
     base: Optional[str] = None,
     draft: bool = False,
     skip_prompts: bool = False
-) -> None:
+) -> bool:
     """Create a pull request with AI-generated description.
     Orchestrates commit collection, title/description generation, and PR creation.
+    Returns True if PR was created or already exists, False otherwise.
     """
     try:
         # Config check
@@ -207,7 +208,7 @@ def pr_command(
             if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
                 from gitwise.cli.init import init_command
                 init_command()
-            return
+            return False
         # Detect and show current LLM backend
         backend = get_llm_backend()
         backend_display = {
@@ -223,20 +224,21 @@ def pr_command(
                 ensure_offline_model_ready()
             except Exception as e:
                 components.show_error(f"Failed to load offline model: {e}")
-                return
+                return False
 
         # Get current branch
         current_branch = git.get_current_branch()
         if not current_branch:
             components.show_error("Not on any branch")
-            return
+            return False
 
-        # Get base branch
+        # Get base branch (always use remote-tracking branch)
         try:
+            # Always resolve to remote-tracking branch for PRs
             base_branch = base or get_default_remote_branch()
         except Exception as e:
             components.show_error(f"Could not determine default remote branch: {e}")
-            return
+            return False
         
         # Get commits for PR
         components.show_section("Analyzing Changes")
@@ -244,7 +246,7 @@ def pr_command(
             commits = get_pr_commits(base_branch)
             if not commits:
                 components.show_warning("No commits to create PR for")
-                return
+                return False
 
         # Generate PR title
         pr_generated_title = title or generate_pr_title(commits)
@@ -275,18 +277,18 @@ def pr_command(
                 default="No"
             )
             if not typer.confirm("", default=False):
-                return
+                return False
             # Try one more time
             try:
                 with components.show_spinner("Retrying...") as progress:
                     raw_pr_body = generate_pr_description(commits, repo_url, repo_name)
                     if not raw_pr_body:
                         components.show_error("Failed to generate PR description again (empty LLM response)")
-                        return
+                        return False
                     pr_body = _clean_pr_body(raw_pr_body)
             except Exception as e:
                 components.show_error(f"Failed to generate PR description: {str(e)}")
-                return
+                return False
 
         # Enhance PR description with checklist if requested
         final_labels = []
@@ -307,6 +309,7 @@ def pr_command(
 
         if skip_prompts:
             create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            return True
         else:
             components.show_prompt(
                 "Would you like to create this pull request?",
@@ -317,7 +320,7 @@ def pr_command(
 
             if choice == 3:  # No
                 components.show_warning("PR creation cancelled")
-                return
+                return False
 
             if choice == 2:  # Edit
                 import tempfile, os, subprocess
@@ -332,7 +335,7 @@ def pr_command(
                 
                 if not pr_body.strip():
                     components.show_error("PR description cannot be empty")
-                    return
+                    return False
                     
                 components.show_section("Edited PR Description")
                 components.console.print(pr_body)
@@ -344,12 +347,14 @@ def pr_command(
                 )
                 if not typer.confirm("", default=True):
                     components.show_warning("PR creation cancelled")
-                    return
+                    return False
             
             create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            return True
 
     except Exception as e:
         components.show_error(str(e))
+        return False
 
 def _create_gh_pr(title: str, body: str, base: str, labels: List[str], draft: bool = False) -> None:
     """Internal function to create a pull request using the gh CLI."""
