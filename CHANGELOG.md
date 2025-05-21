@@ -41,6 +41,8 @@
 
 ### Chores
 
+- Add interactive workflow for staging, committing and pushing
+- Add interactive mode for committing and pushing changes
 - Refactor push and PR creation flow with interactive mode
 - Refactor push command to first push then prompt for PR
 - Refactor pr_command to return success status
@@ -70,6 +72,7 @@
 
 ### Other
 
+- Add interactive mode to push and PR creation flow
 - Add PR commit summary and interactive PR open
 - Add PR creation and LLM-based commit message generation
 - Refactor get_pr_commits to use git log for unique commits
