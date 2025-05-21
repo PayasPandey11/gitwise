@@ -41,6 +41,9 @@
 
 ### Chores
 
+- Refactor pr_command to return success status
+- Add interactive mode to handle push and PR failures
+- Refactor push command to return PR creation status
 - Add utility to print PR commit hashes and messages
 - Add interactive prompt to push and open PR after commit
 - Add PR creation and exit after pushing new branch
@@ -65,6 +68,7 @@
 
 ### Other
 
+- Add PR commit summary and interactive PR open
 - Add PR creation and LLM-based commit message generation
 - Refactor get_pr_commits to use git log for unique commits
 - Add push command after commit
