@@ -491,18 +491,65 @@ def commit_command(group: bool = True) -> None:
         components.show_error(f"An unexpected error occurred: {str(e)}") 
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
-    # For now, use LLM to generate a single string, but structure for future field extraction.
-    # TODO: Optionally use LLM to extract type, scope, description, body, breaking_change.
-    # For now, just pass the diff and guidance as the body, and leave other fields empty.
-    type_ = "feat"
-    scope = None
-    description = "AI-generated commit message"
-    body = diff
+    # Improved prompt for LLM
+    prompt = f"""
+Write a Git commit message for the following diff.
+
+Rules:
+- The first line (subject) must be ≤50 characters, imperative, capitalized, and have no period.
+- Add a blank line after the subject.
+- The body (if needed) should explain what and why, wrapped at 72 characters.
+- Do not describe how (the diff shows that).
+- If there are breaking changes, add a 'BREAKING CHANGE:' section.
+- If there are issue references, add them at the end.
+
+Diff:
+{diff}
+{guidance}
+"""
+    llm_output = get_llm_response(prompt)
+    # Parse LLM output: first line = subject, blank line, rest = body
+    lines = llm_output.strip().splitlines()
+    subject = lines[0].strip() if lines else "AI-generated commit message"
+    body_lines = []
     breaking_change = ""
+    issues = ""
+    in_body = False
+    in_breaking = False
+    in_issues = False
+    for i, line in enumerate(lines[1:]):
+        if not in_body and line.strip() == "":
+            in_body = True
+            continue
+        if in_body:
+            if line.strip().startswith("BREAKING CHANGE:"):
+                in_breaking = True
+                breaking_change = line.strip()[len("BREAKING CHANGE:"):].strip()
+                continue
+            elif line.strip().lower().startswith("resolves:") or line.strip().lower().startswith("see also:"):
+                in_issues = True
+                issues += line.strip() + "\n"
+                continue
+            elif in_breaking:
+                # Continue collecting breaking change lines
+                if line.strip() == "":
+                    in_breaking = False
+                else:
+                    breaking_change += "\n" + line.strip()
+                continue
+            elif in_issues:
+                if line.strip() == "":
+                    in_issues = False
+                else:
+                    issues += line.strip() + "\n"
+                continue
+            else:
+                body_lines.append(line)
+    body = "\n".join(body_lines).strip()
+    issues = issues.strip()
     return render_commit_message(
-        type_=type_,
-        scope=scope,
-        description=description,
+        subject=subject,
         body=body,
-        breaking_change=breaking_change
+        breaking_change=breaking_change,
+        issues=issues
     ) 
