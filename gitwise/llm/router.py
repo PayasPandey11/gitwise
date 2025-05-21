@@ -2,7 +2,10 @@ import os
 import sys
 import time
 
-BACKEND = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+from gitwise.llm.offline import get_llm_response as offline_llm
+from gitwise.llm.ollama import get_llm_response as ollama_llm
+from gitwise.llm.online import get_llm_response as online_llm
+from gitwise.config import get_llm_backend
 
 # Import all backends but only use as needed
 try:
@@ -25,38 +28,13 @@ def get_llm_response(*args, **kwargs):
     Fallback to offline, then online, with warnings if needed.
     If Ollama is selected, try up to 3 times before falling back.
     """
-    backend = os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
-    if backend == "ollama":
-        if ollama is not None:
-            last_exc = None
-            for attempt in range(1, 4):
-                try:
-                    return ollama.get_llm_response(*args, **kwargs)
-                except Exception as e:
-                    last_exc = e
-                    print(f"[gitwise] Warning: Ollama backend failed (attempt {attempt}/3): {e}", file=sys.stderr)
-                    if attempt < 3:
-                        time.sleep(2)
-            print(f"[gitwise] Ollama backend failed after 3 attempts. Falling back to offline backend.", file=sys.stderr)
-            if offline is not None:
-                return offline.get_llm_response(*args, **kwargs)
-            else:
-                raise RuntimeError("No offline backend available for fallback.") from last_exc
-        else:
-            print("[gitwise] Warning: Ollama backend not available. Falling back to offline backend.", file=sys.stderr)
-            if offline is not None:
-                return offline.get_llm_response(*args, **kwargs)
-            else:
-                raise RuntimeError("No offline backend available for fallback.")
+    backend = get_llm_backend()
+    if backend == "online":
+        return online_llm(*args, **kwargs)
     elif backend == "offline":
-        if offline is not None:
-            return offline.get_llm_response(*args, **kwargs)
-        else:
-            raise RuntimeError("Offline backend not available.")
-    elif backend == "online":
-        if online is not None:
-            return online.get_llm_response(*args, **kwargs)
-        else:
-            raise RuntimeError("Online backend not available.")
+        return offline_llm(*args, **kwargs)
+    elif backend == "ollama":
+        return ollama_llm(*args, **kwargs)
     else:
-        raise ValueError(f"Unknown LLM backend: {backend}") 
+        # Fallback to offline if unknown
+        return offline_llm(*args, **kwargs) 
