@@ -9,8 +9,8 @@ from gitwise.features.pr import pr_command
 import typer
 from gitwise.config import get_llm_backend, load_config, ConfigError
 
-def push_command() -> None:
-    """Push changes and optionally create a PR."""
+def push_command() -> bool:
+    """Push changes to remote and optionally create a PR. Returns True if PR was created or already exists."""
     try:
         # Config check
         try:
@@ -20,13 +20,13 @@ def push_command() -> None:
             if typer.confirm("Would you like to run 'gitwise init' now?", default=True):
                 from gitwise.cli.init import init_command
                 init_command()
-            return
+            return False
 
         # Get current branch
         current_branch = git.get_current_branch()
         if not current_branch:
             components.show_error("Not on any branch")
-            return
+            return False
 
         # Refresh remote state
         subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True)
@@ -61,17 +61,17 @@ def push_command() -> None:
                     components.show_success(f"Branch '{current_branch}' is now tracking origin/{current_branch} and pushed.")
                 else:
                     components.show_error(f"Failed to push and set upstream: {result.stderr}")
-                    return
+                    return False
             else:
                 components.show_warning("Push cancelled (no upstream set).")
-                return
+                return False
 
         # Detect default remote branch for diffs
         try:
             default_remote_branch = get_default_remote_branch()
         except Exception as e:
             components.show_error(f"Could not determine default remote branch: {e}")
-            return
+            return False
 
         # Check if there are commits to push (now that remote is refreshed and tracking is ensured)
         with components.show_spinner("Checking for commits..."):
@@ -101,19 +101,18 @@ def push_command() -> None:
                         extras_choice = typer.prompt("", type=int, default=1)
                         include_extras = extras_choice == 1
                         components.console.line()
-                        pr_command(
+                        pr_created = pr_command(
                             use_labels=include_extras,
                             use_checklist=include_extras,
                             skip_general_checklist=not include_extras,
                             skip_prompts=False,
                             base=default_remote_branch.replace("origin/", "")
                         )
-                        # End flow after PR creation
-                        return
+                        return pr_created
                     except Exception as e:
                         components.show_error(f"Failed to create PR: {str(e)}")
-                        return
-                return
+                        return False
+                return False
             # Get commits to be pushed
             result = subprocess.run(
                 ["git", "log", f"{default_remote_branch}..HEAD", "--oneline"],
@@ -138,7 +137,7 @@ def push_command() -> None:
 
         if choice == 2:  # No
             components.show_warning("Push cancelled")
-            return
+            return False
 
         # Push changes
         spinner = components.show_spinner("Pushing to remote...")
@@ -173,25 +172,25 @@ def push_command() -> None:
                     extras_choice = typer.prompt("", type=int, default=1) # Renamed variable
                     include_extras = extras_choice == 1
                     components.console.line() # Line after prompt and before pr_command
-                    pr_command(
+                    pr_created = pr_command(
                         use_labels=include_extras,
                         use_checklist=include_extras,
                         skip_general_checklist=not include_extras, # Corrected logic here
                         skip_prompts=False,
                         base=default_remote_branch.replace("origin/", "")
                     )
-                    # End flow after PR creation
-                    return
+                    return pr_created
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
-                    return
+                    return False
             # End flow after PR prompt
-            return
+            return False
         else:
             components.show_error("Failed to push changes")
             if result.stderr:
                 components.console.print(result.stderr)
-            return
+            return False
 
     except Exception as e:
-        components.show_error(str(e)) 
+        components.show_error(str(e))
+        return False 
