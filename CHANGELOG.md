@@ -41,6 +41,7 @@
 
 ### Chores
 
+- Require requests module for checking if ollama is running
 - Add interactive mode for pushing and creating PRs
 - Add has_uncommitted_changes() to check for local changes
 - Add interactive workflow for staging, committing and pushing
