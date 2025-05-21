@@ -41,7 +41,7 @@ This document defines how Cursor AI should behave and how developers should stru
 ---
 
 ## 🧭 Coding Workflow Rules (Human + Cursor)
-
+ALways create and update task list for any major task. task list should be in .internal
 ### 1. Start With Clear Intent
 Each new task should include:
 ```
