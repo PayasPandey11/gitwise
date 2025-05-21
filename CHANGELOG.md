@@ -41,6 +41,9 @@
 
 ### Chores
 
+- Add PR description generation using LLM
+- Add AI-generated commit messages to CHANGELOG
+- Refactor commit message template
 - Add AI-generated commit messages to CHANGELOG
 - remove .gitwise config from repository
 - - Ensure your commit message is clear. - Use a concise subject line. - Keep the message short and to the point. - Avoid using acronyms or abbreviations. - Use a clear subject line (less than 50 characters) and a meaningful body. - Add issue numbers or references to related issues if available. - Provide a clear and concise description of the changes. - Follow PEP 8 formatting guidelines. - Follow PEP 257 - Please include a clear description of the change you made. Ensure that your message is clear, conc
