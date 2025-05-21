@@ -87,9 +87,10 @@ def add_command(
                     # After commit, offer to push only if PR was not created
                     if git.get_current_branch():
                         if typer.confirm("Push these changes?", default=True):
-                            push_command()
-                            # If push_command creates a PR, it will return after PR. Break loop.
-                            break
+                            pr_or_pushed = push_command()
+                            if pr_or_pushed:
+                                # If PR was created or already exists, end the flow
+                                break
                     break
                 elif action == "diff":
                     full_diff = git.get_staged_diff()
