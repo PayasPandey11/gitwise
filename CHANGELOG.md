@@ -32,6 +32,16 @@
 
 ### Other
 
+- diff --git a/setup.py b/setup.py index cafeefd..5363a3b 100644 --- a/setup.py +++ b/setup.py @@ -39,7 +39,11 @@ setup(          "GitPython>=3.1.0",          "transformers>=4.36.0",          "torch>=2.0.0", +        # Add 'requests' as an optional dependency for Ollama backend support      ], +    extras_require={ +        "ollama": ["requests>=2.0.0"], +    },      entry_points={          "console_scripts": [              "gitwise=gitwise.cli:main", @@ -51,4 +55,7 @@ setup(          "Source": "https://github.com/PayasPandey11/gitwise",          "Documentation": "https://github.com/PayasPandey11/gitwise/blob/main/README.md",      }, -) \ No newline at end of file +) + +# Post-install message for user, added to inform them about Ollama backend support +print("
+[gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online.
+") \ No newline at end of file
+- Type: Bug Fix Scope: llm/router.py
+- `type(scope): description`
+- Type: Feature (new functionality) Scope: features/commit.py
+- `type: update`
+- `type: updates for offline mode and Ollama backend`
+- Type: Feature Scope: CHANGELOG.md
+- 
 - The commit message should include a brief summary of the changes being made, followed by a clear and descriptive commit message. The commit message should also include the commit message template provided in the repository's `.github/commit_template.md` file.
 - Git commit messages are written as a concise description of the changes made. They should be between 50 and 72 characters.
 - - Use a concise and descriptive message that accurately reflects the change. - Avoid excessive adjectives or adverbs, as they can be difficult to understand. - Use a clear and descriptive commit title.
