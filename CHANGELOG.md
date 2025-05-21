@@ -4,6 +4,8 @@
 
 ### Features
 
+- Add config module for loading and saving GitWise settings
+- add Gitwise configuration file
 - add .internal/ to .gitignore
 - add meta-level Cursor ruleset
 - generate PR descriptions and changelogs using AI
@@ -32,6 +34,16 @@
 
 ### Other
 
+- clarify changelog generation prompt guidance
+- Simplify LLM backend routing logic
+- add config check before pushing changes
+- Add config check and LLM backend detection for PR command
+- add config check and LLM backend detection to commit command
+- add config check and improve offline model handling
+- add init command for gitwise setup
+- check config and offer init on add command
+- add init command for interactive setup
+- add Ollama backend support and offline mode
 - add documentation guidelines to meta-level rules
 - `diff --git a/setup.py b/setup.py`
 - **Type:** Changed file (rule update)
