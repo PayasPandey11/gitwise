@@ -150,4 +150,15 @@ def get_default_remote_branch() -> str:
                 return f"origin/{branch}"
     except Exception:
         pass
-    raise RuntimeError("Could not determine the default remote branch (origin). Please check your remote configuration.") 
+    raise RuntimeError("Could not determine the default remote branch (origin). Please check your remote configuration.")
+
+def has_uncommitted_changes() -> bool:
+    """
+    Returns True if there are any staged or unstaged changes in the working directory.
+    """
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True
+    )
+    return bool(result.stdout.strip()) 
