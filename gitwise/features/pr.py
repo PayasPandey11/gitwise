@@ -450,6 +450,6 @@ def print_pr_commit_hashes(base_branch: str) -> None:
     """Debug utility: Print hashes and messages of commits that would be included in the PR."""
     commits = get_pr_commits(base_branch)
     from gitwise.ui import components
-    components.show_section(f"[Debug] Commits for PR (base: {base_branch})")
+    components.show_section(f"[Debug] Commits for PR are (base: {base_branch})")
     for c in commits:
         components.console.print(f"[bold cyan]{c['hash'][:7]}[/bold cyan] {c['message']}") 
