@@ -88,6 +88,7 @@
 
 ### Other
 
+- try
 - Add utilities to check for staged and unstaged changes
 - Add interactive mode and improve error handling
 - Deprecate gitwise.llm module
