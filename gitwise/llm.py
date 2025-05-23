@@ -1,5 +1,9 @@
-"""DEPRECATED: Use gitwise.llm instead."""
-raise ImportError("gitwise.llm.py is deprecated. Use 'from gitwise.llm import get_llm_response'.")
+# This file is deprecated. LLM functionality has moved to gitwise/llm/ package.
+# Import from the package instead to avoid shadowing issues.
+
+from gitwise.llm import get_llm_response
+
+__all__ = ['get_llm_response']
 
 """LLM integration for GitWise."""
 
