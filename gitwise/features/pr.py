@@ -209,6 +209,37 @@ def pr_command(
                 from gitwise.cli.init import init_command
                 init_command()
             return False
+
+        # --- NEW: Check for uncommitted changes and offer to stage/commit ---
+        from gitwise.core import git as core_git
+        uncommitted = core_git.has_uncommitted_changes()
+        if uncommitted:
+            components.show_warning("You have uncommitted changes (staged or unstaged). These will not be included in the PR unless you commit them.")
+            if typer.confirm("Would you like to stage and commit all changes before creating the PR?", default=True):
+                # Stage all
+                with components.show_spinner("Staging all changes..."):
+                    if not core_git.stage_all():
+                        components.show_error("Failed to stage all changes. Aborting PR creation.")
+                        return False
+                # Prompt for commit message
+                components.show_section("Commit All Changes Before PR")
+                commit_message = typer.prompt("Enter a commit message for all staged changes", default="chore: auto-commit before PR creation")
+                with components.show_spinner("Committing changes..."):
+                    result = subprocess.run([
+                        "git", "commit", "-m", commit_message
+                    ], capture_output=True, text=True)
+                    if result.returncode != 0:
+                        components.show_error("Failed to commit changes. Aborting PR creation.")
+                        if result.stderr:
+                            components.console.print(result.stderr)
+                        return False
+                    else:
+                        components.show_success("All changes committed.")
+            else:
+                components.show_warning("PR creation cancelled due to uncommitted changes.")
+                return False
+        # --- END NEW ---
+
         # Detect and show current LLM backend
         backend = get_llm_backend()
         backend_display = {
