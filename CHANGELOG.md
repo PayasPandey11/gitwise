@@ -41,6 +41,7 @@
 
 ### Chores
 
+- Unify LLM backends and update setup messaging
 - Add pyproject.toml
 - Improve LLM backend routing and error handling
 - Add check for uncommitted changes before PR creation
@@ -80,6 +81,8 @@
 
 ### Other
 
+- Add utilities to check for staged and unstaged changes
+- Add interactive mode and improve error handling
 - Deprecate gitwise.llm module
 - Make offline dependency check optional
 - Tweak debugging output for PR commit listing
