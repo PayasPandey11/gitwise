@@ -21,6 +21,10 @@
 - show all operations before commit to improve UX
 - add new feature (placeholder message)
 
+### Bug Fixes
+
+- resolve remaining changelog changes
+
 ### Documentation
 
 - add changelog feature documentation and contributing guidelines
