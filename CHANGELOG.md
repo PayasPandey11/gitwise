@@ -75,6 +75,7 @@
 
 ### Other
 
+- Add interactive mode for pushing and creating PRs
 - Add interactive mode to push and PR creation flow
 - Add PR commit summary and interactive PR open
 - Add PR creation and LLM-based commit message generation
