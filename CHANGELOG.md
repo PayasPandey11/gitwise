@@ -41,6 +41,7 @@
 
 ### Chores
 
+- Add commit status check and offer to stage/commit changes
 - Unify LLM backends and update setup messaging
 - Add pyproject.toml
 - Improve LLM backend routing and error handling
