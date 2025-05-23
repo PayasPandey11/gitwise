@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitwise"
+version = "0.1.0"
+description = "A brief description of your project."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "payas pandey", email = "rpayaspandey@gmail.com" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+dynamic = ["dependencies", "optional-dependencies", "scripts"]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/gitwise"
+Documentation = "https://github.com/yourusername/gitwise#readme"
+Source = "https://github.com/yourusername/gitwise"
+Tracker = "https://github.com/yourusername/gitwise/issues" 
