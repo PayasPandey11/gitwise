@@ -1,4 +1,5 @@
 """Pull request creation feature for GitWise."""
+# Test comment for PR flow
 
 import subprocess
 import re
@@ -235,6 +236,23 @@ def pr_command(
                         return False
                     else:
                         components.show_success("All changes committed.")
+
+                # --- NEW: Ask to update changelog for these committed changes ---
+                if typer.confirm("Would you like to update the changelog for the changes just committed?", default=True):
+                    from gitwise.features.changelog import changelog_command as update_changelog_func
+                    with components.show_spinner("Updating changelog..."):
+                        update_changelog_func(auto_update=True) # This updates [Unreleased]
+                        # Stage and commit the changelog
+                        if core_git.stage_file("CHANGELOG.md"):
+                            changelog_commit_msg = "docs: update changelog for PR changes"
+                            result_cl = subprocess.run(["git", "commit", "-m", changelog_commit_msg], capture_output=True, text=True)
+                            if result_cl.returncode == 0:
+                                components.show_success("Changelog updated and committed.")
+                            else:
+                                components.show_warning(f"Failed to commit changelog: {result_cl.stderr.strip() if result_cl.stderr else 'Unknown error'}")
+                        else:
+                            components.show_warning("Failed to stage CHANGELOG.md after update.")
+                # --- END NEW CHANGELOG UPDATE ---
             else:
                 components.show_warning("PR creation cancelled due to uncommitted changes.")
                 return False

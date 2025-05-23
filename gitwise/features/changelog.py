@@ -366,8 +366,11 @@ def setup_commit_hook() -> None:
     """Set up git commit hook for automatic changelog updates."""
     hook_path = ".git/hooks/pre-commit"
     hook_content = """#!/bin/sh
-# Update changelog before commit
-gitwise changelog --auto-update
+# GitWise pre-commit hook
+# Previously, this hook would automatically run 'gitwise changelog --auto-update'.
+# This automatic update has been removed to give users more control.
+# You can manually update the changelog using 'gitwise changelog'.
+echo "[GitWise] Pre-commit hook executed (changelog auto-update is now manual)."
 """
     
     # Create hook directory if it doesn't exist

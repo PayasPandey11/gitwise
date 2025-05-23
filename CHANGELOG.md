@@ -27,6 +27,7 @@
 
 ### Documentation
 
+- final changelog auto-update
 - auto-update changelog with recent changes
 - add changelog feature documentation and contributing guidelines
 - add changelog feature documentation
