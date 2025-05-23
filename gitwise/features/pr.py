@@ -123,7 +123,6 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
 def get_pr_commits(base_branch: str) -> List[Dict]:
     """Return commits unique to the current branch (not yet merged into base_branch)."""
 
-    import subprocess
     from gitwise.ui import components
     try:
         # Find the merge base (common ancestor) between base_branch and HEAD
@@ -212,9 +211,10 @@ def pr_command(
 
         # --- NEW: Check for uncommitted changes and offer to stage/commit ---
         from gitwise.core import git as core_git
-        uncommitted = core_git.has_uncommitted_changes()
+        uncommitted, debug_info = core_git.has_uncommitted_changes_debug()
         if uncommitted:
             components.show_warning("You have uncommitted changes (staged or unstaged). These will not be included in the PR unless you commit them.")
+            components.console.print(f"[dim]Debug - Uncommitted files:[/dim]\n{debug_info}")
             if typer.confirm("Would you like to stage and commit all changes before creating the PR?", default=True):
                 # Stage all
                 with components.show_spinner("Staging all changes..."):
@@ -354,7 +354,7 @@ def pr_command(
                 return False
 
             if choice == 2:  # Edit
-                import tempfile, os, subprocess
+                import tempfile, os
                 with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
                     tf.write(pr_body) # Edit the potentially enhanced body
                     tf.flush()
