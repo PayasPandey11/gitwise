@@ -75,6 +75,9 @@
 
 ### Other
 
+- Tweak debugging output for PR commit listing
+- Add interactive mode for creating and pushing PRs
+- Require requests module for checking if ollama is running
 - Add interactive mode for pushing and creating PRs
 - Add interactive mode to push and PR creation flow
 - Add PR commit summary and interactive PR open
