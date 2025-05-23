@@ -41,6 +41,11 @@
 
 ### Chores
 
+- Add pyproject.toml
+- Improve LLM backend routing and error handling
+- Add check for uncommitted changes before PR creation
+- Add interactive mode for creating PRs
+- Ignore .DS_Store changes
 - Require requests module for checking if ollama is running
 - Add interactive mode for pushing and creating PRs
 - Add has_uncommitted_changes() to check for local changes
@@ -75,6 +80,8 @@
 
 ### Other
 
+- Deprecate gitwise.llm module
+- Make offline dependency check optional
 - Tweak debugging output for PR commit listing
 - Add interactive mode for creating and pushing PRs
 - Require requests module for checking if ollama is running
