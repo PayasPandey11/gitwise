@@ -2,24 +2,7 @@ import os
 import sys
 import time
 
-from gitwise.llm.offline import get_llm_response as offline_llm
-from gitwise.llm.ollama import get_llm_response as ollama_llm
-from gitwise.llm.online import get_llm_response as online_llm
 from gitwise.config import get_llm_backend
-
-# Import all backends but only use as needed
-try:
-    from . import ollama
-except ImportError:
-    ollama = None
-try:
-    from . import offline
-except ImportError:
-    offline = None
-try:
-    from . import online
-except ImportError:
-    online = None
 
 def get_llm_response(*args, **kwargs):
     """
@@ -29,12 +12,34 @@ def get_llm_response(*args, **kwargs):
     If Ollama is selected, try up to 3 times before falling back.
     """
     backend = get_llm_backend()
+    
     if backend == "online":
-        return online_llm(*args, **kwargs)
+        try:
+            from gitwise.llm.online import get_llm_response as online_llm
+            return online_llm(*args, **kwargs)
+        except ImportError as e:
+            raise RuntimeError(f"Online backend requires 'openai' package. Install with: pip install openai") from e
     elif backend == "offline":
-        return offline_llm(*args, **kwargs)
+        try:
+            from gitwise.llm.offline import get_llm_response as offline_llm
+            return offline_llm(*args, **kwargs)
+        except ImportError as e:
+            raise RuntimeError(f"Offline backend requires 'transformers' and 'torch'. Install with: pip install transformers torch") from e
     elif backend == "ollama":
-        return ollama_llm(*args, **kwargs)
+        try:
+            from gitwise.llm.ollama import get_llm_response as ollama_llm
+            return ollama_llm(*args, **kwargs)
+        except ImportError as e:
+            # Fallback to offline if ollama backend has issues
+            try:
+                from gitwise.llm.offline import get_llm_response as offline_llm
+                return offline_llm(*args, **kwargs)
+            except ImportError:
+                raise RuntimeError(f"Ollama backend failed and offline fallback requires 'transformers' and 'torch'") from e
     else:
-        # Fallback to offline if unknown
-        return offline_llm(*args, **kwargs) 
+        # Fallback to offline if unknown backend
+        try:
+            from gitwise.llm.offline import get_llm_response as offline_llm
+            return offline_llm(*args, **kwargs)
+        except ImportError as e:
+            raise RuntimeError(f"Unknown backend '{backend}' and offline fallback requires 'transformers' and 'torch'") from e 

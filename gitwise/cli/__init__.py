@@ -51,7 +51,8 @@ def check_and_install_offline_deps():
             print("[gitwise] Cannot proceed without required dependencies. Exiting.")
         sys.exit(1)
 
-check_and_install_offline_deps()
+# Remove automatic dependency check at import time
+# check_and_install_offline_deps()
 
 # Add commands
 @app.command()
@@ -159,6 +160,8 @@ def git(
 @app.command("offline-model", help="Check and download the offline LLM model for offline mode.")
 def offline_model_cmd():
     """Check/download the offline LLM model (microsoft/phi-2 by default)."""
+    # Only check dependencies when user explicitly requests offline model
+    check_and_install_offline_deps()
     from gitwise.llm.download import download_offline_model
     download_offline_model()
     raise typer.Exit()

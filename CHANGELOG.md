@@ -21,8 +21,14 @@
 - show all operations before commit to improve UX
 - add new feature (placeholder message)
 
+### Bug Fixes
+
+- resolve remaining changelog changes
+
 ### Documentation
 
+- final changelog auto-update
+- auto-update changelog with recent changes
 - add changelog feature documentation and contributing guidelines
 - add changelog feature documentation
 - add API documentation for GitWise
@@ -41,6 +47,13 @@
 
 ### Chores
 
+- Add commit status check and offer to stage/commit changes
+- Unify LLM backends and update setup messaging
+- Add pyproject.toml
+- Improve LLM backend routing and error handling
+- Add check for uncommitted changes before PR creation
+- Add interactive mode for creating PRs
+- Ignore .DS_Store changes
 - Require requests module for checking if ollama is running
 - Add interactive mode for pushing and creating PRs
 - Add has_uncommitted_changes() to check for local changes
@@ -75,6 +88,15 @@
 
 ### Other
 
+- try
+- Add utilities to check for staged and unstaged changes
+- Add interactive mode and improve error handling
+- Deprecate gitwise.llm module
+- Make offline dependency check optional
+- Tweak debugging output for PR commit listing
+- Add interactive mode for creating and pushing PRs
+- Require requests module for checking if ollama is running
+- Add interactive mode for pushing and creating PRs
 - Add interactive mode to push and PR creation flow
 - Add PR commit summary and interactive PR open
 - Add PR creation and LLM-based commit message generation

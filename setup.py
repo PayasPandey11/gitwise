@@ -41,6 +41,8 @@ setup(
         "torch>=2.0.0",
         "typer>=0.9.0",
         "rich>=13.0.0",
+        "openai>=1.0.0",
+        "requests>=2.0.0",
     ],
     extras_require={
         "dev": [
@@ -50,9 +52,6 @@ setup(
             "black",
             "isort",
             "mypy",
-        ],
-        "ollama": [
-            "requests>=2.0.0",
         ],
     },
     entry_points={
@@ -69,4 +68,4 @@ setup(
 
 # Minimal post-install message for user
 if os.environ.get("GITWISE_SETUP_MESSAGE", "1") == "1":
-    print("\n[gitwise] By default, GitWise uses Ollama as the LLM backend. If you want to override this, set GITWISE_LLM_BACKEND=offline or online. See README for details.\n") 
+    print("\n[gitwise] All LLM backends (Ollama, Offline, Online) are now available! By default, GitWise uses Ollama. To change backends, run 'gitwise init' or set GITWISE_LLM_BACKEND environment variable. See README for details.\n") 

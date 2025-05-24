@@ -109,7 +109,7 @@ def create_commit(message: str) -> bool:
     return result.returncode == 0
 
 def get_current_branch() -> str:
-    """Get current branch name."""
+    """Get current branch name. Test change for full add flow."""
     result = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         capture_output=True,
@@ -161,4 +161,38 @@ def has_uncommitted_changes() -> bool:
         capture_output=True,
         text=True
     )
-    return bool(result.stdout.strip()) 
+    return bool(result.stdout.strip())
+
+def has_uncommitted_changes_debug() -> Tuple[bool, str]:
+    """
+    Returns True if there are any staged or unstaged changes, plus debug info.
+    """
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True
+    )
+    output = result.stdout.strip()
+    return bool(output), output
+
+def has_staged_changes() -> bool:
+    """
+    Returns True if there are any staged changes ready to commit.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode != 0
+
+def has_unstaged_changes() -> bool:
+    """
+    Returns True if there are any unstaged changes in tracked files.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--quiet"],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode != 0 

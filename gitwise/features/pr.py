@@ -1,4 +1,5 @@
 """Pull request creation feature for GitWise."""
+# Test comment for PR flow
 
 import subprocess
 import re
@@ -123,7 +124,6 @@ def get_commits_since_last_pr(base_branch: str) -> List[Dict]:
 def get_pr_commits(base_branch: str) -> List[Dict]:
     """Return commits unique to the current branch (not yet merged into base_branch)."""
 
-    import subprocess
     from gitwise.ui import components
     try:
         # Find the merge base (common ancestor) between base_branch and HEAD
@@ -209,6 +209,55 @@ def pr_command(
                 from gitwise.cli.init import init_command
                 init_command()
             return False
+
+        # --- NEW: Check for uncommitted changes and offer to stage/commit ---
+        from gitwise.core import git as core_git
+        uncommitted, debug_info = core_git.has_uncommitted_changes_debug()
+        if uncommitted:
+            components.show_warning("You have uncommitted changes (staged or unstaged). These will not be included in the PR unless you commit them.")
+            components.console.print(f"[dim]Debug - Uncommitted files:[/dim]\n{debug_info}")
+            if typer.confirm("Would you like to stage and commit all changes before creating the PR?", default=True):
+                # Stage all
+                with components.show_spinner("Staging all changes..."):
+                    if not core_git.stage_all():
+                        components.show_error("Failed to stage all changes. Aborting PR creation.")
+                        return False
+                # Prompt for commit message
+                components.show_section("Commit All Changes Before PR")
+                commit_message = typer.prompt("Enter a commit message for all staged changes", default="chore: auto-commit before PR creation")
+                with components.show_spinner("Committing changes..."):
+                    result = subprocess.run([
+                        "git", "commit", "-m", commit_message
+                    ], capture_output=True, text=True)
+                    if result.returncode != 0:
+                        components.show_error("Failed to commit changes. Aborting PR creation.")
+                        if result.stderr:
+                            components.console.print(result.stderr)
+                        return False
+                    else:
+                        components.show_success("All changes committed.")
+
+                # --- NEW: Ask to update changelog for these committed changes ---
+                if typer.confirm("Would you like to update the changelog for the changes just committed?", default=True):
+                    from gitwise.features.changelog import changelog_command as update_changelog_func
+                    with components.show_spinner("Updating changelog..."):
+                        update_changelog_func(auto_update=True) # This updates [Unreleased]
+                        # Stage and commit the changelog
+                        if core_git.stage_file("CHANGELOG.md"):
+                            changelog_commit_msg = "docs: update changelog for PR changes"
+                            result_cl = subprocess.run(["git", "commit", "-m", changelog_commit_msg], capture_output=True, text=True)
+                            if result_cl.returncode == 0:
+                                components.show_success("Changelog updated and committed.")
+                            else:
+                                components.show_warning(f"Failed to commit changelog: {result_cl.stderr.strip() if result_cl.stderr else 'Unknown error'}")
+                        else:
+                            components.show_warning("Failed to stage CHANGELOG.md after update.")
+                # --- END NEW CHANGELOG UPDATE ---
+            else:
+                components.show_warning("PR creation cancelled due to uncommitted changes.")
+                return False
+        # --- END NEW ---
+
         # Detect and show current LLM backend
         backend = get_llm_backend()
         backend_display = {
@@ -323,7 +372,7 @@ def pr_command(
                 return False
 
             if choice == 2:  # Edit
-                import tempfile, os, subprocess
+                import tempfile, os
                 with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False, mode="w+") as tf:
                     tf.write(pr_body) # Edit the potentially enhanced body
                     tf.flush()
@@ -450,6 +499,6 @@ def print_pr_commit_hashes(base_branch: str) -> None:
     """Debug utility: Print hashes and messages of commits that would be included in the PR."""
     commits = get_pr_commits(base_branch)
     from gitwise.ui import components
-    components.show_section(f"[Debug] Commits for PR (base: {base_branch})")
+    components.show_section(f"[Debug] Commits for PR are (base: {base_branch})")
     for c in commits:
         components.console.print(f"[bold cyan]{c['hash'][:7]}[/bold cyan] {c['message']}") 
