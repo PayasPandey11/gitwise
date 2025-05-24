@@ -109,7 +109,7 @@ def create_commit(message: str) -> bool:
     return result.returncode == 0
 
 def get_current_branch() -> str:
-    """Get current branch name."""
+    """Get current branch name. Test change for full add flow."""
     result = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         capture_output=True,
