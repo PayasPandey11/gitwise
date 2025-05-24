@@ -281,18 +281,30 @@ def pr_command(
             components.show_error("Not on any branch")
             return False
 
-        # Get base branch (always use remote-tracking branch)
+        # Get base branch for commit analysis (keep 'origin/' prefix if present)
+        base_branch_for_analysis = base or get_default_remote_branch()
         try:
-            # Always resolve to remote-tracking branch for PRs
-            base_branch = base or get_default_remote_branch()
+            # Resolve to remote-tracking branch for PRs for analysis
+            if not base_branch_for_analysis.startswith("origin/") and "/" not in base_branch_for_analysis:
+                 # if user provided 'main', assume 'origin/main' for analysis
+                 remote_name = "origin" # Or get actual remote name
+                 base_branch_for_analysis = f"{remote_name}/{base_branch_for_analysis}"
         except Exception as e:
-            components.show_error(f"Could not determine default remote branch: {e}")
+            components.show_error(f"Could not determine default remote branch for analysis: {e}")
             return False
         
-        # Get commits for PR
+        # Determine base branch for gh pr create (strip 'origin/' prefix)
+        base_branch_for_gh = base or get_default_remote_branch()
+        if base_branch_for_gh.startswith("origin/"):
+            base_branch_for_gh = base_branch_for_gh.split("/", 1)[1]
+        elif "/" in base_branch_for_gh: # e.g. something like upstream/main
+            pass # Keep as is if it looks like a specific remote/branch
+        # If 'base' was provided by user without 'origin/', it's already good for gh
+
+        # Get commits for PR (using the analysis base branch)
         components.show_section("Analyzing Changes")
         with components.show_spinner("Checking for commits...") as progress:
-            commits = get_pr_commits(base_branch)
+            commits = get_pr_commits(base_branch_for_analysis)
             if not commits:
                 components.show_warning("No commits to create PR for")
                 return False
@@ -347,7 +359,8 @@ def pr_command(
         
         if use_checklist:
             with components.show_spinner("Generating checklist..."):
-                pr_body, _ = enhance_pr_description(commits, pr_body, use_labels=False, use_checklist=True, skip_general_checklist=skip_general_checklist, base_branch_for_checklist=base_branch)
+                # Pass the analysis base branch for checklist generation logic too
+                pr_body, _ = enhance_pr_description(commits, pr_body, use_labels=False, use_checklist=True, skip_general_checklist=skip_general_checklist, base_branch_for_checklist=base_branch_for_analysis)
 
         # Show the generated/enhanced description
         components.show_section("Suggested PR Description")
@@ -357,7 +370,7 @@ def pr_command(
         components.console.print(f"[bold]Body:[/bold]\n{pr_body}")
 
         if skip_prompts:
-            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch_for_gh, labels=final_labels, draft=draft)
             return True
         else:
             components.show_prompt(
@@ -398,7 +411,7 @@ def pr_command(
                     components.show_warning("PR creation cancelled")
                     return False
             
-            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch, labels=final_labels, draft=draft)
+            create_github_pr(title=pr_generated_title, body=pr_body, base=base_branch_for_gh, labels=final_labels, draft=draft)
             return True
 
     except Exception as e:
