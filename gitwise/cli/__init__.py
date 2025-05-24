@@ -86,10 +86,11 @@ def pr(
     skip_general_checklist: bool = typer.Option(False, "--skip-checklist", help="Skip general checklist items"),
     title: str = typer.Option(None, "--title", "-t", help="Custom title for the PR"),
     base: str = typer.Option(None, "--base", "-b", help="Base branch for the PR"),
-    draft: bool = typer.Option(False, "--draft", "-d", help="Create a draft PR")
+    draft: bool = typer.Option(False, "--draft", "-d", help="Create a draft PR"),
+    skip_prompts: bool = typer.Option(False, "--skip-prompts", help="Skip all interactive prompts and use defaults.")
 ) -> None:
     """Create a pull request with AI-generated description."""
-    pr_command(use_labels, use_checklist, skip_general_checklist, title, base, draft)
+    pr_command(use_labels, use_checklist, skip_general_checklist, title, base, draft, skip_prompts)
 
 @app.command()
 def changelog(
