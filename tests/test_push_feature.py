@@ -99,6 +99,7 @@ def test_push_feature_execute_push_tracking_and_create_pr(
         use_checklist=True,
         skip_general_checklist=False,
         skip_prompts=False,
+        auto_confirm=False,
         base="main",
     )
 
@@ -145,6 +146,7 @@ def test_push_feature_execute_push_not_tracking_set_upstream_and_pr(
         use_checklist=True,
         skip_general_checklist=False,
         skip_prompts=False,
+        auto_confirm=False,
         base="main",
     )
 
