@@ -85,9 +85,6 @@ For comprehensive documentation, advanced features, troubleshooting, and real-wo
 - **[📋 Quick Reference](https://payaspandey11.github.io/gitwise/QUICK_REFERENCE.html)** - Handy command reference
 - **[🔧 API Documentation](https://payaspandey11.github.io/gitwise/api.html)** - For developers and contributors
 
-## 🦙 Recommended: Ollama Setup
-
-For the best balance of privacy, quality, and speed:
 
 #### ⚠️ Command Not Found? (PATH issues)
 If you see a warning like:
