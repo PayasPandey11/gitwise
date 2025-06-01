@@ -60,13 +60,6 @@ GitWise now uses [Ollama](https://ollama.com/) as the **default** backend for al
   ```
   or the appropriate model name.
 
-**Q: Do I need the `requests` library?**
-- GitWise will use `requests` for Ollama HTTP calls if available (recommended for best compatibility). If not, it will fall back to Python's standard library HTTP support.
-- To ensure requests is installed:
-  ```bash
-  pip install .[ollama]
-  ```
-
 ## Installation
 
 Ensure you have Python 3.8+ installed.
