@@ -192,32 +192,38 @@ def test_pr_feature_edit_description(mock_git_manager_pr, mock_pr_dependencies, 
     mock_pr_dependencies["confirm"].return_value = True # Confirm using edited description
 
     with patch("gitwise.features.pr.tempfile.NamedTemporaryFile") as mock_tempfile, \
-         patch("gitwise.features.pr.subprocess.run") as mock_subproc_run_editor, \
          patch("builtins.open") as mock_builtin_open_editor:
 
         mock_tf = MagicMock()
         mock_tf.name = "/tmp/pr_body.md"
         mock_tempfile.return_value.__enter__.return_value = mock_tf
-        mock_subproc_run_editor.return_value = MagicMock(returncode=0) # Simulate successful editor save
 
         # Simulate reading the edited file content
         mock_file_read = MagicMock()
         mock_file_read.read.return_value = edited_body_content
         mock_builtin_open_editor.return_value.__enter__.return_value = mock_file_read
 
-        # Re-mock subprocess.run for the gh calls after editor part
+        # Set up subprocess.run side effects for all calls in sequence:
+        # 1. Editor call (vi /tmp/pr_body.md)
+        # 2. gh pr list call  
+        # 3. gh pr create call
+        editor_mock = MagicMock(returncode=0)  # Simulate successful editor save
         gh_pr_list_mock = MagicMock(returncode=0, stdout='[]')
         gh_pr_create_mock = MagicMock(returncode=0, stdout="https://github.com/user/repo/pull/123")
-        # The first call to subprocess.run is the editor, then gh pr list, then gh pr create
-        mock_pr_dependencies["subprocess_run"].side_effect = [mock_subproc_run_editor.return_value, gh_pr_list_mock, gh_pr_create_mock]
+        mock_pr_dependencies["subprocess_run"].side_effect = [editor_mock, gh_pr_list_mock, gh_pr_create_mock]
 
         feature = PrFeature()
         result = feature.execute_pr(use_labels=False, use_checklist=False)
         assert result is True
 
-        mock_subproc_run_editor.assert_called_once_with([os.environ.get("EDITOR", "vi"), "/tmp/pr_body.md"], check=True)
+        # Verify editor was called
+        editor_call = mock_pr_dependencies["subprocess_run"].call_args_list[0]
+        assert editor_call[0][0] == [os.environ.get("EDITOR", "vi"), "/tmp/pr_body.md"]
+        assert editor_call[1] == {"check": True}
         
-        gh_call_args = mock_pr_dependencies["subprocess_run"].call_args_list[2][0][0] # Third call is gh pr create
+        # Verify gh pr create has the edited content
+        gh_create_call = mock_pr_dependencies["subprocess_run"].call_args_list[2]
+        gh_call_args = gh_create_call[0][0]
         assert edited_body_content in gh_call_args
 
 
