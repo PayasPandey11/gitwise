@@ -140,10 +140,14 @@ def test_add_feature_config_error_and_no_init(mock_load_config_add_no_init, mock
 # Test for handling a file that is not found
 def test_add_feature_stage_specific_file_not_found(mock_git_manager_add, mock_dependencies_add_feature):
     files_to_add = ["non_existent_file.py"]
+    
+    # Ensure no files appear as staged since the file doesn't exist
+    mock_git_manager_add.get_staged_files.return_value = []
 
     # Patch os.path.exists for the add module
     with patch("gitwise.features.add.os.path.exists", return_value=False) as mock_os_exists, \
-         patch("gitwise.features.add.load_config"):
+         patch("gitwise.features.add.load_config"), \
+         patch("gitwise.features.add.get_llm_backend", return_value="offline"):
         
         feature = AddFeature() # Uses mock_git_manager_add due to fixture
         feature.execute_add(files=files_to_add)
