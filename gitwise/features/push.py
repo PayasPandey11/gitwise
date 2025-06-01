@@ -169,7 +169,7 @@ class PushFeature:
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
                     return False
-            return False
+            return True # Push was successful, user opted out of PR. This is a successful completion.
         except Exception as e:
             components.show_error(str(e))
             return False
