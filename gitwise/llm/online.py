@@ -6,9 +6,11 @@ from typing import Dict, List, Union
 from openai import OpenAI
 
 from gitwise.config import ConfigError, load_config
+from gitwise.llm.model_presets import DEFAULT_MODEL
 
 # Default model if not specified in config or environment
-DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3-haiku"
+# Updated to align with new model presets (balanced choice)
+DEFAULT_OPENROUTER_MODEL = DEFAULT_MODEL
 
 
 def get_llm_response(
