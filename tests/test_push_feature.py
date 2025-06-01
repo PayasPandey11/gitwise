@@ -21,12 +21,20 @@ def mock_git_manager_push(): # Renamed for clarity
 def mock_push_dependencies(mock_git_manager_push):
     with patch("gitwise.features.push.components") as mock_components, \
          patch("gitwise.features.push.typer.confirm") as mock_confirm, \
+         patch("gitwise.features.push.typer.prompt") as mock_prompt, \
          patch("gitwise.features.push.PrFeature") as mock_pr_feature, \
          patch("gitwise.cli.init.init_command") as mock_init_command:
+        # Set up the mocked PrFeature instance to return True when execute_pr is called
+        mock_pr_instance = MagicMock()
+        mock_pr_instance.execute_pr.return_value = True
+        mock_pr_feature.return_value = mock_pr_instance
+        
         yield {
             "components": mock_components,
             "confirm": mock_confirm,
+            "prompt": mock_prompt,
             "pr_feature": mock_pr_feature,
+            "pr_instance": mock_pr_instance,
             "init_command": mock_init_command
         }
 
@@ -43,7 +51,7 @@ def test_push_feature_execute_push_tracking_and_create_pr(mock_git_manager_push,
 
     assert result is True
     mock_git_manager_push.push_to_remote.assert_called_once_with(local_branch="feature/test-push")
-    mock_push_dependencies["pr_feature"].execute_pr.assert_called_once_with(
+    mock_push_dependencies["pr_instance"].execute_pr.assert_called_once_with(
         use_labels=True, use_checklist=True, skip_general_checklist=False, skip_prompts=False, base="main"
     )
 
@@ -54,19 +62,23 @@ def test_push_feature_execute_push_not_tracking_set_upstream_and_pr(mock_git_man
         MagicMock(stderr="fatal: no upstream configured for branch", returncode=128), # Not tracking
         MagicMock(returncode=0) # Successful push --set-upstream
     ]
+    mock_push_dependencies["prompt"].return_value = 1  # User chooses "Yes" to set upstream
     mock_push_dependencies["confirm"].return_value = True # Confirm create PR, Confirm include extras
 
     feature = PushFeature()
     result = feature.execute_push()
 
     assert result is True
-    # push_to_remote is called by the --set-upstream command in this flow
-    # The primary push_to_remote call after checking tracking status is skipped.
-    # Instead, the _run_git_command for "push --set-upstream" is key.
+    # push_to_remote is called after the --set-upstream command succeeds
+    mock_git_manager_push.push_to_remote.assert_called_once_with(local_branch="feature/test-push")
+    # The _run_git_command for "push --set-upstream" is key.
     assert mock_git_manager_push._run_git_command.call_count == 3 # fetch, rev-parse, push --set-upstream
     assert mock_git_manager_push._run_git_command.call_args_list[2][0][0] == \
-        ["git", "push", "--set-upstream", "origin", "feature/test-push"]
-    mock_push_dependencies["pr_feature"].execute_pr.assert_called_once()
+        ["push", "--set-upstream", "origin", "feature/test-push"]
+    # After set-upstream, the flow continues to PR creation
+    mock_push_dependencies["pr_instance"].execute_pr.assert_called_once_with(
+        use_labels=True, use_checklist=True, skip_general_checklist=False, skip_prompts=False, base="main"
+    )
 
 def test_push_feature_no_commits_to_push_but_create_pr_anyway(mock_git_manager_push, mock_push_dependencies):
     mock_git_manager_push.get_commits_between.return_value = [] # No new commits
@@ -82,7 +94,7 @@ def test_push_feature_no_commits_to_push_but_create_pr_anyway(mock_git_manager_p
     result = feature.execute_push()
 
     assert result is True
-    mock_push_dependencies["pr_feature"].execute_pr.assert_called_once()
+    mock_push_dependencies["pr_instance"].execute_pr.assert_called_once()
 
 def test_push_feature_push_fails(mock_git_manager_push, mock_push_dependencies):
     mock_git_manager_push.push_to_remote.return_value = False # Push fails
@@ -96,7 +108,7 @@ def test_push_feature_push_fails(mock_git_manager_push, mock_push_dependencies):
     result = feature.execute_push()
 
     assert result is False
-    mock_push_dependencies["pr_feature"].execute_pr.assert_not_called()
+    mock_push_dependencies["pr_instance"].execute_pr.assert_not_called()
 
 @patch("gitwise.features.push.load_config")
 def test_push_feature_config_error_and_init(mock_load_config_push, mock_git_manager_push, mock_push_dependencies):

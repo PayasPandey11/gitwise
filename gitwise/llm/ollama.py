@@ -12,7 +12,6 @@ except ImportError:
     _HAS_REQUESTS = False
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
-DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
 
 
 class OllamaError(Exception):
@@ -31,8 +30,10 @@ def get_llm_response(prompt: str, model: str = None, **kwargs) -> str:
     Raises:
         OllamaError: If Ollama is not running or request fails.
     """
-    model = model or DEFAULT_MODEL
-    payload = {"model": model, "prompt": prompt, "stream": False}
+    # Fetch default model at runtime to respect mocked env vars in tests
+    default_model_from_env = os.environ.get("OLLAMA_MODEL", "llama3")
+    effective_model = model or default_model_from_env
+    payload = {"model": effective_model, "prompt": prompt, "stream": False}
     try:
         if _HAS_REQUESTS:
             resp = requests.post(OLLAMA_URL, json=payload, timeout=30)

@@ -80,9 +80,11 @@ def test_is_git_repo_true(mock_subprocess_run):
     with patch.object(GitManager, "_find_git_root", return_value=MOCK_REPO_PATH):
         gm = GitManager()
         assert gm.is_git_repo() is True
+    # Test when no git repo is found
     with patch.object(GitManager, "_find_git_root", return_value=None):
-        gm = GitManager(path=None) # Force re-evaluation of _find_git_root behavior
-        assert gm.is_git_repo() is False
+        # GitManager raises RuntimeError when no git repo is found
+        with pytest.raises(RuntimeError, match="Not inside a Git repository"):
+            gm = GitManager(path=None)
 
 
 # Test get_staged_files
