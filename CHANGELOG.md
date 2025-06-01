@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0] - 2024-08-23
+## [0.1.0] - 2025-01-10
 *(Please update YYYY-MM-DD with the actual release date)*
 
 ### Added
