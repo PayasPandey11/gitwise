@@ -23,11 +23,29 @@ def mock_push_dependencies(mock_git_manager_push):
          patch("gitwise.features.push.typer.confirm") as mock_confirm, \
          patch("gitwise.features.push.typer.prompt") as mock_prompt, \
          patch("gitwise.features.push.PrFeature") as mock_pr_feature, \
+         patch("gitwise.features.push.load_config") as mock_load_config, \
          patch("gitwise.cli.init.init_command") as mock_init_command:
         # Set up the mocked PrFeature instance to return True when execute_pr is called
         mock_pr_instance = MagicMock()
         mock_pr_instance.execute_pr.return_value = True
         mock_pr_feature.return_value = mock_pr_instance
+        
+        # Set up components mocks
+        mock_spinner = MagicMock()
+        mock_spinner.__enter__ = MagicMock(return_value=mock_spinner)
+        mock_spinner.__exit__ = MagicMock(return_value=None)
+        mock_spinner.start = MagicMock()
+        mock_spinner.stop = MagicMock()
+        mock_components.show_spinner.return_value = mock_spinner
+        mock_components.show_success = MagicMock()
+        mock_components.show_warning = MagicMock()
+        mock_components.show_error = MagicMock()
+        mock_components.show_prompt = MagicMock()
+        mock_components.console = MagicMock()
+        mock_components.console.line = MagicMock()
+        
+        # Set up load_config to succeed by default
+        mock_load_config.return_value = {"llm_backend": "offline"}
         
         yield {
             "components": mock_components,
@@ -35,7 +53,8 @@ def mock_push_dependencies(mock_git_manager_push):
             "prompt": mock_prompt,
             "pr_feature": mock_pr_feature,
             "pr_instance": mock_pr_instance,
-            "init_command": mock_init_command
+            "init_command": mock_init_command,
+            "load_config": mock_load_config
         }
 
 def test_push_feature_execute_push_tracking_and_create_pr(mock_git_manager_push, mock_push_dependencies):
@@ -110,9 +129,8 @@ def test_push_feature_push_fails(mock_git_manager_push, mock_push_dependencies):
     assert result is False
     mock_push_dependencies["pr_instance"].execute_pr.assert_not_called()
 
-@patch("gitwise.features.push.load_config")
-def test_push_feature_config_error_and_init(mock_load_config_push, mock_git_manager_push, mock_push_dependencies):
-    mock_load_config_push.side_effect = ConfigError("Test config error")
+def test_push_feature_config_error_and_init(mock_git_manager_push, mock_push_dependencies):
+    mock_push_dependencies["load_config"].side_effect = ConfigError("Test config error")
     mock_push_dependencies["confirm"].return_value = True # User confirms to run init
 
     feature = PushFeature()
