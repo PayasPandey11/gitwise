@@ -4,7 +4,6 @@ from typing import Optional
 
 import typer
 
-from ..cli.init import init_command  # For calling init if config error
 from ..config import ConfigError, load_config
 from ..core.git_manager import GitManager
 from ..features.pr import PrFeature  # UPDATED from pr_command
@@ -25,11 +24,11 @@ class PushFeature:
             try:
                 load_config()
             except ConfigError as e:
+                from ..cli.init import init_command
                 components.show_error(str(e))
                 if typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
-                    # from ..cli.init import init_command # Already imported at module level
                     init_command()
                 return False
 

@@ -398,16 +398,15 @@ def _create_version_tag(
         components.show_error(f"Failed to create version tag {version}: {e}")
 
 
-def _update_unreleased_changelog_section() -> None:
+def _update_unreleased_changelog_section(changelog_path: str = "CHANGELOG.md") -> None:
     """Update the unreleased section of the changelog."""
     commits = _get_unreleased_commits_as_dicts()
     if not commits:
         return
 
-    changelog_path = "CHANGELOG.md"
     existing_content = ""
     if os.path.exists(changelog_path):
-        with open(changelog_path, "r") as f:
+        with open(changelog_path, "r", encoding="utf-8") as f:
             existing_content = f.read()
 
     # Generate unreleased section
@@ -465,7 +464,7 @@ def _update_unreleased_changelog_section() -> None:
                 f"{changelog_title_text}\n\n{new_unreleased_section}{existing_content}"
             )
 
-    with open(changelog_path, "w") as f:
+    with open(changelog_path, "w", encoding="utf-8") as f:
         f.write(updated_content.strip() + "\n")
 
 
@@ -718,7 +717,8 @@ class ChangelogFeature:
                 components.show_section("Auto-updating [Unreleased] Changelog")
                 with components.show_spinner("Updating [Unreleased] section..."):
                     try:
-                        _update_unreleased_changelog_section()
+                        path_to_update = output_file or "CHANGELOG.md"
+                        _update_unreleased_changelog_section(changelog_path=path_to_update)
                     except Exception as e:
                         components.show_error(
                             f"Failed to auto-update changelog: {str(e)}"

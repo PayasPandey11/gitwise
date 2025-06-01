@@ -36,12 +36,11 @@ setup(
     packages=find_packages(exclude=["tests*", ".internal*", ".venv*", "docs*", "examples*"]),
     python_requires=">=3.8",
     install_requires=[
-        "transformers>=4.36.0",
-        "torch>=2.0.0",
         "typer>=0.9.0",
         "rich>=13.0.0",
-        "openai>=1.0.0",
         "requests>=2.0.0",
+        "openai>=1.0.0",
+        "jinja2",
     ],
     extras_require={
         "dev": [
@@ -51,6 +50,10 @@ setup(
             "black",
             "isort",
             "mypy",
+        ],
+        "offline": [
+            "transformers>=4.36.0",
+            "torch>=2.0.0",
         ],
     },
     entry_points={
