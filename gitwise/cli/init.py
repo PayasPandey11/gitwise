@@ -3,6 +3,13 @@ import typer
 
 from gitwise.config import ConfigError, config_exists, load_config, write_config
 from gitwise.core.git_manager import GitManager
+from gitwise.llm.model_presets import (
+    get_model_options,
+    get_model_by_key,
+    validate_custom_model_name,
+    get_model_display_info,
+    DEFAULT_MODEL
+)
 
 app = typer.Typer()
 
@@ -34,6 +41,70 @@ def check_offline_model() -> bool:
     # Placeholder: check for a file or model presence as needed
     # For now, always return True
     return True
+
+
+def display_model_options() -> None:
+    """Display the 4 model selection options for online mode."""
+    typer.echo("\nChoose your OpenRouter model:")
+    typer.echo("  1. Best Model (Most Powerful)")
+    typer.echo("     Claude Opus 4 - World's best coding model")
+    typer.echo("     Premium pricing, highest quality output")
+    typer.echo("")
+    typer.echo("  2. Balanced Model (Speed vs Performance) [RECOMMENDED]")
+    typer.echo("     Claude 3.7 Sonnet - Popular choice, great balance")
+    typer.echo("     Moderate pricing, excellent for most use cases")
+    typer.echo("")
+    typer.echo("  3. Fastest Model")
+    typer.echo("     Claude 3 Haiku - Optimized for speed")
+    typer.echo("     Budget-friendly, good for simple tasks")
+    typer.echo("")
+    typer.echo("  4. Custom Model")
+    typer.echo("     Enter your own OpenRouter model name")
+    typer.echo("     Full flexibility (e.g., google/gemini-2.0-flash-exp)")
+
+
+def get_model_choice() -> str:
+    """Get the user's model choice and return the selected model name."""
+    display_model_options()
+    
+    choice = typer.prompt("Enter choice [1/2/3/4]", default="2")
+    
+    if choice == "1":
+        model_preset = get_model_by_key("best")
+        typer.echo(f"Selected: {model_preset['name']}")
+        return model_preset["model"]
+    elif choice == "2":
+        model_preset = get_model_by_key("balanced")
+        typer.echo(f"Selected: {model_preset['name']}")
+        return model_preset["model"]
+    elif choice == "3":
+        model_preset = get_model_by_key("fastest")
+        typer.echo(f"Selected: {model_preset['name']}")
+        return model_preset["model"]
+    elif choice == "4":
+        return get_custom_model()
+    else:
+        typer.echo("Invalid choice. Using balanced model (recommended).")
+        return get_model_by_key("balanced")["model"]
+
+
+def get_custom_model() -> str:
+    """Get and validate a custom model name from the user."""
+    typer.echo("\nEnter a custom OpenRouter model name.")
+    typer.echo("Format: provider/model-name (e.g., google/gemini-2.0-flash-exp)")
+    typer.echo("See https://openrouter.ai/models for available models.")
+    
+    while True:
+        custom_model = typer.prompt("Model name").strip()
+        
+        if validate_custom_model_name(custom_model):
+            typer.echo(f"Selected: {custom_model}")
+            return custom_model
+        else:
+            typer.echo("❌ Invalid model name format. Please use 'provider/model-name' format.")
+            if not typer.confirm("Try again?", default=True):
+                typer.echo("Using balanced model as fallback.")
+                return get_model_by_key("balanced")["model"]
 
 
 def init_command():
@@ -99,22 +170,9 @@ def init_command():
             api_key = typer.prompt("API key", hide_input=True)
             config["openrouter_api_key"] = api_key.strip()
 
-        # ADDED: Prompt for OpenRouter model
-        default_online_model = os.environ.get(
-            "OPENROUTER_MODEL", "anthropic/claude-3-haiku"
-        )
-        if typer.confirm(
-            f"Set a specific OpenRouter model? (default: {default_online_model})",
-            default=False,
-        ):
-            config["openrouter_model"] = typer.prompt(
-                "Model name (e.g., mistralai/mistral-7b-instruct, anthropic/claude-3-opus)",
-                default=default_online_model,
-            )
-        else:
-            config["openrouter_model"] = (
-                default_online_model  # Explicitly set default if not overriding
-            )
+        # Enhanced model selection with 4 options
+        selected_model = get_model_choice()
+        config["openrouter_model"] = selected_model
 
     elif config["llm_backend"] == "ollama":
         typer.echo(
