@@ -6,7 +6,6 @@ import typer  # For typer.confirm, typer.prompt
 
 from gitwise.config import ConfigError, get_llm_backend, load_config
 
-from ..cli.init import init_command  # For calling init if config error
 from ..core.git_manager import GitManager
 from ..features.commit import CommitFeature  # commit_command is called by add
 from ..features.push import PushFeature  # push_command is called by add
@@ -28,6 +27,7 @@ class AddFeature:
             try:
                 load_config()
             except ConfigError as e:
+                from ..cli.init import init_command # Moved import here
                 components.show_error(str(e))
                 if typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
@@ -53,20 +53,29 @@ class AddFeature:
                         components.show_error("Failed to stage files")
                         return
                 else:
-                    failed_files = []
+                    found_files = []
+                    failed_to_find = []
+                    failed_to_stage = []
                     for file in files:
                         if os.path.exists(file):
-                            if not self.git_manager.stage_files([file]):
-                                components.show_error(f"Failed to stage file: {file}")
-                                failed_files.append(file)
+                            found_files.append(file)
                         else:
                             components.show_error(f"File not found: {file}")
-                            failed_files.append(file)
-
-                    if failed_files:
-                        components.show_warning(
-                            f"Could not stage the following files: {', '.join(failed_files)}"
-                        )
+                            failed_to_find.append(file)
+                    
+                    if found_files: # Only proceed if some files were found
+                        for file_to_stage in found_files:
+                            if not self.git_manager.stage_files([file_to_stage]):
+                                components.show_error(f"Failed to stage file: {file_to_stage}")
+                                failed_to_stage.append(file_to_stage)
+                    
+                    if failed_to_find or failed_to_stage:
+                        error_messages = []
+                        if failed_to_find:
+                            error_messages.append(f"Could not find: {', '.join(failed_to_find)}")
+                        if failed_to_stage:
+                             error_messages.append(f"Could not stage: {', '.join(failed_to_stage)}")
+                        components.show_warning("; ".join(error_messages))
 
             # Show staged changes
             staged = self.git_manager.get_staged_files()
