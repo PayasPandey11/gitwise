@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Changelog Feature - GitWise"
+---
+
 # Changelog Feature Documentation
 
 The changelog feature in GitWise provides automated changelog generation and management. It helps maintain a clear record of changes in your project by automatically categorizing commits and generating well-formatted changelog entries via AI assistance.
