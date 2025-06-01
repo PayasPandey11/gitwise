@@ -50,12 +50,12 @@ jobs:
     #     isort --check-only gitwise tests
     #     mypy gitwise tests || true  # Allow mypy to fail for now
     
-    - name: Upload coverage
-      if: matrix.test-type == 'full'  # Only upload coverage once
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
+    # - name: Upload coverage
+    #   if: matrix.test-type == 'full'  # Only upload coverage once
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     file: ./coverage.xml
+    #     fail_ci_if_error: true
 
   test-deploy:
     needs: test
