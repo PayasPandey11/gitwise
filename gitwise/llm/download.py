@@ -1,18 +1,20 @@
 import os
 import sys
+import shutil
+import subprocess
 
 
 def download_offline_model(model_name=None):
     """Check and download the offline model if not present. Print status and disk usage."""
     try:
         import torch
-        from transformers import snapshot_download
+        from huggingface_hub import snapshot_download
     except ImportError:
         print("[gitwise] Offline mode requires 'transformers' and 'torch'.")
         print("You can install them with: pip install gitwise[offline]")
         auto = input("Would you like to install them now? [y/N]: ").strip().lower()
         if auto == "y":
-            import subprocess
+            # import subprocess # Removed from here
 
             cmd = [sys.executable, "-m", "pip", "install", "gitwise[offline]"]
             print(f"[gitwise] Running: {' '.join(cmd)}")
@@ -31,7 +33,7 @@ def download_offline_model(model_name=None):
     if os.path.exists(model_dir):
         print(f"[gitwise] Model already present at: {model_dir}")
         try:
-            import shutil
+            # import shutil # Removed from here
 
             size = shutil.disk_usage(model_dir).used // (1024 * 1024)
             print(f"[gitwise] Model disk usage: ~{size} MB")
