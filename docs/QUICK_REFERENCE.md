@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Quick Reference - GitWise"
+---
+
 # GitWise Quick Reference
 
 ## 🚀 Setup

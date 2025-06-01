@@ -1,3 +1,8 @@
+---
+layout: default
+title: "API Documentation - GitWise"
+---
+
 # GitWise API & Core Components
 
 This document provides an overview of GitWise's internal structure, focusing on key classes and modules that developers might interact with or want to understand for contribution or advanced usage.

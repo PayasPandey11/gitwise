@@ -1,0 +1,43 @@
+# GitWise Documentation Site
+title: "GitWise"
+description: "Your AI-Powered Git Co-pilot"
+url: "https://payaspandey11.github.io"
+baseurl: "/gitwise-project"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+
+# Navigation
+header_pages:
+  - quick-start.md
+  - features.md
+  - QUICK_REFERENCE.md
+  - api.md
+  - changelog.md
+
+# Site settings
+author:
+  name: "Payas Pandey"
+  email: "your.email@example.com"
+
+github:
+  repository_url: "https://github.com/PayasPandey11/gitwise"
+
+# Exclude files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/
+
+# Markdown settings
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge 
