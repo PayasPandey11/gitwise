@@ -99,18 +99,6 @@ class AddFeature:
                     if action == "commit":
                         commit_feature_instance = CommitFeature()
                         commit_feature_instance.execute_commit()
-                        if self.git_manager.get_current_branch():
-                            if self.git_manager.has_uncommitted_changes():
-                                components.show_warning(
-                                    "You have uncommitted changes. These will not be included in the PR unless you commit them. Proceeding to push/PR with committed changes only."
-                                )
-                            if typer.confirm("Push these changes?", default=True):
-                                push_feature_instance = PushFeature()
-                                pr_or_pushed = push_feature_instance.execute_push()
-                                if pr_or_pushed:
-                                    return
-                            else:
-                                return  # User chose not to push
                         break
                     elif action == "diff":
                         full_diff = self.git_manager.get_staged_diff()
