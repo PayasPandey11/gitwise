@@ -1,8 +1,9 @@
 # GitWise: Your AI-Powered Git Co-pilot
 
-[![PyPI version](https://badge.fury.io/py/gitwise.svg)](https://pypi.org/project/gitwise/)
-[![Python versions](https://img.shields.io/pypi/pyversions/gitwise.svg)](https://pypi.org/project/gitwise/)
-[![License](https://img.shields.io/pypi/l/gitwise.svg)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
+[![TestPyPI version](https://img.shields.io/badge/TestPyPI-v0.1.0-blue)](https://test.pypi.org/project/gitwise/)
+[![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://test.pypi.org/project/gitwise/)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/PayasPandey11/gitwise/branch/main/graph/badge.svg)](https://codecov.io/gh/PayasPandey11/gitwise)
 [![CI Status](https://github.com/PayasPandey11/gitwise/workflows/CI/badge.svg)](https://github.com/PayasPandey11/gitwise/actions)
 [![Documentation](https://img.shields.io/badge/docs-github%20pages-blue)](https://payaspandey11.github.io/gitwise/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -87,6 +88,39 @@ For comprehensive documentation, advanced features, troubleshooting, and real-wo
 ## 🦙 Recommended: Ollama Setup
 
 For the best balance of privacy, quality, and speed:
+
+#### ⚠️ Command Not Found? (PATH issues)
+If you see a warning like:
+
+```
+WARNING: The script gitwise is installed in '/Users/yourname/Library/Python/3.x/bin' which is not on PATH.
+```
+
+This means the `gitwise` command is not available in your terminal by default. To fix this, add the following to your shell config (replace `3.x` with your Python version):
+
+```sh
+export PATH="$PATH:/Users/$(whoami)/Library/Python/3.x/bin"
+```
+
+Add this line to your `~/.zshrc` or `~/.bash_profile` and restart your terminal, or run it directly in your current session.
+
+- On Linux, the user base bin is usually `~/.local/bin`.
+- On Windows, add the Scripts directory to your PATH (see Python docs).
+
+---
+
+#### ✅ Recommended: Use a Virtual Environment
+For the best experience, use a [virtual environment](https://docs.python.org/3/tutorial/venv.html):
+
+```sh
+python3 -m venv venv
+source venv/bin/activate
+pip install gitwise
+```
+
+This ensures the `gitwise` command is always available when the venv is activated.
+
+📌 **[Quick Reference Guide](docs/QUICK_REFERENCE.md)** - Keep this handy for all commands and options!
 
 ```bash
 # Install Ollama first
@@ -459,5 +493,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
 
 **[📖 Documentation](https://payaspandey11.github.io/gitwise/) • [🚀 Quick Start](https://payaspandey11.github.io/gitwise/quick-start.html) • [💬 Issues](https://github.com/PayasPandey11/gitwise/issues) • [🤝 Contributing](CONTRIBUTING.md)**
-
 </div>
+This project is licensed under the MIT License - see the `LICENSE` file for details.

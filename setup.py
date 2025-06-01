@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
 import os
+from setuptools.command.install import install
+import sys
+import sysconfig
 
 # Read version from package
 version = {}
@@ -8,6 +11,16 @@ with open(os.path.join("gitwise", "__init__.py")) as f:
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
+
+class CustomInstallCommand(install):
+    def run(self):
+        install.run(self)
+        user_base = sysconfig.get_config_var('userbase')
+        bin_dir = os.path.join(user_base, 'bin') if user_base else None
+        msg = "\n[gitwise] If you see a warning about the 'gitwise' script not being on your PATH, add the following to your shell config (replace 3.x with your Python version):\n"
+        msg += "\n    export PATH=\"$PATH:/Users/$(whoami)/Library/Python/3.x/bin\"\n"
+        msg += "\nOr use a virtual environment for best results. See the README for details.\n"
+        print(msg)
 
 setup(
     name="gitwise",
@@ -74,6 +87,9 @@ setup(
         "gitwise": ["templates/*.md"],  # Include template files
     },
     zip_safe=False,
+    cmdclass={
+        'install': CustomInstallCommand,
+    },
 )
 
 # Minimal post-install message for user
