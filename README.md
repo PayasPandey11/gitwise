@@ -39,6 +39,39 @@ pip install gitwise
 pip install "gitwise[offline]"
 ```
 
+---
+
+#### ⚠️ Command Not Found? (PATH issues)
+If you see a warning like:
+
+```
+WARNING: The script gitwise is installed in '/Users/yourname/Library/Python/3.x/bin' which is not on PATH.
+```
+
+This means the `gitwise` command is not available in your terminal by default. To fix this, add the following to your shell config (replace `3.x` with your Python version):
+
+```sh
+export PATH="$PATH:/Users/$(whoami)/Library/Python/3.x/bin"
+```
+
+Add this line to your `~/.zshrc` or `~/.bash_profile` and restart your terminal, or run it directly in your current session.
+
+- On Linux, the user base bin is usually `~/.local/bin`.
+- On Windows, add the Scripts directory to your PATH (see Python docs).
+
+---
+
+#### ✅ Recommended: Use a Virtual Environment
+For the best experience, use a [virtual environment](https://docs.python.org/3/tutorial/venv.html):
+
+```sh
+python3 -m venv venv
+source venv/bin/activate
+pip install gitwise
+```
+
+This ensures the `gitwise` command is always available when the venv is activated.
+
 📌 **[Quick Reference Guide](docs/QUICK_REFERENCE.md)** - Keep this handy for all commands and options!
 
 ### Initial Setup with `gitwise init`
