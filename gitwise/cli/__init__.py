@@ -32,7 +32,7 @@ app = typer.Typer(
 )
 
 
-def check_and_install_offline_deps():
+def check_and_install_offline_deps() -> bool:
     missing = []
     packages_to_check = {"transformers": False, "torch": False}
     try:
@@ -47,16 +47,19 @@ def check_and_install_offline_deps():
         missing.append('torch')
 
     if missing:
-        print(f"[gitwise] Required dependencies for offline mode are missing: {', '.join(missing)}")
-        auto = input("Would you like to install them now? [Y/n]: ").strip().lower()
+        print(f"[gitwise] Optional dependencies for offline mode ({', '.join(missing)}) are missing.")
+        print("You can install them with: pip install gitwise[offline]")
+        auto = input("Would you like to install them now (pip install gitwise[offline])? [Y/n]: ").strip().lower()
         if auto in ("", "y", "yes"):
-            cmd = [sys.executable, "-m", "pip", "install"] + missing
-            print(f"[gitwise] Running: {' '.join(cmd)}")
+            cmd = [sys.executable, "-m", "pip", "install", "gitwise[offline]"]
+            print(f"[gitwise] Running: {', '.join(cmd)}")
             subprocess.run(cmd)
             print("[gitwise] Dependencies installed! Please re-run your command.")
+            return False
         else:
             print("[gitwise] Cannot proceed without required dependencies. Exiting.")
-        sys.exit(1)
+            return False
+    return True
 
 
 # Remove automatic dependency check at import time
@@ -64,8 +67,8 @@ def check_and_install_offline_deps():
 
 
 # Add commands
-@app.command()
-def add(
+@app.command(name="add")
+def add_cli_entrypoint(
     files: List[str] = typer.Argument(
         None, help="Files to stage (default: all changes)"
     )
@@ -75,7 +78,7 @@ def add(
 
 
 @app.command(name="commit", help="Create a commit with AI-generated message")
-def commit(
+def commit_cli_entrypoint(
     group: bool = typer.Option(
         False,
         "--group",
@@ -88,15 +91,15 @@ def commit(
     feature.execute_commit(group=group)
 
 
-@app.command()
-def push() -> None:
+@app.command(name="push")
+def push_cli_entrypoint() -> None:
     """Push changes and optionally create a PR."""
     feature = PushFeature()
     feature.execute_push()
 
 
-@app.command()
-def pr(
+@app.command(name="pr")
+def pr_cli_entrypoint(
     use_labels: bool = typer.Option(
         False, "--labels", "-l", help="Add labels to the PR"
     ),
@@ -126,8 +129,8 @@ def pr(
     )
 
 
-@app.command()
-def changelog(
+@app.command(name="changelog")
+def changelog_cli_entrypoint(
     version: str = typer.Option(
         None, "--version", help="Version string for the changelog"
     ),
@@ -151,11 +154,10 @@ def changelog(
     )
 
 
-@app.command()
-def git(
-    args: List[str] = typer.Argument(None, help="Git command and arguments")
-) -> None:
+@app.command(name="git", context_settings={"allow_interspersed_args": False, "ignore_unknown_options": True})
+def git_cli_entrypoint(ctx: typer.Context, args: List[str] = typer.Argument(None, help="Git command and arguments")) -> None:
     """Pass through to git with enhanced output and pager handling for common commands."""
+    # args will now correctly capture everything after 'gitwise git'
     if not args:
         components.show_error("No git command provided")
         raise typer.Exit(code=1)
@@ -214,15 +216,16 @@ def git(
 def offline_model_cmd():
     """Check/download the offline LLM model (microsoft/phi-2 by default)."""
     # Only check dependencies when user explicitly requests offline model
-    check_and_install_offline_deps()
+    if not check_and_install_offline_deps():
+        raise typer.Exit(code=1)
+    
     from gitwise.llm.download import download_offline_model
 
     download_offline_model()
-    raise typer.Exit()
 
 
-@app.command()
-def init() -> None:
+@app.command(name="init")
+def setup_gitwise() -> None:
     """Interactively set up GitWise in this repo or globally."""
     init_command()
 
