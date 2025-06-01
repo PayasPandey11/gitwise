@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/gitwise.svg)](https://pypi.org/project/gitwise/)
 [![Python versions](https://img.shields.io/pypi/pyversions/gitwise.svg)](https://pypi.org/project/gitwise/)
 [![License](https://img.shields.io/pypi/l/gitwise.svg)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/PayasPandey11/gitwise/branch/main/graph/badge.svg)](https://codecov.io/gh/PayasPandey11/gitwise)
 [![CI Status](https://github.com/PayasPandey11/gitwise/workflows/CI/badge.svg)](https://github.com/PayasPandey11/gitwise/actions)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
