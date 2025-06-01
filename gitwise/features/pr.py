@@ -3,7 +3,7 @@
 
 import subprocess
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 from gitwise.llm.router import get_llm_response
 from ..prompts import PROMPT_PR_DESCRIPTION
@@ -351,7 +351,7 @@ class PrFeature:
             return False
 
     # --- Private helper methods for PrFeature --- 
-    def _determine_base_branches(self, base_input: Optional[str], remote_name: str) -> tuple[Optional[str], Optional[str]]:
+    def _determine_base_branches(self, base_input: Optional[str], remote_name: str) -> Tuple[Optional[str], Optional[str]]:
         if base_input:
             analysis_base = base_input if "/" in base_input else f"{remote_name}/{base_input}"
             gh_base = base_input.split(f"{remote_name}/", 1)[-1]
