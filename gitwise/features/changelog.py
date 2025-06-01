@@ -14,8 +14,7 @@ from ..config import ConfigError, get_llm_backend, load_config
 from ..core.git_manager import GitManager
 from ..llm.offline import ensure_offline_model_ready
 from ..llm.router import get_llm_response
-from ..prompts import (CHANGELOG_SYSTEM_PROMPT_TEMPLATE,
-                       CHANGELOG_USER_PROMPT_TEMPLATE)
+from ..prompts import CHANGELOG_SYSTEM_PROMPT_TEMPLATE, CHANGELOG_USER_PROMPT_TEMPLATE
 from ..ui import components
 
 git_manager = GitManager()
@@ -209,7 +208,7 @@ def get_commits_between_tags(
 
 
 def _categorize_changes(
-    commits: List[Dict[str, str]]
+    commits: List[Dict[str, str]],
 ) -> Dict[str, List[Dict[str, str]]]:
     """Categorize commits by type.
 
@@ -718,7 +717,9 @@ class ChangelogFeature:
                 with components.show_spinner("Updating [Unreleased] section..."):
                     try:
                         path_to_update = output_file or "CHANGELOG.md"
-                        _update_unreleased_changelog_section(changelog_path=path_to_update)
+                        _update_unreleased_changelog_section(
+                            changelog_path=path_to_update
+                        )
                     except Exception as e:
                         components.show_error(
                             f"Failed to auto-update changelog: {str(e)}"

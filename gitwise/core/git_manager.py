@@ -337,7 +337,9 @@ class GitManager:
 
     def get_list_of_untracked_files(self) -> List[str]:
         """Get a list of untracked files."""
-        result = self._run_git_command(["ls-files", "--others", "--exclude-standard"], check=False)
+        result = self._run_git_command(
+            ["ls-files", "--others", "--exclude-standard"], check=False
+        )
         if result.returncode == 0 and result.stdout:
             return [line.strip() for line in result.stdout.splitlines() if line.strip()]
         return []

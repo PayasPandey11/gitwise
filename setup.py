@@ -39,7 +39,9 @@ setup(
         "Topic :: Software Development :: Version Control :: Git",
         "Topic :: Utilities",
     ],
-    packages=find_packages(exclude=["tests*", ".internal*", ".venv*", "docs*", "examples*"]),
+    packages=find_packages(
+        exclude=["tests*", ".internal*", ".venv*", "docs*", "examples*"]
+    ),
     python_requires=">=3.8",
     install_requires=[
         "typer>=0.9.0",
@@ -76,4 +78,6 @@ setup(
 
 # Minimal post-install message for user
 if os.environ.get("GITWISE_SETUP_MESSAGE", "1") == "1":
-    print("\n[gitwise] All LLM backends (Ollama, Offline, Online) are now available! By default, GitWise uses Ollama. To change backends, run 'gitwise init' or set GITWISE_LLM_BACKEND environment variable. See README for details.\n") 
+    print(
+        "\n[gitwise] All LLM backends (Ollama, Offline, Online) are now available! By default, GitWise uses Ollama. To change backends, run 'gitwise init' or set GITWISE_LLM_BACKEND environment variable. See README for details.\n"
+    )

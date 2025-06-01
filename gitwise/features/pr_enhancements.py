@@ -331,7 +331,7 @@ def enhance_pr_description(
     use_labels: bool = False,
     use_checklist: bool = False,
     skip_general_checklist: bool = False,
-    base_branch_for_checklist: str = "origin/main"
+    base_branch_for_checklist: str = "origin/main",
 ) -> Tuple[str, List[str]]:
     """Enhance PR description with labels and checklist.
 
@@ -352,12 +352,12 @@ def enhance_pr_description(
     # Get labels if enabled
     if use_labels:
         labels = get_pr_labels(commits)
-    
+
     # Get changed files and generate checklist if enabled
     if use_checklist:
         files = get_changed_files(base_branch=base_branch_for_checklist)
         if files:
             checklist = generate_checklist(files, skip_general_checklist)
             enhanced_description = f"{description}\n\n## Checklist\n{checklist}"
-    
+
     return enhanced_description, labels
