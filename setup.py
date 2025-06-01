@@ -36,7 +36,6 @@ setup(
     packages=find_packages(exclude=["tests*", ".internal*", ".venv*", "docs*", "examples*"]),
     python_requires=">=3.8",
     install_requires=[
-        "GitPython>=3.1.0",
         "transformers>=4.36.0",
         "torch>=2.0.0",
         "typer>=0.9.0",

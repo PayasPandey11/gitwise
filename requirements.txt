@@ -2,7 +2,6 @@
 typer[all]
 transformers
 torch
-gitpython
 openai
 jinja2
 

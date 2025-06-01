@@ -28,16 +28,20 @@ GitWise now uses [Ollama](https://ollama.com/) as the **default** backend for al
 
 - **Ollama must be running locally** (see [Ollama install docs](https://ollama.com/download)).
 - By default, GitWise sends prompts to Ollama at `http://localhost:11434` using the model specified by `OLLAMA_MODEL` (default: `llama3`).
-- If Ollama is not running or not available, GitWise will automatically fall back to its previous offline backend (e.g., `microsoft/phi-2`).
+- If Ollama is not running or not available, GitWise will automatically fall back to its built-in offline backend (using `TinyLlama/TinyLlama-1.1B-Chat-v1.0` by default).
 - You can override the backend selection with the environment variable:
   ```bash
   export GITWISE_LLM_BACKEND=ollama   # (default)
-  export GITWISE_LLM_BACKEND=offline  # Use built-in offline model
+  export GITWISE_LLM_BACKEND=offline  # Use built-in offline model (e.g., TinyLlama)
   export GITWISE_LLM_BACKEND=online   # Use OpenRouter/online LLM
   ```
 - To change the Ollama model:
   ```bash
   export OLLAMA_MODEL="llama3"  # or any model you have pulled in Ollama
+  ```
+- To change the built-in offline model (if `GITWISE_LLM_BACKEND=offline`):
+  ```bash
+  export GITWISE_OFFLINE_MODEL="TinyLlama/TinyLlama-1.1B-Chat-v1.0" # Example
   ```
 
 **Tip:**
@@ -47,7 +51,7 @@ GitWise now uses [Ollama](https://ollama.com/) as the **default** backend for al
 ## Ollama Troubleshooting & FAQ
 
 **Q: What happens if Ollama is not installed or not running?**
-- GitWise will automatically fall back to its offline backend (e.g., `microsoft/phi-2`) and show a warning. No AI features will work with Ollama until it is running.
+- GitWise will automatically fall back to its offline backend (e.g., `TinyLlama/TinyLlama-1.1B-Chat-v1.0`) and show a warning. No AI features will work with Ollama until it is running.
 
 **Q: What if the specified model (e.g., `llama2:latest`) is not available in Ollama?**
 - Ollama will return an error. You should pull the model with:
@@ -83,8 +87,8 @@ cd gitwise
 # Install for use
 make install # or python setup.py install
 
-# For development (editable install)
-make install-dev # or pip install -e .
+# For development (editable install with dev dependencies)
+make install-dev # or pip install -e ".[dev]"
 ```
 
 ## Quick Start
@@ -147,18 +151,15 @@ GitWise commands are designed to be intuitive. Here are the main ones:
 
 ### `gitwise changelog [--version <version>] [--output-file <file>]`
 - Generates or updates your `CHANGELOG.md`.
-- **For New Releases**: Run `gitwise changelog`. It will suggest a semantic version based on your recent commits. Confirm or provide a version (e.g., `v1.2.3`). The AI will generate entries for this version.
-- **Automatic Unreleased Section (Optional)**: For a fully automated workflow, set up the GitWise pre-commit hook:
-  ```bash
-  gitwise setup-hooks
-  ```
-  This hook will call `gitwise changelog --auto-update` before each commit to keep an `[Unreleased]` section in your `CHANGELOG.md` fresh. (Requires `pre-commit` to be installed: `pip install pre-commit`)
+- **For New Releases**: Run `gitwise changelog`. It will suggest a semantic version based on your recent commits. Confirm or provide a version (e.g., `v1.2.3`). The AI will generate entries for this version. The command will also offer to create a git tag for the version.
+- **Automatic Unreleased Section**: To automatically update an `[Unreleased]` section in your `CHANGELOG.md` before each commit, run `gitwise setup-hooks`. This installs a Git pre-commit hook script that calls `gitwise changelog --auto-update` and stages `CHANGELOG.md` if it was modified. 
+    - **Note for `pre-commit` framework users**: If you use the [pre-commit](https://pre-commit.com/) framework, you should integrate `gitwise changelog --auto-update` into your existing `.pre-commit-config.yaml` instead of using `gitwise setup-hooks`.
 - **Best Practice**: Use [Conventional Commit](https://www.conventionalcommits.org/) messages (e.g., `feat: ...`, `fix: ...`) for the best changelog results.
 
 ### `gitwise setup-hooks`
-- Installs a pre-commit hook to automatically update the `[Unreleased]` section of your changelog before each commit.
-- This helps maintain an up-to-date pending changelog effortlessly.
-- Requires `pre-commit` to be installed in your environment.
+- Installs a Git pre-commit script (`.git/hooks/pre-commit`) that attempts to run `gitwise changelog --auto-update` before each commit. 
+- This helps maintain an up-to-date pending changelog. 
+- If you use the `pre-commit` framework, manage GitWise through your `.pre-commit-config.yaml` instead.
 
 ### `gitwise git <git_command_and_args...>`
 - A direct passthrough to any standard `git` command.
@@ -181,18 +182,23 @@ If you want to contribute to GitWise:
     ```
 2.  **Create a virtual environment and install dependencies:**
     ```bash
-    python -m venv .venv
+    python3 -m venv .venv  # Recommend python3 explicitly
     source .venv/bin/activate
-    pip install -e ".[dev]" # Installs in editable mode with dev dependencies
+    pip3 install -e ".[dev]" # Recommend pip3 explicitly
     ```
 3.  **Run tests:**
     ```bash
-    pytest
+    make test # or pytest
     ```
-4.  **Check linting:**
+4.  **Check linting & formatting:**
     ```bash
-    # Add your linter command here, e.g., flake8 or ruff check .
-    # flake8 gitwise tests
+    make format  # Runs black and isort
+    make lint    # Runs flake8, black --check, isort --check, mypy
+    # Or run directly: 
+    # python3 -m black gitwise tests
+    # python3 -m isort gitwise tests
+    # python3 -m flake8 gitwise tests
+    # python3 -m mypy gitwise tests
     ```
 
 ## Roadmap & Future Ideas

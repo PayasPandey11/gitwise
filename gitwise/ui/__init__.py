@@ -1,1 +1,1 @@
-"""UI package for GitWise.""" 
+"""UI package for GitWise."""

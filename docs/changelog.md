@@ -1,240 +1,91 @@
 # Changelog Feature Documentation
 
-The changelog feature in GitWise provides automated changelog generation and management. It helps maintain a clear record of changes in your project by automatically categorizing commits and generating well-formatted changelog entries.
+The changelog feature in GitWise provides automated changelog generation and management. It helps maintain a clear record of changes in your project by automatically categorizing commits and generating well-formatted changelog entries via AI assistance.
 
-## Features
+## Core Functionality
 
-- Automatic version detection and changelog generation
-- Smart categorization of changes based on commit messages
-- Support for conventional commit messages
-- Automatic inclusion of release dates
-- Clean markdown formatting
-- Pre-commit hook for automatic updates
-- Unreleased changes tracking
+The primary interaction with the changelog feature is through the `gitwise changelog` command-line interface. Internally, this is handled by the `gitwise.features.changelog.ChangelogFeature` class.
 
-## API Reference
+### Key Capabilities
 
-### `get_version_tags()`
+-   **Automatic Version Suggestion**: Suggests the next semantic version based on commit history.
+-   **AI-Powered Content Generation**: Uses LLMs to summarize commits and generate user-friendly changelog entries.
+-   **Conventional Commit Support**: Works best with conventional commit messages for smart categorization (Features, Bug Fixes, etc.).
+-   **Automated File Updates**: Modifies `CHANGELOG.md` to add new version sections or update an `[Unreleased]` section.
+-   **Tagging**: Optionally creates a Git tag for the new version.
+-   **Pre-commit Hook**: Provides a setup command (`gitwise setup-hooks`) to install a Git pre-commit hook that can automatically update the `[Unreleased]` section.
 
-Retrieves all version tags from the repository.
+## Main Interface: `ChangelogFeature`
 
-**Returns:**
-- List of version tags sorted by version number
+The core logic resides in `gitwise.features.changelog.ChangelogFeature`:
 
-**Example:**
 ```python
-tags = get_version_tags()
-# Returns: [v1.0.0, v1.1.0, v2.0.0]
+from gitwise.features.changelog import ChangelogFeature
+
+# How it's typically invoked by the CLI:
+# feature = ChangelogFeature()
+# feature.execute_changelog(
+#     version="v1.2.3", 
+#     output_file="CHANGELOG.md", 
+#     format_output="markdown", 
+#     auto_update=False
+# )
 ```
 
-### `get_commits_between_tags(start_tag, end_tag)`
+-   **`execute_changelog(self, version: Optional[str], output_file: Optional[str], format_output: str, auto_update: bool) -> None`**
+    -   This is the main method called by the CLI.
+    -   It orchestrates fetching commits (via `GitManager`), generating content (via `llm.router`), interacting with the user for versioning and edits, and writing to the changelog file.
+    -   Handles logic for `--auto-update` (for the `[Unreleased]` section) and for generating specific version releases.
 
-Fetches all commits between two version tags.
-
-**Parameters:**
-- `start_tag` (str): Starting version tag
-- `end_tag` (str): Ending version tag
-
-**Returns:**
-- List of commit objects
-
-**Example:**
-```python
-commits = get_commits_between_tags("v1.0.0", "v1.1.0")
-```
-
-### `categorize_changes(commits)`
-
-Categorizes commits by type based on conventional commit messages.
-
-**Parameters:**
-- `commits` (list): List of commit objects
-
-**Returns:**
-- Dictionary with categories as keys and lists of commits as values
-
-**Categories:**
-- Features
-- Bug Fixes
-- Documentation
-- Performance
-- Security
-- Breaking Changes
-- Other
-
-**Example:**
-```python
-categories = categorize_changes(commits)
-# Returns: {"Features": [...], "Bug Fixes": [...], ...}
-```
-
-### `generate_changelog_entry(version, commits)`
-
-Generates a markdown formatted changelog entry for a specific version.
-
-**Parameters:**
-- `version` (str): Version number
-- `commits` (list): List of commit objects
-
-**Returns:**
-- String containing the formatted changelog entry
-
-**Example:**
-```python
-entry = generate_changelog_entry("v1.0.0", commits)
-```
-
-### `get_repository_info()`
-
-Gets information about the current repository.
-
-**Returns:**
-- Dictionary containing repository URL and name
-
-**Example:**
-```python
-info = get_repository_info()
-# Returns: {"url": "https://github.com/user/repo.git", "name": "repo"}
-```
-
-### `generate_release_notes(commits, repo_info)`
-
-Generates user-friendly release notes from commits.
-
-**Parameters:**
-- `commits` (list): List of commit objects
-- `repo_info` (dict): Repository information
-
-**Returns:**
-- String containing formatted release notes
-
-**Example:**
-```python
-notes = generate_release_notes(commits, repo_info)
-```
-
-### `update_changelog(version, commits)`
-
-Updates the CHANGELOG.md file with a new version entry.
-
-**Parameters:**
-- `version` (str): Version number
-- `commits` (list): List of commit objects
-
-**Example:**
-```python
-update_changelog("v1.0.0", commits)
-```
-
-### `get_unreleased_changes()`
-
-Gets all commits since the last version tag.
-
-**Returns:**
-- List of commit objects
-
-**Example:**
-```python
-changes = get_unreleased_changes()
-```
-
-### `update_unreleased_changelog(commits)`
-
-Updates the [Unreleased] section of the changelog.
-
-**Parameters:**
-- `commits` (list): List of commit objects
-
-**Example:**
-```python
-update_unreleased_changelog(commits)
-```
-
-### `commit_hook()`
-
-Git pre-commit hook that updates the changelog.
-
-**Example:**
-```python
-commit_hook()
-```
-
-### `setup_commit_hook()`
-
-Sets up the git pre-commit hook for automatic changelog updates.
-
-**Example:**
-```python
-setup_commit_hook()
-```
+*(Internal helper functions within `changelog.py` (like `_get_unreleased_commits_as_dicts`, `_generate_changelog_llm_content`, `_write_version_to_changelog`, `_create_version_tag`, etc.) handle the detailed steps, using `GitManager` for Git operations and `get_llm_response` for AI interaction.)*
 
 ## Command Line Interface
 
-### `gitwise changelog [version]`
+### `gitwise changelog [OPTIONS]`
 
-Generates a changelog for the repository.
+Generates or updates a changelog for the repository.
 
 **Options:**
-- `version`: Optional version number to generate changelog for
-- `--auto-update`: Update the unreleased section
-- `--setup-hook`: Set up the git commit hook
+-   `--version TEXT`: Specify the version string for the new changelog section (e.g., `v1.0.0`). If omitted, GitWise will suggest one.
+-   `--output-file TEXT`: Path to the changelog file (default: `CHANGELOG.md`).
+-   `--format TEXT`: Output format (currently only `markdown` is supported, which is the default).
+-   `--auto-update`: Automatically update the `[Unreleased]` section in the changelog without prompts. Typically used with the pre-commit hook.
+-   `--help`: Show help message.
 
 **Examples:**
 ```bash
-# Generate changelog for all versions
+# Generate changelog for a new version (interactive)
 gitwise changelog
 
-# Generate changelog for specific version
-gitwise changelog v1.0.0
+# Generate changelog for a specific version
+gitwise changelog --version v1.2.3
 
-# Update unreleased section
+# Automatically update the [Unreleased] section (for hooks)
 gitwise changelog --auto-update
-
-# Set up commit hook
-gitwise changelog --setup-hook
 ```
+
+### `gitwise setup-hooks`
+
+Installs a Git pre-commit script (`.git/hooks/pre-commit`) that attempts to run `gitwise changelog --auto-update` before each commit. This helps maintain an up-to-date pending changelog. If you use the `pre-commit` framework, manage GitWise through your `.pre-commit-config.yaml` instead.
 
 ## Best Practices
 
-1. **Use Conventional Commits**
-   - Start commit messages with type: `feat:`, `fix:`, `docs:`, etc.
-   - This ensures proper categorization in the changelog
+1.  **Use Conventional Commits**: Start commit messages with types like `feat:`, `fix:`, `docs:`, etc., for better automatic categorization.
+2.  **Version Tags**: Use semantic versioning for tags (e.g., `v1.0.0`). GitWise can create these for you when generating a versioned changelog entry.
+3.  **Changelog Maintenance**: Regularly update the `[Unreleased]` section (e.g., via the hook) and review entries before tagging a release.
 
-2. **Version Tags**
-   - Use semantic versioning: `v1.0.0`, `v1.1.0`, etc.
-   - Tag releases after merging to main branch
+## Release Process Example
 
-3. **Changelog Maintenance**
-   - Keep the [Unreleased] section up to date
-   - Review changelog entries before releases
-   - Use the pre-commit hook for automatic updates
-
-4. **Release Process**
-   ```bash
-   # 1. Update unreleased section
-   gitwise changelog --auto-update
-   
-   # 2. Create version tag
-   git tag v1.0.0
-   
-   # 3. Generate release notes
-   gitwise changelog v1.0.0
-   ```
+1.  Ensure your `[Unreleased]` section is up-to-date (commits will automatically update it if the hook is installed, or run `gitwise changelog --auto-update` manually).
+2.  Run `gitwise changelog` and confirm the suggested version or provide one.
+3.  Allow GitWise to create the version tag when prompted.
+4.  Push your commits and the new tag (`git push --follow-tags`).
 
 ## Troubleshooting
 
-1. **Missing Version Tags**
-   - Ensure tags are properly created with `git tag`
-   - Check tag format matches semantic versioning
-
-2. **Commit Hook Issues**
-   - Verify hook installation with `gitwise changelog --setup-hook`
-   - Check hook permissions in `.git/hooks/pre-commit`
-
-3. **Changelog Format**
-   - Ensure CHANGELOG.md exists
-   - Maintain proper markdown formatting
-   - Keep [Unreleased] section at the top
+-   **Missing Version Tags**: Ensure tags are created (GitWise can do this) and follow semantic versioning.
+-   **Commit Hook Issues**: Verify hook installation with `gitwise setup-hooks`. Check `.git/hooks/pre-commit` for content and execute permissions. Ensure `gitwise` is in the `PATH` for the hook environment.
+-   **Changelog Format**: Ensure `CHANGELOG.md` exists (GitWise will create/update it). For best results with automated updates, maintain a top-level `# Changelog` title and an `## [Unreleased]` section.
 
 ## Contributing
 
