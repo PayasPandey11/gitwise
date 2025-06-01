@@ -1,1 +1,1 @@
-"""Core package for GitWise.""" 
+"""Core package for GitWise."""
