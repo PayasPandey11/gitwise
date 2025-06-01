@@ -1,32 +1,41 @@
-import typer
 import os
-import sys
-from gitwise.config import (
-    config_exists, load_config, write_config, validate_config, ConfigError
-)
+import typer
+
+from gitwise.config import (ConfigError, config_exists, load_config,
+                            write_config)
+from gitwise.core.git_manager import GitManager
 
 app = typer.Typer()
+
 
 def mask(s):
     if not s:
         return ""
     return s[:2] + "***" + s[-2:] if len(s) > 4 else "***"
 
+
 def check_git_repo() -> bool:
-    return os.path.isdir(".git")
+    try:
+        return GitManager().is_git_repo()
+    except RuntimeError:
+        return False
+
 
 def check_ollama_running() -> bool:
     try:
         import requests
+
         r = requests.get("http://localhost:11434", timeout=2)
         return r.status_code == 200
     except Exception:
         return False
 
+
 def check_offline_model() -> bool:
     # Placeholder: check for a file or model presence as needed
     # For now, always return True
     return True
+
 
 def init_command():
     typer.echo("\n[gitwise] Initializing GitWise for this project...\n")
@@ -40,7 +49,9 @@ def init_command():
                 if "key" in k:
                     v = mask(v)
                 typer.echo(f"  {k}: {v}")
-            action = typer.prompt("Overwrite, merge, or abort? [o/m/a]", default="a").lower()
+            action = typer.prompt(
+                "Overwrite, merge, or abort? [o/m/a]", default="a"
+            ).lower()
             if action == "a":
                 typer.echo("Aborted.")
                 raise typer.Exit()
@@ -72,28 +83,52 @@ def init_command():
         env_key = os.environ.get("OPENROUTER_API_KEY")
         if env_key:
             masked = env_key[:2] + "***" + env_key[-2:] if len(env_key) > 4 else "***"
-            use_env = typer.confirm(f"An OpenRouter API key was found in your environment (starts with: {masked}). Use this key?", default=True)
+            use_env = typer.confirm(
+                f"An OpenRouter API key was found in your environment (starts with: {masked}). Use this key?",
+                default=True,
+            )
             if use_env:
                 config["openrouter_api_key"] = env_key.strip()
             else:
-                typer.echo("Enter your OpenRouter API key (see https://openrouter.ai/):")
+                typer.echo(
+                    "Enter your OpenRouter API key (see https://openrouter.ai/):"
+                )
                 api_key = typer.prompt("API key", hide_input=True)
                 config["openrouter_api_key"] = api_key.strip()
         else:
             typer.echo("Enter your OpenRouter API key (see https://openrouter.ai/):")
             api_key = typer.prompt("API key", hide_input=True)
             config["openrouter_api_key"] = api_key.strip()
-        # (Optional) Model
-        if typer.confirm("Set a default model?", default=False):
-            config["openrouter_model"] = typer.prompt("Model name", default="mistralai/mixtral-8x7b")
+
+        # ADDED: Prompt for OpenRouter model
+        default_online_model = os.environ.get(
+            "OPENROUTER_MODEL", "anthropic/claude-3-haiku"
+        )
+        if typer.confirm(
+            f"Set a specific OpenRouter model? (default: {default_online_model})",
+            default=False,
+        ):
+            config["openrouter_model"] = typer.prompt(
+                "Model name (e.g., mistralai/mistral-7b-instruct, anthropic/claude-3-opus)",
+                default=default_online_model,
+            )
+        else:
+            config[
+                "openrouter_model"
+            ] = default_online_model  # Explicitly set default if not overriding
+
     elif config["llm_backend"] == "ollama":
-        typer.echo("\n[Reminder] If you use Ollama, make sure the server is running (run 'ollama serve') and your model is pulled. See https://ollama.com/download for help.")
+        typer.echo(
+            "\n[Reminder] If you use Ollama, make sure the server is running (run 'ollama serve') and your model is pulled. See https://ollama.com/download for help."
+        )
         model = typer.prompt("Ollama model name", default="llama3")
         config["ollama_model"] = model.strip()
     elif config["llm_backend"] == "offline":
         typer.echo("\nChecking for offline model...")
         if not check_offline_model():
-            typer.echo("[Warning] Offline model not found. Please download it before using offline mode.")
+            typer.echo(
+                "[Warning] Offline model not found. Please download it before using offline mode."
+            )
 
     # 4. Local vs global config
     if not check_git_repo():
@@ -103,7 +138,9 @@ def init_command():
             raise typer.Exit()
         global_config = True
     else:
-        global_config = not typer.confirm("Apply config to this repo only?", default=True)
+        global_config = not typer.confirm(
+            "Apply config to this repo only?", default=True
+        )
 
     # 5. Write config
     path = write_config(config, global_config=global_config)
@@ -117,6 +154,7 @@ def init_command():
         typer.echo(f"  {k}: {v}")
     typer.echo("\nYou can now use GitWise commands in this repo!\n")
 
+
 if __name__ == "__main__":
     app.command()(init_command)
-    app() 
+    app()
