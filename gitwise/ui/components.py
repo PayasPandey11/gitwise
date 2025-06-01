@@ -1,5 +1,6 @@
 """Simple and efficient UI components for GitWise."""
 
+from typing import List, Tuple
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -21,7 +22,7 @@ def show_spinner(description: str) -> Progress:
     return progress
 
 
-def show_files_table(files: list[tuple[str, str]], title: str = "Changes") -> None:
+def show_files_table(files: List[Tuple[str, str]], title: str = "Changes") -> None:
     """Show a simple table of files with their status."""
     table = Table(
         show_header=True,
@@ -63,7 +64,7 @@ def show_diff(diff: str, title: str = "Changes") -> None:
     console.print(Panel(content, title=title, box=ROUNDED))
 
 
-def show_menu(options: list[tuple[str, str]]) -> None:
+def show_menu(options: List[Tuple[str, str]]) -> None:
     """Show a simple numbered menu with clear separation."""
     # Add a separator line
     console.print("\n" + "─" * 50)
@@ -84,7 +85,7 @@ def show_menu(options: list[tuple[str, str]]) -> None:
     )
 
 
-def show_prompt(prompt: str, options: list[str] = None, default: str = None) -> None:
+def show_prompt(prompt: str, options: List[str] = None, default: str = None) -> None:
     """Show a formatted prompt for user input."""
     # Add a separator line
     console.print("\n" + "─" * 50)
