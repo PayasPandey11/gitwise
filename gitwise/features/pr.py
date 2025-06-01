@@ -290,6 +290,7 @@ class PrFeature:
         base: Optional[str] = None,
         draft: bool = False,
         skip_prompts: bool = False,
+        auto_confirm: bool = False,
     ) -> bool:
         """Create a pull request with AI-generated description.
         Orchestrates commit collection, title/description generation, and PR creation.
@@ -303,7 +304,7 @@ class PrFeature:
                 from ..cli.init import init_command  # Moved import here
 
                 components.show_error(str(e))
-                if typer.confirm(
+                if auto_confirm or typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
                     init_command()  # Assumes init_command is imported from ..cli.init
@@ -314,7 +315,7 @@ class PrFeature:
                 components.show_warning(
                     "You have uncommitted changes (staged or unstaged). These will not be included in the PR unless you commit them."
                 )
-                if typer.confirm(
+                if auto_confirm or typer.confirm(
                     "Would you like to stage and commit all changes before creating the PR?",
                     default=True,
                 ):
@@ -325,10 +326,11 @@ class PrFeature:
                             )
                             return False
                     components.show_section("Commit All Changes Before PR")
-                    commit_message = typer.prompt(
-                        "Enter a commit message for all staged changes",
-                        default="chore: auto-commit before PR creation",
-                    )
+                    commit_message = ("chore: auto-commit before PR creation" if auto_confirm else 
+                                     typer.prompt(
+                                         "Enter a commit message for all staged changes",
+                                         default="chore: auto-commit before PR creation",
+                                     ))
                     with components.show_spinner("Committing changes..."):
                         if not self.git_manager.create_commit(commit_message):
                             components.show_error(
@@ -338,7 +340,7 @@ class PrFeature:
                         else:
                             components.show_success("All changes committed.")
 
-                    if typer.confirm(
+                    if auto_confirm or typer.confirm(
                         "Would you like to update the changelog for the changes just committed?",
                         default=True,
                     ):
@@ -410,7 +412,7 @@ class PrFeature:
             components.show_section("Generating PR Description")
             repo_info = _get_repository_info(self.git_manager)
             pr_body = self._generate_and_clean_pr_body(
-                commits, repo_info["url"], repo_info["name"], skip_prompts
+                commits, repo_info["url"], repo_info["name"], skip_prompts, auto_confirm
             )
             if pr_body is None:
                 return False
@@ -518,7 +520,7 @@ class PrFeature:
             )
 
     def _generate_and_clean_pr_body(
-        self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool
+        self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool, auto_confirm: bool
     ) -> Optional[str]:
         try:
             with components.show_spinner("Analyzing changes for PR description..."):
@@ -530,7 +532,7 @@ class PrFeature:
                 return _clean_pr_body(raw_body)  # Calls module helper
         except Exception as e:
             components.show_error(f"Could not generate PR description: {str(e)}")
-            if skip_prompts or not typer.confirm(
+            if skip_prompts or auto_confirm or not typer.confirm(
                 "Try generating PR description again?", default=False
             ):
                 return None

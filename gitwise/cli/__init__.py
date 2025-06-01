@@ -81,10 +81,16 @@ def check_and_install_offline_deps() -> bool:
 def add_cli_entrypoint(
     files: List[str] = typer.Argument(
         None, help="Files to stage (default: all changes)"
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y", 
+        help="Automatically answer 'yes' to all prompts (group, push, PR, labels)"
     )
 ) -> None:
     """Stage files with interactive selection."""
-    add_command_cli(files)
+    add_command_cli(files, auto_confirm=yes)
 
 
 @app.command(name="commit", help="Create a commit with AI-generated message")

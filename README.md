@@ -69,6 +69,7 @@ gitwise pr --labels --checklist
 
 - **🚀 Blazing Fast Core**: Standard Git commands passed through `gitwise git ...` run at native Git speed.
 - **🧠 Smart Commit Messages**: AI-generated Conventional Commits (opt-in grouping for complex changes via `gitwise commit --group`).
+- **⚡ Streamlined Workflow**: Auto-confirm mode (`gitwise add -y`) for fully automated stage → commit → push → PR workflow.
 - **✍️ Intelligent PR Descriptions**: AI-generated PR titles and descriptions.
 - **🏷️ Automated PR Enhancements**: Optional label suggestions based on commit types and file-specific checklists for PRs.
 - **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
@@ -258,6 +259,25 @@ gitwise push
 gitwise pr --labels --checklist
 ```
 
+### Streamlined Workflow (Auto-Confirm Mode)
+
+```bash
+# Perfect for rapid development or CI/CD environments
+# Make your code changes
+echo "print('Hello, GitWise!')" > hello.py
+
+# One command does it all: stage → commit → push → PR
+gitwise add . --yes
+# ✅ Stages files
+# ✅ Auto-commits with AI-generated message and grouping
+# ✅ Auto-pushes changes  
+# ✅ Auto-creates PR with labels and checklist
+# 🛡️ Skips PR creation if on main/master branch
+
+# Alternative short form
+gitwise add . -y
+```
+
 ### Advanced Features
 
 #### Group Complex Changes
@@ -371,10 +391,17 @@ gitwise init
 
 GitWise commands are designed to be intuitive. Here are the main ones:
 
-### `gitwise add [files...]`
+### `gitwise add [files...] [--yes]`
 - Interactively stage files. 
 - Shows a summary of staged files and offers to commit or view the full diff.
-- Example: `gitwise add .` or `gitwise add file1.py file2.md`
+- `--yes` (or `-y`): **Auto-confirm mode** - Automatically answers "yes" to all prompts for a streamlined, non-interactive workflow:
+  - ✅ Enables automatic commit grouping 
+  - ✅ Auto-pushes changes after commit
+  - ✅ Auto-creates PR with labels and checklist (skipped if on main/master branch)
+  - 🛡️ **Special behavior**: When on main/master branch, skips PR creation entirely
+- Example: `gitwise add .` (interactive mode)
+- Example: `gitwise add . --yes` (auto-confirm mode - perfect for CI/CD or rapid development)
+- Example: `gitwise add file1.py file2.md -y` (auto-confirm with specific files)
 
 ### `gitwise commit [--group]`
 - Generates an AI-powered Conventional Commit message for your staged changes.
@@ -451,8 +478,9 @@ gitwise commit --group
 1. **Commit Message Quality**: GitWise works best when you stage related changes together
 2. **Performance**: Use Ollama for the best balance of speed and quality
 3. **Privacy**: Use offline mode for sensitive codebases
-4. **Advanced Features**: Use `gitwise commit --group` for complex changes
-5. **PR Enhancement**: Always use `--labels --checklist` for better PRs
+4. **Streamlined Workflow**: Use `gitwise add . -y` for a fully automated workflow (stage → commit → push → PR)
+5. **Advanced Features**: Use `gitwise commit --group` for complex changes
+6. **PR Enhancement**: Always use `--labels --checklist` for better PRs
 
 ## 🛠️ Development & Contributing
 

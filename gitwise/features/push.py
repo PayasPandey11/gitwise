@@ -17,7 +17,7 @@ class PushFeature:
         """Initializes the PushFeature with a GitManager instance."""
         self.git_manager = GitManager()
 
-    def execute_push(self) -> bool:
+    def execute_push(self, auto_confirm: bool = False) -> bool:
         """Push changes to remote and optionally create a PR. Returns True if PR was created or already exists."""
         try:
             # Config check
@@ -62,7 +62,7 @@ class PushFeature:
                     options=["Yes", "No"],
                     default="Yes",
                 )
-                set_upstream = typer.prompt("", type=int, default=1)
+                set_upstream = (1 if auto_confirm else typer.prompt("", type=int, default=1))
                 if set_upstream == 1:
                     spinner = components.show_spinner(
                         f"Pushing and setting upstream for '{current_branch}'..."
@@ -128,20 +128,36 @@ class PushFeature:
                         "No new commits to push relative to remote default branch."
                     )
                     components.console.line()
-                    if typer.confirm(
-                        "Would you like to create a pull request anyway?", default=True
-                    ):
+                    # Determine if we should create a PR even with no new commits
+                    should_create_pr_anyway = False
+                    if auto_confirm:
+                        # Check if we're on main/master branch
+                        current_branch = self.git_manager.get_current_branch()
+                        default_branch = self.git_manager.get_local_base_branch_name()
+                        if current_branch and default_branch and current_branch == default_branch:
+                            components.show_section("Auto-confirm: Skipping PR creation (on main branch)")
+                            should_create_pr_anyway = False
+                        else:
+                            components.show_section("Auto-confirm: Creating PR anyway (no new commits)")
+                            should_create_pr_anyway = True
+                    else:
+                        should_create_pr_anyway = typer.confirm(
+                            "Would you like to create a pull request anyway?", default=True
+                        )
+                    
+                    if should_create_pr_anyway:
                         try:
-                            include_extras = typer.confirm(
+                            include_extras = (True if auto_confirm else typer.confirm(
                                 "Include labels and checklist in the PR?", default=True
-                            )
+                            ))
                             components.console.line()
                             pr_feature_instance = PrFeature()  # Create instance
                             pr_created = pr_feature_instance.execute_pr(  # Call method
                                 use_labels=include_extras,
                                 use_checklist=include_extras,
                                 skip_general_checklist=not include_extras,
-                                skip_prompts=False,
+                                skip_prompts=auto_confirm,
+                                auto_confirm=auto_confirm,
                                 base=default_remote_branch_name_only,
                             )
                             return pr_created
@@ -151,18 +167,35 @@ class PushFeature:
                     return False
 
             components.console.line()
-            if typer.confirm("Would you like to create a pull request?", default=True):
+            
+            # Determine if we should create a PR
+            should_create_pr = False
+            if auto_confirm:
+                # Check if we're on main/master branch
+                current_branch = self.git_manager.get_current_branch()
+                default_branch = self.git_manager.get_local_base_branch_name()
+                if current_branch and default_branch and current_branch == default_branch:
+                    components.show_section("Auto-confirm: Skipping PR creation (on main branch)")
+                    should_create_pr = False
+                else:
+                    components.show_section("Auto-confirm: Creating PR with labels and checklist")
+                    should_create_pr = True
+            else:
+                should_create_pr = typer.confirm("Would you like to create a pull request?", default=True)
+            
+            if should_create_pr:
                 try:
-                    include_extras = typer.confirm(
+                    include_extras = (True if auto_confirm else typer.confirm(
                         "Include labels and checklist in the PR?", default=True
-                    )
+                    ))
                     components.console.line()
                     pr_feature_instance = PrFeature()  # Create instance
                     pr_created = pr_feature_instance.execute_pr(  # Call method
                         use_labels=include_extras,
                         use_checklist=include_extras,
                         skip_general_checklist=not include_extras,
-                        skip_prompts=False,
+                        skip_prompts=auto_confirm,
+                        auto_confirm=auto_confirm,
                         base=default_remote_branch_name_only,
                     )
                     return pr_created
