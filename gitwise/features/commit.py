@@ -19,12 +19,12 @@ git_manager = GitManager()
 
 
 # Import push_command only when needed to avoid circular imports
-def get_push_command() -> Callable[[], bool]:
+def get_push_command() -> Callable[[bool], bool]:
     """Dynamically imports and returns the push_command function to avoid circular imports."""
     from gitwise.features.push import PushFeature
 
-    def push_wrapper() -> bool:
-        return PushFeature().execute_push()
+    def push_wrapper(auto_confirm: bool = False) -> bool:
+        return PushFeature().execute_push(auto_confirm=auto_confirm)
 
     return push_wrapper
 
@@ -188,7 +188,7 @@ class CommitFeature:
         """Initializes the CommitFeature, using the module-level GitManager."""
         self.git_manager = git_manager
 
-    def execute_commit(self, group: bool = True) -> None:
+    def execute_commit(self, group: bool = True, auto_confirm: bool = False) -> None:
         """Create a commit, with an option for AI-assisted message generation and change grouping."""
         try:
             # Config check
@@ -196,7 +196,7 @@ class CommitFeature:
                 load_config()
             except ConfigError as e:
                 components.show_error(str(e))
-                if typer.confirm(
+                if auto_confirm or typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
                     from gitwise.cli.init import (
@@ -257,7 +257,7 @@ class CommitFeature:
                         "Abort commit",
                     ],
                     default="Commit only currently staged",
-                )
+                ) if not auto_confirm else 2  # Auto-select "Commit only currently staged"
 
                 if choice == 1:  # Stage all and commit
                     with components.show_spinner("Staging all changes..."):
@@ -309,7 +309,7 @@ class CommitFeature:
                             "Abort",
                         ],
                         default="Commit separately",
-                    )
+                    ) if not auto_confirm else 1  # Auto-select "Commit separately"
 
                     if choice == 1:  # Commit separately
                         all_files_in_suggestions = sorted(
@@ -334,10 +334,10 @@ class CommitFeature:
                                 f"Preparing Group: {', '.join(group_item['files'])}"
                             )
 
-                            if not safe_confirm(
+                            if not (auto_confirm or safe_confirm(
                                 f"Proceed with committing this group ({group_item['type']}: {group_item['name']})?",
                                 default=True,
-                            ):
+                            )):
                                 components.show_warning(
                                     f"Skipping group: {', '.join(group_item['files'])}"
                                 )
@@ -362,24 +362,32 @@ class CommitFeature:
                                         components.show_error(
                                             f"✗ Failed to create commit for group: {group_item['type']}: {group_item['name']}"
                                         )
-                                        if not safe_confirm(
+                                        if not (auto_confirm or safe_confirm(
                                             "Problem committing group. Continue with remaining groups?",
                                             default=True,
-                                        ):
+                                        )):
                                             return
                             except RuntimeError as e:
                                 components.show_error(str(e))
-                                if not safe_confirm(
+                                if not (auto_confirm or safe_confirm(
                                     "Problem staging files for group. Continue with remaining groups?",
                                     default=True,
-                                ):
+                                )):
                                     return
 
-                        if commits_made_in_grouping and safe_confirm(
-                            "Push all committed groups now?", default=True
-                        ):
-                            get_push_command()()
-                        return
+                        if commits_made_in_grouping:
+                            if auto_confirm:
+                                # Check if we're on main/master branch
+                                current_branch = self.git_manager.get_current_branch()
+                                default_branch = self.git_manager.get_local_base_branch_name()
+                                if current_branch and default_branch and current_branch == default_branch:
+                                    components.show_section("Auto-confirm: Skipping push (on main branch)")
+                                else:
+                                    components.show_section("Auto-confirm: Pushing committed groups")
+                                    get_push_command()(auto_confirm)
+                            elif safe_confirm("Push all committed groups now?", default=True):
+                                get_push_command()(auto_confirm)
+                            return
 
                     elif choice == 3:
                         components.show_warning("Commit operation cancelled by user.")
@@ -419,7 +427,7 @@ class CommitFeature:
                 for f_path in current_staged_files_paths:
                     components.console.print(f"- {f_path}")
 
-            if typer.confirm(
+            if not auto_confirm and typer.confirm(
                 "View full diff before generating commit message?", default=False
             ):
                 full_staged_diff_content = self.git_manager.get_staged_diff()
@@ -457,7 +465,7 @@ class CommitFeature:
                 "Use this commit message?",
                 options=["Use message", "Edit message", "Regenerate message", "Abort"],
                 default="Use message",
-            )
+            ) if not auto_confirm else 1  # Auto-select "Use message"
 
             if user_choice_for_message == 4:  # Abort
                 components.show_warning("Commit cancelled.")
@@ -549,8 +557,17 @@ class CommitFeature:
                     return
 
             if commit_success:
-                if safe_confirm("Push this commit now?", default=True):
-                    get_push_command()()
+                if auto_confirm:
+                    # Check if we're on main/master branch
+                    current_branch = self.git_manager.get_current_branch()
+                    default_branch = self.git_manager.get_local_base_branch_name()
+                    if current_branch and default_branch and current_branch == default_branch:
+                        components.show_section("Auto-confirm: Skipping push (on main branch)")
+                    else:
+                        components.show_section("Auto-confirm: Pushing commit")
+                        get_push_command()(auto_confirm)
+                elif safe_confirm("Push this commit now?", default=True):
+                    get_push_command()(auto_confirm)
 
         except RuntimeError as e:
             components.show_error(f"A critical Git operation failed: {str(e)}")

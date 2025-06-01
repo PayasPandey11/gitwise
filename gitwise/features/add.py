@@ -20,7 +20,7 @@ class AddFeature:
         """Initializes the AddFeature with a GitManager instance."""
         self.git_manager = GitManager()
 
-    def execute_add(self, files: List[str] = None) -> None:
+    def execute_add(self, files: List[str] = None, auto_confirm: bool = False) -> None:
         """Stage files and prepare for commit with smart grouping."""
         try:
             # Config check - Note: direct call to init_command from features might be debatable design-wise
@@ -31,7 +31,7 @@ class AddFeature:
                 from ..cli.init import init_command  # Moved import here
 
                 components.show_error(str(e))
-                if typer.confirm(
+                if auto_confirm or typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
                     init_command()  # Calling init_command from gitwise.cli.init
@@ -99,38 +99,45 @@ class AddFeature:
                 }.get(backend, backend)
                 components.show_section(f"[AI] LLM Backend: {backend_display}")
 
-                while True:
-                    options = [
-                        ("commit", "Create commit with these changes"),
-                        ("diff", "View full diff of staged changes"),
-                        ("quit", "Quit and leave files staged"),
-                    ]
-                    components.show_menu(options)
+                if auto_confirm:
+                    # Auto-confirm mode: proceed directly to commit with grouping enabled
+                    components.show_section("Auto-confirm mode: proceeding to commit")
+                    commit_feature_instance = CommitFeature()
+                    commit_feature_instance.execute_commit(group=True, auto_confirm=True)
+                else:
+                    # Original interactive mode
+                    while True:
+                        options = [
+                            ("commit", "Create commit with these changes"),
+                            ("diff", "View full diff of staged changes"),
+                            ("quit", "Quit and leave files staged"),
+                        ]
+                        components.show_menu(options)
 
-                    choice_map = {1: "commit", 2: "diff", 3: "quit"}
-                    user_choice_num = typer.prompt(
-                        "Select an option", type=int, default=1
-                    )
-                    action = choice_map.get(user_choice_num)
-
-                    if action == "commit":
-                        commit_feature_instance = CommitFeature()
-                        commit_feature_instance.execute_commit()
-                        break
-                    elif action == "diff":
-                        full_diff = self.git_manager.get_staged_diff()
-                        if full_diff:
-                            components.show_section("Full Staged Changes")
-                            components.show_diff(full_diff)
-                        else:
-                            components.show_warning("No staged changes to diff.")
-                    elif action == "quit":
-                        components.show_warning(
-                            "Operation cancelled. Files remain staged."
+                        choice_map = {1: "commit", 2: "diff", 3: "quit"}
+                        user_choice_num = typer.prompt(
+                            "Select an option", type=int, default=1
                         )
-                        break
-                    else:
-                        components.show_error("Invalid choice. Please try again.")
+                        action = choice_map.get(user_choice_num)
+
+                        if action == "commit":
+                            commit_feature_instance = CommitFeature()
+                            commit_feature_instance.execute_commit()
+                            break
+                        elif action == "diff":
+                            full_diff = self.git_manager.get_staged_diff()
+                            if full_diff:
+                                components.show_section("Full Staged Changes")
+                                components.show_diff(full_diff)
+                            else:
+                                components.show_warning("No staged changes to diff.")
+                        elif action == "quit":
+                            components.show_warning(
+                                "Operation cancelled. Files remain staged."
+                            )
+                            break
+                        else:
+                            components.show_error("Invalid choice. Please try again.")
             else:
                 components.show_section("Status")
                 components.show_warning("No files were staged.")
