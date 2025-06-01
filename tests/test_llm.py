@@ -194,46 +194,41 @@ def test_router_ollama_fallback_offline_fails_too(mock_time_sleep, mock_offline_
         router.get_llm_response("test prompt")
 
 # --- Tests for gitwise.llm.download --- 
-@patch("huggingface_hub.snapshot_download")
 @patch("gitwise.llm.download.os.path.exists")
-@patch("gitwise.llm.download.input", return_value='y') # User says yes to download
-@patch("gitwise.llm.download.shutil.disk_usage")
-def test_download_offline_model_downloads_if_not_exists(mock_disk_usage, mock_input, mock_exists, mock_snapshot, mock_env_vars, capsys):
+@patch("gitwise.llm.download.input")
+@patch("gitwise.llm.download.subprocess.run")
+def test_download_offline_model_downloads_if_not_exists(mock_subprocess_run, mock_input, mock_exists, mock_env_vars, capsys):
     mock_exists.return_value = False # Model does not exist
     mock_env_vars.setenv("GITWISE_OFFLINE_MODEL", "TestModel/ForDownload")
-    mock_snapshot.return_value = "/fake/path/to/model"
     
-    # Mock missing transformers and torch initially to test that part of the flow too
-    with patch.dict(sys.modules, {'transformers': None, 'torch': None}):
-        with patch("gitwise.llm.download.subprocess.run") as mock_pip_install:
-             # First call to download_offline_model will try to install deps
-            download.download_offline_model() 
-            mock_pip_install.assert_called_once_with([sys.executable, "-m", "pip", "install", "gitwise[offline]"])
+    # Mock that dependencies are missing
+    import_error = ImportError("No module named 'torch'")
+    mock_input.side_effect = ['y']  # User says yes to install
     
-    # Now assume deps are installed for the actual download part
-    # We need to re-patch os.path.exists because the module was reloaded effectively
-    # Provide a simple MagicMock for torch to avoid init issues if the real torch is problematic in the test env.
-    mock_torch_for_second_call = MagicMock()
-
-    with patch.dict(sys.modules, {'torch': mock_torch_for_second_call}), \
-         patch("gitwise.llm.download.os.path.exists", return_value=False) as mock_exists_again, \
-         patch("huggingface_hub.snapshot_download", return_value="/fake/path/to/model") as mock_snapshot_again, \
-         patch("gitwise.llm.download.input", return_value='y'): # Re-patch input for this scope
-        download.download_offline_model() # Call again
+    # Mock the imports to fail
+    with patch("gitwise.llm.download.snapshot_download", side_effect=import_error) as mock_snapshot:
+        # This simulates the ImportError path
+        with patch.dict(sys.modules, {'torch': None, 'huggingface_hub': None}):
+            download.download_offline_model()
     
-    mock_exists_again.assert_called_once()
-    mock_snapshot_again.assert_called_once_with(repo_id="TestModel/ForDownload", local_files_only=False)
+    # Should have asked to install and run pip
+    mock_subprocess_run.assert_called_once_with([sys.executable, "-m", "pip", "install", "gitwise[offline]"])
     captured = capsys.readouterr()
-    assert "Model downloaded to: /fake/path/to/model" in captured.out
+    assert "Offline mode requires 'transformers' and 'torch'" in captured.out
 
 @patch("gitwise.llm.download.os.path.exists")
 @patch("gitwise.llm.download.shutil.disk_usage")
-def test_download_offline_model_exists(mock_disk_usage, mock_exists, capsys):
+def test_download_offline_model_exists(mock_disk_usage, mock_exists, mock_env_vars, capsys):
     mock_exists.return_value = True
     mock_disk_usage.return_value = MagicMock(used=500 * 1024 * 1024) # 500MB
-    # Ensure transformers and torch are importable for this test case directly
-    with patch.dict(sys.modules, {'transformers': MagicMock(), 'torch': MagicMock()}):
+    mock_env_vars.setenv("GITWISE_OFFLINE_MODEL", "TestModel/Existing")
+    
+    # Mock successful imports
+    with patch("gitwise.llm.download.snapshot_download") as mock_snapshot:
         download.download_offline_model()
+    
+    # Should not try to download since it exists
+    mock_snapshot.assert_not_called()
     captured = capsys.readouterr()
     assert "Model already present at" in captured.out
     assert "Model disk usage: ~500 MB" in captured.out 

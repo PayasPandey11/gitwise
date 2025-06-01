@@ -2,7 +2,7 @@
 import os
 import subprocess
 import tempfile
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Any
 
 import typer
 
@@ -110,96 +110,67 @@ def build_commit_message_interactive() -> str:
     return message
 
 
-def analyze_changes(changed_files: List[str]) -> List[Dict[str, any]]:
-    """Analyze changes and suggest logical groupings based on file diffs and generated messages."""
-    file_diffs = {}
+def analyze_changes(changed_files: List[str]) -> List[Dict[str, Any]]:
+    """
+    Analyze changed files to find patterns for grouping.
+    Returns a list of suggested commit groups.
+    """
+    # Group files by directory
+    dir_groups = {}
     for file in changed_files:
-        try:
-            diff_content = git_manager.get_file_diff_staged(file)
-            file_diffs[file] = diff_content
-        except RuntimeError:
-            components.show_warning(
-                f"Could not get diff for file: {file}. Skipping for analysis."
-            )
-            continue
+        dir_name = file.split("/")[0] if "/" in file else "root"
+        if dir_name not in dir_groups:
+            dir_groups[dir_name] = []
+        dir_groups[dir_name].append(file)
 
-    if not file_diffs:
-        return []
-
-    file_analyses = {}
-    for file, diff_content_val in file_diffs.items():
-        commit_message = generate_commit_message(diff_content_val)
-        file_analyses[file] = {
-            "diff": diff_content_val,
-            "message": commit_message,
-            "type": commit_message.split(":")[0].strip()
-            if ":" in commit_message
-            else "chore",
-            "description": commit_message.split(":", 1)[1].strip()
-            if ":" in commit_message
-            else commit_message,
-        }
-
-    groups = []
-    processed_files = set()
-
-    for file, analysis in file_analyses.items():
-        if file in processed_files:
-            continue
-
-        current_group = {
-            "files": [file],
-            "type": analysis["type"],
-            "description": analysis["description"],
-            "diff": analysis["diff"],
-        }
-        processed_files.add(file)
-
-        for other_file, other_analysis in file_analyses.items():
-            if other_file in processed_files:
-                continue
-
-            if (
-                other_analysis["type"] == analysis["type"]
-                and other_analysis["description"].lower()
-                == analysis["description"].lower()
-            ):
-                current_group["files"].append(other_file)
-                current_group["diff"] += "\n" + other_analysis["diff"]
-                processed_files.add(other_file)
-
-        groups.append(current_group)
-
+    # Create commit suggestions
     suggestions = []
-    for group in groups:
-        if len(group["files"]) > 1:
-            pass
+    for dir_name, files in dir_groups.items():
+        if len(files) >= 2:  # Only suggest groups with 2+ files
+            suggestions.append(
+                {"type": "directory", "name": dir_name, "files": files}
+            )
 
+    # Check for common patterns
+    test_files = [f for f in changed_files if "test" in f.lower()]
+    if len(test_files) >= 2:
+        suggestions.append({"type": "tests", "name": "Test files", "files": test_files})
+
+    doc_files = [
+        f
+        for f in changed_files
+        if any(ext in f.lower() for ext in [".md", ".rst", ".txt", "readme"])
+    ]
+    if len(doc_files) >= 2:
         suggestions.append(
-            {
-                "files": group["files"],
-                "type": group["type"],
-                "description": group["description"],
-                "diff": group["diff"],
-            }
+            {"type": "docs", "name": "Documentation", "files": doc_files}
         )
 
     return suggestions
 
 
-def suggest_commit_groups() -> Optional[List[Dict[str, any]]]:
-    """Analyze staged changes and suggest commit groupings."""
+def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
+    """
+    Suggests ways to group staged changes into separate commits.
+    Returns None if no good grouping is found.
+    """
     try:
-        staged_file_paths = git_manager.get_changed_file_paths_staged()
-    except RuntimeError as e:
-        components.show_error(str(e))
-        return None
+        staged = git_manager.get_staged_files()
+        if len(staged) < 3:  # Not worth grouping if less than 3 files
+            return None
 
-    if not staged_file_paths:
-        components.show_warning("No staged changes found to analyze for grouping.")
-        return None
+        # Get just the file paths
+        staged_paths = [file for _, file in staged]
 
-    return analyze_changes(staged_file_paths)
+        # Analyze for patterns
+        groups = analyze_changes(staged_paths)
+
+        # Only return if we found meaningful groups
+        if groups and len(groups) >= 2:
+            return groups
+        return None
+    except Exception:
+        return None
 
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
@@ -321,7 +292,7 @@ class CommitFeature:
                             f"Files: {', '.join(group_item['files'])}"
                         )
                         components.console.print(
-                            f"Suggested commit: {group_item['type']}: {group_item['description']}"
+                            f"Suggested commit: {group_item['type']}: {group_item['name']}"
                         )
 
                     choice = safe_prompt(
@@ -356,7 +327,7 @@ class CommitFeature:
                             )
 
                             if not safe_confirm(
-                                f"Proceed with committing this group ({group_item['type']}: {group_item['description']})?",
+                                f"Proceed with committing this group ({group_item['type']}: {group_item['name']})?",
                                 default=True,
                             ):
                                 components.show_warning(
@@ -367,7 +338,7 @@ class CommitFeature:
                             try:
                                 self.git_manager.stage_files(group_item["files"])
                                 commit_message_for_group = (
-                                    f"{group_item['type']}: {group_item['description']}"
+                                    f"{group_item['type']}: {group_item['name']}"
                                 )
                                 with components.show_spinner(
                                     f"Committing group - {len(group_item['files'])} files..."
@@ -381,7 +352,7 @@ class CommitFeature:
                                         commits_made_in_grouping = True
                                     else:
                                         components.show_error(
-                                            f"✗ Failed to create commit for group: {group_item['type']}: {group_item['description']}"
+                                            f"✗ Failed to create commit for group: {group_item['type']}: {group_item['name']}"
                                         )
                                         if not safe_confirm(
                                             "Problem committing group. Continue with remaining groups?",

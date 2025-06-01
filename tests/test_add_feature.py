@@ -8,8 +8,9 @@ from gitwise.config import ConfigError # For testing config error handling
 
 @pytest.fixture
 def mock_git_manager_add(): # Renamed for clarity
-    with patch("gitwise.features.add.GitManager", spec=GitManager) as mock_gm_constructor:
-        mock_gm_instance = mock_gm_constructor.return_value
+    with patch("gitwise.features.add.GitManager") as mock_gm_constructor:
+        mock_gm_instance = MagicMock(spec=GitManager)
+        mock_gm_constructor.return_value = mock_gm_instance
         mock_gm_instance.get_unstaged_files.return_value = [("M", "file1.py"), ("??", "new_file.txt")]
         mock_gm_instance.stage_all.return_value = True
         mock_gm_instance.stage_files.return_value = True
@@ -23,8 +24,21 @@ def mock_dependencies_add_feature():
          patch("gitwise.features.add.typer.confirm") as mock_confirm, \
          patch("gitwise.features.add.typer.prompt") as mock_prompt, \
          patch("gitwise.features.add.CommitFeature") as mock_commit_feature_constructor, \
-         patch("gitwise.features.add.components.show_spinner", MagicMock(return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock()))), \
+         patch("gitwise.features.add.components") as mock_components, \
          patch("gitwise.cli.init.init_command") as mock_init_command: # Mock init_command
+        
+        # Set up components mocks
+        mock_spinner = MagicMock()
+        mock_spinner.__enter__ = MagicMock(return_value=mock_spinner)
+        mock_spinner.__exit__ = MagicMock(return_value=None)
+        mock_components.show_spinner.return_value = mock_spinner
+        mock_components.show_section = MagicMock()
+        mock_components.show_warning = MagicMock()
+        mock_components.show_error = MagicMock()
+        mock_components.show_files_table = MagicMock()
+        mock_components.show_menu = MagicMock()
+        mock_components.show_diff = MagicMock()
+        mock_components.console = MagicMock()
         
         mock_commit_feature_instance = MagicMock()
         mock_commit_feature_constructor.return_value = mock_commit_feature_instance
@@ -33,7 +47,8 @@ def mock_dependencies_add_feature():
             "confirm": mock_confirm,
             "prompt": mock_prompt,
             "commit_feature_instance": mock_commit_feature_instance,
-            "init_command": mock_init_command
+            "init_command": mock_init_command,
+            "components": mock_components
         }
 
 
@@ -66,19 +81,21 @@ def test_add_feature_execute_add_specific_files_and_diff_quit(mock_git_manager_a
 
 def test_add_feature_no_changes_to_stage(mock_git_manager_add, mock_dependencies_add_feature):
     mock_git_manager_add.get_unstaged_files.return_value = [] # No unstaged files
-    with patch("gitwise.features.add.components.show_warning") as mock_show_warning:
-        feature = AddFeature()
-        feature.execute_add()
-        mock_show_warning.assert_any_call("No changes found to stage.")
+    
+    feature = AddFeature()
+    feature.execute_add()
+    
+    mock_dependencies_add_feature["components"].show_warning.assert_any_call("No changes found to stage.")
     mock_git_manager_add.stage_all.assert_not_called()
     mock_git_manager_add.stage_files.assert_not_called()
 
 def test_add_feature_failed_to_stage_all(mock_git_manager_add, mock_dependencies_add_feature):
     mock_git_manager_add.stage_all.return_value = False # Staging fails
-    with patch("gitwise.features.add.components.show_error") as mock_show_error:
-        feature = AddFeature()
-        feature.execute_add(files=["."])
-        mock_show_error.assert_any_call("Failed to stage files")
+    
+    feature = AddFeature()
+    feature.execute_add(files=["."])
+    
+    mock_dependencies_add_feature["components"].show_error.assert_any_call("Failed to stage files")
     mock_dependencies_add_feature["commit_feature_instance"].execute_commit.assert_not_called()
 
 def test_add_feature_no_files_were_staged(mock_git_manager_add, mock_dependencies_add_feature):
@@ -89,10 +106,10 @@ def test_add_feature_no_files_were_staged(mock_git_manager_add, mock_dependencie
     mock_git_manager_add.stage_all.return_value = True # stage_all itself succeeds
     mock_git_manager_add.get_staged_files.return_value = [] # ...but nothing gets staged.
 
-    with patch("gitwise.features.add.components.show_warning") as mock_show_warning:
-        feature = AddFeature()
-        feature.execute_add(files=["."])
-        mock_show_warning.assert_any_call("No files were staged.")
+    feature = AddFeature()
+    feature.execute_add(files=["."])
+    
+    mock_dependencies_add_feature["components"].show_warning.assert_any_call("No files were staged.")
     mock_dependencies_add_feature["commit_feature_instance"].execute_commit.assert_not_called()
 
 
@@ -121,23 +138,18 @@ def test_add_feature_config_error_and_no_init(mock_load_config_add_no_init, mock
 
 
 # Test for handling a file that is not found
-def test_add_feature_stage_specific_file_not_found(mock_git_manager_add):
+def test_add_feature_stage_specific_file_not_found(mock_git_manager_add, mock_dependencies_add_feature):
     files_to_add = ["non_existent_file.py"]
 
     # Patch os.path.exists for the add module
-    # Patch show_error where it's imported and used (gitwise.ui.components)
-    # Patch load_config to prevent ConfigError path for this specific test focus
-    # Patch show_spinner as it's a context manager used early
     with patch("gitwise.features.add.os.path.exists", return_value=False) as mock_os_exists, \
-         patch("gitwise.ui.components.show_error") as mock_show_error, \
-         patch("gitwise.features.add.load_config"), \
-         patch("gitwise.features.add.components.show_spinner", return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock())):
+         patch("gitwise.features.add.load_config"):
         
         feature = AddFeature() # Uses mock_git_manager_add due to fixture
         feature.execute_add(files=files_to_add)
 
         mock_os_exists.assert_any_call("non_existent_file.py")
-        mock_show_error.assert_any_call("File not found: non_existent_file.py")
+        mock_dependencies_add_feature["components"].show_error.assert_any_call("File not found: non_existent_file.py")
         # Optionally, verify that other calls like staging or committing didn't happen
         mock_git_manager_add.stage_files.assert_not_called()
 
