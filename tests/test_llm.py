@@ -202,14 +202,11 @@ def test_download_offline_model_downloads_if_not_exists(mock_subprocess_run, moc
     mock_env_vars.setenv("GITWISE_OFFLINE_MODEL", "TestModel/ForDownload")
     
     # Mock that dependencies are missing
-    import_error = ImportError("No module named 'torch'")
     mock_input.side_effect = ['y']  # User says yes to install
     
-    # Mock the imports to fail
-    with patch("gitwise.llm.download.snapshot_download", side_effect=import_error) as mock_snapshot:
-        # This simulates the ImportError path
-        with patch.dict(sys.modules, {'torch': None, 'huggingface_hub': None}):
-            download.download_offline_model()
+    # Mock the imports to fail by patching the import mechanism
+    with patch.dict(sys.modules, {'torch': None, 'huggingface_hub': None}):
+        download.download_offline_model()
     
     # Should have asked to install and run pip
     mock_subprocess_run.assert_called_once_with([sys.executable, "-m", "pip", "install", "gitwise[offline]"])
@@ -223,12 +220,16 @@ def test_download_offline_model_exists(mock_disk_usage, mock_exists, mock_env_va
     mock_disk_usage.return_value = MagicMock(used=500 * 1024 * 1024) # 500MB
     mock_env_vars.setenv("GITWISE_OFFLINE_MODEL", "TestModel/Existing")
     
-    # Mock successful imports
-    with patch("gitwise.llm.download.snapshot_download") as mock_snapshot:
+    # Mock successful imports by creating mock modules
+    mock_torch = MagicMock()
+    mock_hf_hub = MagicMock()
+    mock_hf_hub.snapshot_download = MagicMock()
+    
+    with patch.dict(sys.modules, {'torch': mock_torch, 'huggingface_hub': mock_hf_hub}):
         download.download_offline_model()
     
     # Should not try to download since it exists
-    mock_snapshot.assert_not_called()
+    mock_hf_hub.snapshot_download.assert_not_called()
     captured = capsys.readouterr()
     assert "Model already present at" in captured.out
     assert "Model disk usage: ~500 MB" in captured.out 
