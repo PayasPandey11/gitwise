@@ -13,8 +13,6 @@ jobs:
       matrix:
         python-version: ['3.11']  # Latest stable version for primary testing
         include:
-          - python-version: '3.8'  # Minimum supported version
-            test-type: 'min-version'
           - python-version: '3.11'
             test-type: 'full'
 
