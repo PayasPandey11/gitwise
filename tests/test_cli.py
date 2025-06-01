@@ -84,10 +84,10 @@ def test_init_command_overwrite_config_online_global(mock_cli_dependencies):
     mock_cli_dependencies["prompt"].side_effect = ["o", "3", "test_api_key", "anthropic/claude-3-haiku"]
     # Confirmations: 
     # 1. Use env key for OPENROUTER_API_KEY? (No)
-    # 2. Set a specific OpenRouter model? (No - use default)
+    # 2. Set a specific OpenRouter model? (Yes - set custom model)
     # 3. If not in git repo: Continue and apply config globally? (Yes)
     # 4. Apply settings to this repository only? (No - make it global)
-    mock_cli_dependencies["confirm"].side_effect = [False, False, True, False] 
+    mock_cli_dependencies["confirm"].side_effect = [False, True, True, False] 
     mock_cli_dependencies["git_manager"].is_git_repo.return_value = False # Simulate not in a git repo
     mock_cli_dependencies["write_config"].return_value = "/home/user/.gitwise/config.json"
 
