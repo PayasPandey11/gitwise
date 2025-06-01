@@ -335,13 +335,13 @@ class CommitFeature:
                     )
 
                     if choice == 1:  # Commit separately
-                        all_files_in_suggestions = list(
+                        all_files_in_suggestions = sorted(list(
                             set(
                                 f
                                 for group_item in suggestions
                                 for f in group_item["files"]
                             )
-                        )
+                        ))
                         if all_files_in_suggestions:
                             # Unstage files using GitManager via _run_git_command
                             self.git_manager._run_git_command(
