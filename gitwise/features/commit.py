@@ -1,4 +1,5 @@
 """Feature logic for the 'commit' command, including AI-assisted message generation and grouping."""
+
 import os
 import subprocess
 import tempfile
@@ -127,9 +128,7 @@ def analyze_changes(changed_files: List[str]) -> List[Dict[str, Any]]:
     suggestions = []
     for dir_name, files in dir_groups.items():
         if len(files) >= 2:  # Only suggest groups with 2+ files
-            suggestions.append(
-                {"type": "directory", "name": dir_name, "files": files}
-            )
+            suggestions.append({"type": "directory", "name": dir_name, "files": files})
 
     # Check for common patterns
     test_files = [f for f in changed_files if "test" in f.lower()]
@@ -200,8 +199,9 @@ class CommitFeature:
                 if typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
-                    from gitwise.cli.init import \
-                        init_command  # Keep local import for CLI specific call
+                    from gitwise.cli.init import (
+                        init_command,
+                    )  # Keep local import for CLI specific call
 
                     init_command()
                 return
@@ -237,11 +237,15 @@ class CommitFeature:
             if modified_not_staged or untracked_files:
                 components.show_warning("You have uncommitted changes:")
                 if modified_not_staged:
-                    components.console.print("[bold yellow]Modified but not staged:[/bold yellow]")
+                    components.console.print(
+                        "[bold yellow]Modified but not staged:[/bold yellow]"
+                    )
                     for file_path in modified_not_staged:
                         components.console.print(f"  M {file_path}")
                 if untracked_files:
-                    components.console.print("[bold yellow]Untracked files:[/bold yellow]")
+                    components.console.print(
+                        "[bold yellow]Untracked files:[/bold yellow]"
+                    )
                     for file_path in untracked_files:
                         components.console.print(f"  ?? {file_path}")
 
@@ -257,7 +261,9 @@ class CommitFeature:
 
                 if choice == 1:  # Stage all and commit
                     with components.show_spinner("Staging all changes..."):
-                        if self.git_manager.stage_all(): # stage_all will add both modified and untracked
+                        if (
+                            self.git_manager.stage_all()
+                        ):  # stage_all will add both modified and untracked
                             components.show_success("All changes staged.")
                             current_staged_files_paths = (
                                 self.git_manager.get_changed_file_paths_staged()
@@ -306,13 +312,15 @@ class CommitFeature:
                     )
 
                     if choice == 1:  # Commit separately
-                        all_files_in_suggestions = sorted(list(
-                            set(
-                                f
-                                for group_item in suggestions
-                                for f in group_item["files"]
+                        all_files_in_suggestions = sorted(
+                            list(
+                                set(
+                                    f
+                                    for group_item in suggestions
+                                    for f in group_item["files"]
+                                )
                             )
-                        ))
+                        )
                         if all_files_in_suggestions:
                             # Unstage files using GitManager via _run_git_command
                             self.git_manager._run_git_command(

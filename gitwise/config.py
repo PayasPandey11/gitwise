@@ -1,4 +1,5 @@
 """Handles loading, saving, and validating GitWise configuration files."""
+
 import json
 import os
 from typing import Any, Dict, Optional

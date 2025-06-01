@@ -25,6 +25,7 @@ class PushFeature:
                 load_config()
             except ConfigError as e:
                 from ..cli.init import init_command
+
                 components.show_error(str(e))
                 if typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
@@ -168,7 +169,7 @@ class PushFeature:
                 except Exception as e:
                     components.show_error(f"Failed to create PR: {str(e)}")
                     return False
-            return True # Push was successful, user opted out of PR. This is a successful completion.
+            return True  # Push was successful, user opted out of PR. This is a successful completion.
         except Exception as e:
             components.show_error(str(e))
             return False

@@ -1,4 +1,5 @@
 """Feature logic for the 'add' command."""
+
 import os
 from typing import List
 
@@ -27,7 +28,8 @@ class AddFeature:
             try:
                 load_config()
             except ConfigError as e:
-                from ..cli.init import init_command # Moved import here
+                from ..cli.init import init_command  # Moved import here
+
                 components.show_error(str(e))
                 if typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
@@ -62,19 +64,25 @@ class AddFeature:
                         else:
                             components.show_error(f"File not found: {file}")
                             failed_to_find.append(file)
-                    
-                    if found_files: # Only proceed if some files were found
+
+                    if found_files:  # Only proceed if some files were found
                         for file_to_stage in found_files:
                             if not self.git_manager.stage_files([file_to_stage]):
-                                components.show_error(f"Failed to stage file: {file_to_stage}")
+                                components.show_error(
+                                    f"Failed to stage file: {file_to_stage}"
+                                )
                                 failed_to_stage.append(file_to_stage)
-                    
+
                     if failed_to_find or failed_to_stage:
                         error_messages = []
                         if failed_to_find:
-                            error_messages.append(f"Could not find: {', '.join(failed_to_find)}")
+                            error_messages.append(
+                                f"Could not find: {', '.join(failed_to_find)}"
+                            )
                         if failed_to_stage:
-                             error_messages.append(f"Could not stage: {', '.join(failed_to_stage)}")
+                            error_messages.append(
+                                f"Could not stage: {', '.join(failed_to_stage)}"
+                            )
                         components.show_warning("; ".join(error_messages))
 
             # Show staged changes

@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch, call
 import pytest
-import subprocess # For mocking gh CLI calls
+import subprocess  # For mocking gh CLI calls
 import os
 
 from gitwise.features.pr import (
@@ -9,8 +9,8 @@ from gitwise.features.pr import (
     _validate_branch_name,
     _get_pr_commits,
     _generate_pr_title,
-    _generate_pr_description_llm, # For direct test
-    _get_repository_info # For direct test
+    _generate_pr_description_llm,  # For direct test
+    _get_repository_info,  # For direct test
 )
 from gitwise.features.pr_enhancements import (
     get_pr_labels,
@@ -18,51 +18,77 @@ from gitwise.features.pr_enhancements import (
     generate_checklist,
     enhance_pr_description,
     DEFAULT_COMMIT_TYPE_LABELS,
-    FILE_PATTERN_CHECKLISTS
+    FILE_PATTERN_CHECKLISTS,
 )
 from gitwise.core.git_manager import GitManager
 from gitwise.prompts import PROMPT_PR_DESCRIPTION
 
 
 @pytest.fixture
-def mock_git_manager_pr(): # Renamed to avoid conflict if used in same test session as other features
+def mock_git_manager_pr():  # Renamed to avoid conflict if used in same test session as other features
     """Fixture to mock GitManager for PR tests."""
-    with patch("gitwise.features.pr.GitManager", spec=GitManager) as mock_gm_constructor: # Mock constructor
+    with patch(
+        "gitwise.features.pr.GitManager", spec=GitManager
+    ) as mock_gm_constructor:  # Mock constructor
         mock_gm_instance = mock_gm_constructor.return_value
         mock_gm_instance.get_current_branch.return_value = "feature/test-pr"
         mock_gm_instance.get_default_remote_branch_name.return_value = "main"
-        mock_gm_instance.get_merge_base.return_value = "abcdef123456" # Mock merge base hash
+        mock_gm_instance.get_merge_base.return_value = (
+            "abcdef123456"  # Mock merge base hash
+        )
         mock_gm_instance.get_commits_between.return_value = [
-            {"hash": "c1", "message": "feat: implement amazing feature", "author": "dev1"},
-            {"hash": "c2", "message": "fix: solve critical bug", "author": "dev2"}
+            {
+                "hash": "c1",
+                "message": "feat: implement amazing feature",
+                "author": "dev1",
+            },
+            {"hash": "c2", "message": "fix: solve critical bug", "author": "dev2"},
         ]
-        mock_gm_instance.has_uncommitted_changes.return_value = False # Default to no uncommitted changes
-        mock_gm_instance._run_git_command.return_value = MagicMock(stdout="remote.origin.url git@github.com:user/repo.git", returncode=0)
+        mock_gm_instance.has_uncommitted_changes.return_value = (
+            False  # Default to no uncommitted changes
+        )
+        mock_gm_instance._run_git_command.return_value = MagicMock(
+            stdout="remote.origin.url git@github.com:user/repo.git", returncode=0
+        )
         yield mock_gm_instance
 
 
 @pytest.fixture
-def mock_pr_dependencies(): # Mocks for PrFeature execution
-    with patch("gitwise.features.pr.load_config", MagicMock(return_value={})), \
-         patch("gitwise.features.pr.get_llm_backend", MagicMock(return_value="offline")), \
-         patch("gitwise.features.pr.ensure_offline_model_ready", MagicMock()), \
-         patch("gitwise.features.pr.typer.confirm") as mock_confirm, \
-         patch("gitwise.features.pr.typer.prompt") as mock_prompt, \
-         patch("gitwise.features.pr.subprocess.run") as mock_subprocess_run, \
-         patch("gitwise.features.pr.get_llm_response") as mock_get_llm, \
-         patch("gitwise.features.pr_enhancements.get_changed_files") as mock_get_changed_files_enhancements, \
-         patch("gitwise.features.pr.get_pr_labels") as mock_get_pr_labels_feature, \
-         patch("gitwise.features.pr.enhance_pr_description") as mock_enhance_pr_desc_feature:
+def mock_pr_dependencies():  # Mocks for PrFeature execution
+    with patch("gitwise.features.pr.load_config", MagicMock(return_value={})), patch(
+        "gitwise.features.pr.get_llm_backend", MagicMock(return_value="offline")
+    ), patch("gitwise.features.pr.ensure_offline_model_ready", MagicMock()), patch(
+        "gitwise.features.pr.typer.confirm"
+    ) as mock_confirm, patch(
+        "gitwise.features.pr.typer.prompt"
+    ) as mock_prompt, patch(
+        "gitwise.features.pr.subprocess.run"
+    ) as mock_subprocess_run, patch(
+        "gitwise.features.pr.get_llm_response"
+    ) as mock_get_llm, patch(
+        "gitwise.features.pr_enhancements.get_changed_files"
+    ) as mock_get_changed_files_enhancements, patch(
+        "gitwise.features.pr.get_pr_labels"
+    ) as mock_get_pr_labels_feature, patch(
+        "gitwise.features.pr.enhance_pr_description"
+    ) as mock_enhance_pr_desc_feature:
 
         # Mock subprocess for gh pr list (no existing PR) and gh pr create
         mock_subprocess_run.side_effect = [
-            MagicMock(returncode=0, stdout='[]'), # gh pr list finds no existing PR
-            MagicMock(returncode=0, stdout="https://github.com/user/repo/pull/123") # gh pr create success
+            MagicMock(returncode=0, stdout="[]"),  # gh pr list finds no existing PR
+            MagicMock(
+                returncode=0, stdout="https://github.com/user/repo/pull/123"
+            ),  # gh pr create success
         ]
         mock_get_llm.return_value = "This is a great PR body generated by AI."
         mock_get_changed_files_enhancements.return_value = ["src/main.py", "README.md"]
         mock_get_pr_labels_feature.return_value = ["enhancement", "bug"]
-        mock_enhance_pr_desc_feature.side_effect = lambda commits, desc, use_labels, use_checklist, skip_gen, base: (desc + "\n## Checklist\n- [ ] Item", ["enhancement", "bug"])
+        mock_enhance_pr_desc_feature.side_effect = (
+            lambda commits, desc, use_labels, use_checklist, skip_gen, base: (
+                desc + "\n## Checklist\n- [ ] Item",
+                ["enhancement", "bug"],
+            )
+        )
 
         yield {
             "confirm": mock_confirm,
@@ -71,7 +97,7 @@ def mock_pr_dependencies(): # Mocks for PrFeature execution
             "get_llm": mock_get_llm,
             "get_changed_files_enhancements": mock_get_changed_files_enhancements,
             "get_pr_labels_feature": mock_get_pr_labels_feature,
-            "enhance_pr_desc_feature": mock_enhance_pr_desc_feature
+            "enhance_pr_desc_feature": mock_enhance_pr_desc_feature,
         }
 
 
@@ -79,11 +105,12 @@ def mock_pr_dependencies(): # Mocks for PrFeature execution
 def sample_commits_pr():
     return [
         {"hash": "c1", "message": "feat: implement amazing feature", "author": "dev1"},
-        {"hash": "c2", "message": "fix: solve critical bug", "author": "dev2"}
+        {"hash": "c2", "message": "fix: solve critical bug", "author": "dev2"},
     ]
 
 
 # Tests for helper functions in pr.py
+
 
 def test_clean_pr_body():
     raw = "Here is the PR body:\n\n## Summary\nThis is a summary.\n\n## Contributors\nThanks to everyone!"
@@ -98,7 +125,9 @@ def test_validate_branch_name():
     assert _validate_branch_name("feature/new-feature")
     assert _validate_branch_name("fix/bug-fix-123")
     assert not _validate_branch_name("main")
-    assert not _validate_branch_name("feature/NewFeatureWithCaps") # No caps allowed by regex
+    assert not _validate_branch_name(
+        "feature/NewFeatureWithCaps"
+    )  # No caps allowed by regex
     assert not _validate_branch_name("feature-no-slash")
 
 
@@ -107,7 +136,9 @@ def test_get_pr_commits(mock_git_manager_pr, sample_commits_pr):
     commits = _get_pr_commits(mock_git_manager_pr, "origin/main")
     assert commits == sample_commits_pr
     mock_git_manager_pr.get_merge_base.assert_called_once_with("origin/main", "HEAD")
-    mock_git_manager_pr.get_commits_between.assert_called_once_with("abcdef123456", "HEAD")
+    mock_git_manager_pr.get_commits_between.assert_called_once_with(
+        "abcdef123456", "HEAD"
+    )
 
 
 def test_generate_pr_title(sample_commits_pr):
@@ -122,14 +153,20 @@ def test_generate_pr_description_llm(sample_commits_pr):
         mock_llm_resp.return_value = "AI Generated Description"
         desc = _generate_pr_description_llm(sample_commits_pr, "url", "repo_name")
         assert desc == "AI Generated Description"
-        expected_prompt_content = "- feat: implement amazing feature (dev1)\n- fix: solve critical bug (dev2)"
+        expected_prompt_content = (
+            "- feat: implement amazing feature (dev1)\n- fix: solve critical bug (dev2)"
+        )
         called_prompt = mock_llm_resp.call_args[0][0]
         assert expected_prompt_content in called_prompt
-        assert PROMPT_PR_DESCRIPTION.split("{{commits}}")[0] in called_prompt # Check if base prompt is used
+        assert (
+            PROMPT_PR_DESCRIPTION.split("{{commits}}")[0] in called_prompt
+        )  # Check if base prompt is used
 
 
-def test_get_repository_info_from_pr_module(mock_git_manager_pr): # Renamed test
-    mock_git_manager_pr._run_git_command.return_value = MagicMock(stdout="git@github.com:testuser/testrepo.git", returncode=0)
+def test_get_repository_info_from_pr_module(mock_git_manager_pr):  # Renamed test
+    mock_git_manager_pr._run_git_command.return_value = MagicMock(
+        stdout="git@github.com:testuser/testrepo.git", returncode=0
+    )
     info = _get_repository_info(mock_git_manager_pr)
     assert info["url"] == "git@github.com:testuser/testrepo.git"
     assert info["name"] == "testuser/testrepo"
@@ -137,10 +174,13 @@ def test_get_repository_info_from_pr_module(mock_git_manager_pr): # Renamed test
 
 # Tests for PrFeature.execute_pr
 
-def test_pr_feature_execute_pr_basic_flow(mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr):
+
+def test_pr_feature_execute_pr_basic_flow(
+    mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr
+):
     mock_git_manager_pr.get_commits_between.return_value = sample_commits_pr
-    mock_pr_dependencies["confirm"].return_value = True # Confirm PR creation
-    mock_pr_dependencies["prompt"].return_value = 1 # "Yes" to create PR
+    mock_pr_dependencies["confirm"].return_value = True  # Confirm PR creation
+    mock_pr_dependencies["prompt"].return_value = 1  # "Yes" to create PR
 
     feature = PrFeature()
     result = feature.execute_pr(use_labels=False, use_checklist=False)
@@ -157,22 +197,26 @@ def test_pr_feature_execute_pr_basic_flow(mock_git_manager_pr, mock_pr_dependenc
     assert "--body" in gh_call_args
     assert "This is a great PR body generated by AI." in gh_call_args
     assert "--base" in gh_call_args
-    assert "main" in gh_call_args # Default base
-    assert "--label" not in gh_call_args # Labels not used
+    assert "main" in gh_call_args  # Default base
+    assert "--label" not in gh_call_args  # Labels not used
 
 
-def test_pr_feature_execute_pr_with_labels_and_checklist(mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr):
+def test_pr_feature_execute_pr_with_labels_and_checklist(
+    mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr
+):
     mock_git_manager_pr.get_commits_between.return_value = sample_commits_pr
     mock_pr_dependencies["confirm"].return_value = True
-    mock_pr_dependencies["prompt"].return_value = 1 # Yes, create PR
+    mock_pr_dependencies["prompt"].return_value = 1  # Yes, create PR
 
     feature = PrFeature()
     # For this test, we rely on the mocked get_pr_labels_feature and enhance_pr_desc_feature
     # from mock_pr_dependencies fixture to return expected labels and modified body.
-    result = feature.execute_pr(use_labels=True, use_checklist=True, base="develop") 
+    result = feature.execute_pr(use_labels=True, use_checklist=True, base="develop")
     assert result is True
 
-    mock_pr_dependencies["get_pr_labels_feature"].assert_called_once_with(sample_commits_pr)
+    mock_pr_dependencies["get_pr_labels_feature"].assert_called_once_with(
+        sample_commits_pr
+    )
     mock_pr_dependencies["enhance_pr_desc_feature"].assert_called_once()
 
     gh_call_args = mock_pr_dependencies["subprocess_run"].call_args_list[1][0][0]
@@ -180,19 +224,27 @@ def test_pr_feature_execute_pr_with_labels_and_checklist(mock_git_manager_pr, mo
     assert "enhancement" in gh_call_args
     assert "bug" in gh_call_args
     assert "## Checklist" in gh_call_args[gh_call_args.index("--body") + 1]
-    assert "develop" in gh_call_args # Custom base
+    assert "develop" in gh_call_args  # Custom base
 
 
-def test_pr_feature_edit_description(mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr):
+def test_pr_feature_edit_description(
+    mock_git_manager_pr, mock_pr_dependencies, sample_commits_pr
+):
     mock_git_manager_pr.get_commits_between.return_value = sample_commits_pr
     edited_body_content = "User has edited this PR body."
 
     # User choices: Edit description, then proceed with edited desc
-    mock_pr_dependencies["prompt"].side_effect = [2, 1] # Edit description, then Yes to create with new desc
-    mock_pr_dependencies["confirm"].return_value = True # Confirm using edited description
+    mock_pr_dependencies["prompt"].side_effect = [
+        2,
+        1,
+    ]  # Edit description, then Yes to create with new desc
+    mock_pr_dependencies["confirm"].return_value = (
+        True  # Confirm using edited description
+    )
 
-    with patch("gitwise.features.pr.tempfile.NamedTemporaryFile") as mock_tempfile, \
-         patch("builtins.open") as mock_builtin_open_editor:
+    with patch(
+        "gitwise.features.pr.tempfile.NamedTemporaryFile"
+    ) as mock_tempfile, patch("builtins.open") as mock_builtin_open_editor:
 
         mock_tf = MagicMock()
         mock_tf.name = "/tmp/pr_body.md"
@@ -205,12 +257,18 @@ def test_pr_feature_edit_description(mock_git_manager_pr, mock_pr_dependencies, 
 
         # Set up subprocess.run side effects for all calls in sequence:
         # 1. Editor call (vi /tmp/pr_body.md)
-        # 2. gh pr list call  
+        # 2. gh pr list call
         # 3. gh pr create call
         editor_mock = MagicMock(returncode=0)  # Simulate successful editor save
-        gh_pr_list_mock = MagicMock(returncode=0, stdout='[]')
-        gh_pr_create_mock = MagicMock(returncode=0, stdout="https://github.com/user/repo/pull/123")
-        mock_pr_dependencies["subprocess_run"].side_effect = [editor_mock, gh_pr_list_mock, gh_pr_create_mock]
+        gh_pr_list_mock = MagicMock(returncode=0, stdout="[]")
+        gh_pr_create_mock = MagicMock(
+            returncode=0, stdout="https://github.com/user/repo/pull/123"
+        )
+        mock_pr_dependencies["subprocess_run"].side_effect = [
+            editor_mock,
+            gh_pr_list_mock,
+            gh_pr_create_mock,
+        ]
 
         feature = PrFeature()
         result = feature.execute_pr(use_labels=False, use_checklist=False)
@@ -220,7 +278,7 @@ def test_pr_feature_edit_description(mock_git_manager_pr, mock_pr_dependencies, 
         editor_call = mock_pr_dependencies["subprocess_run"].call_args_list[0]
         assert editor_call[0][0] == [os.environ.get("EDITOR", "vi"), "/tmp/pr_body.md"]
         assert editor_call[1] == {"check": True}
-        
+
         # Verify gh pr create has the edited content
         gh_create_call = mock_pr_dependencies["subprocess_run"].call_args_list[2]
         gh_call_args = gh_create_call[0][0]
@@ -229,12 +287,17 @@ def test_pr_feature_edit_description(mock_git_manager_pr, mock_pr_dependencies, 
 
 # Tests for pr_enhancements.py functions
 
-@patch("gitwise.features.pr_enhancements.git_manager", spec=GitManager) # Mock the module-level git_manager
+
+@patch(
+    "gitwise.features.pr_enhancements.git_manager", spec=GitManager
+)  # Mock the module-level git_manager
 def test_enh_get_changed_files(mock_gm_enhancements):
     mock_gm_enhancements.get_default_remote_branch_name.return_value = "main"
     mock_gm_enhancements.get_current_branch.return_value = "feature/xyz"
-    mock_gm_enhancements._run_git_command.return_value = MagicMock(stdout="file1.py\nfile2.md", returncode=0)
-    
+    mock_gm_enhancements._run_git_command.return_value = MagicMock(
+        stdout="file1.py\nfile2.md", returncode=0
+    )
+
     files = get_changed_files(base_branch="origin/main")
     assert files == ["file1.py", "file2.md"]
     mock_gm_enhancements._run_git_command.assert_called_once_with(
@@ -252,10 +315,10 @@ def test_enh_get_pr_labels(sample_commits_pr):
 def test_enh_generate_checklist():
     files = ["src/main.py", "README.md", "config/settings.json"]
     checklist_str = generate_checklist(files, skip_general=False)
-    assert "- [ ] Added/updated docstrings" in checklist_str # From .py
-    assert "- [ ] Checked for broken links" in checklist_str   # From .md
-    assert "- [ ] Validated JSON format" in checklist_str      # From .json
-    assert "- [ ] All tests pass" in checklist_str           # General item
+    assert "- [ ] Added/updated docstrings" in checklist_str  # From .py
+    assert "- [ ] Checked for broken links" in checklist_str  # From .md
+    assert "- [ ] Validated JSON format" in checklist_str  # From .json
+    assert "- [ ] All tests pass" in checklist_str  # General item
 
     checklist_str_skip_general = generate_checklist(files, skip_general=True)
     assert "- [ ] All tests pass" not in checklist_str_skip_general
@@ -263,16 +326,22 @@ def test_enh_generate_checklist():
 
 def test_enh_enhance_pr_description(sample_commits_pr):
     initial_desc = "Initial PR description."
-    with patch("gitwise.features.pr_enhancements.get_pr_labels") as mock_get_labels, \
-         patch("gitwise.features.pr_enhancements.get_changed_files") as mock_get_files, \
-         patch("gitwise.features.pr_enhancements.generate_checklist") as mock_gen_checklist:
-        
+    with patch(
+        "gitwise.features.pr_enhancements.get_pr_labels"
+    ) as mock_get_labels, patch(
+        "gitwise.features.pr_enhancements.get_changed_files"
+    ) as mock_get_files, patch(
+        "gitwise.features.pr_enhancements.generate_checklist"
+    ) as mock_gen_checklist:
+
         mock_get_labels.return_value = ["enhancement"]
         mock_get_files.return_value = ["script.py"]
         mock_gen_checklist.return_value = "- [ ] A python specific task"
-        
-        desc, labels = enhance_pr_description(sample_commits_pr, initial_desc, use_labels=True, use_checklist=True)
-        
+
+        desc, labels = enhance_pr_description(
+            sample_commits_pr, initial_desc, use_labels=True, use_checklist=True
+        )
+
         assert labels == ["enhancement"]
         assert initial_desc in desc
         assert "## Checklist" in desc

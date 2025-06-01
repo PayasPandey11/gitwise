@@ -37,19 +37,29 @@ def check_and_install_offline_deps() -> bool:
     packages_to_check = {"transformers": False, "torch": False}
     try:
         import transformers
+
         packages_to_check["transformers"] = True
     except ImportError:
-        missing.append('transformers')
+        missing.append("transformers")
     try:
         import torch
+
         packages_to_check["torch"] = True
     except ImportError:
-        missing.append('torch')
+        missing.append("torch")
 
     if missing:
-        print(f"[gitwise] Optional dependencies for offline mode ({', '.join(missing)}) are missing.")
+        print(
+            f"[gitwise] Optional dependencies for offline mode ({', '.join(missing)}) are missing."
+        )
         print("You can install them with: pip install gitwise[offline]")
-        auto = input("Would you like to install them now (pip install gitwise[offline])? [Y/n]: ").strip().lower()
+        auto = (
+            input(
+                "Would you like to install them now (pip install gitwise[offline])? [Y/n]: "
+            )
+            .strip()
+            .lower()
+        )
         if auto in ("", "y", "yes"):
             cmd = [sys.executable, "-m", "pip", "install", "gitwise[offline]"]
             print(f"[gitwise] Running: {', '.join(cmd)}")
@@ -154,8 +164,14 @@ def changelog_cli_entrypoint(
     )
 
 
-@app.command(name="git", context_settings={"allow_interspersed_args": False, "ignore_unknown_options": True})
-def git_cli_entrypoint(ctx: typer.Context, args: List[str] = typer.Argument(None, help="Git command and arguments")) -> None:
+@app.command(
+    name="git",
+    context_settings={"allow_interspersed_args": False, "ignore_unknown_options": True},
+)
+def git_cli_entrypoint(
+    ctx: typer.Context,
+    args: List[str] = typer.Argument(None, help="Git command and arguments"),
+) -> None:
     """Pass through to git with enhanced output and pager handling for common commands."""
     # args will now correctly capture everything after 'gitwise git'
     if not args:
@@ -218,7 +234,7 @@ def offline_model_cmd():
     # Only check dependencies when user explicitly requests offline model
     if not check_and_install_offline_deps():
         raise typer.Exit(code=1)
-    
+
     from gitwise.llm.download import download_offline_model
 
     download_offline_model()

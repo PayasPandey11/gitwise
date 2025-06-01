@@ -1,8 +1,7 @@
 import os
 import typer
 
-from gitwise.config import (ConfigError, config_exists, load_config,
-                            write_config)
+from gitwise.config import ConfigError, config_exists, load_config, write_config
 from gitwise.core.git_manager import GitManager
 
 app = typer.Typer()
@@ -113,9 +112,9 @@ def init_command():
                 default=default_online_model,
             )
         else:
-            config[
-                "openrouter_model"
-            ] = default_online_model  # Explicitly set default if not overriding
+            config["openrouter_model"] = (
+                default_online_model  # Explicitly set default if not overriding
+            )
 
     elif config["llm_backend"] == "ollama":
         typer.echo(
