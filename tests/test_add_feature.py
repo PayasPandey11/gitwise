@@ -8,19 +8,22 @@ from gitwise.config import ConfigError # For testing config error handling
 
 @pytest.fixture
 def mock_git_manager_add(): # Renamed for clarity
-    with patch("gitwise.features.add.GitManager") as mock_gm_constructor:
-        mock_gm_instance = MagicMock(spec=GitManager)
-        mock_gm_constructor.return_value = mock_gm_instance
-        mock_gm_instance.get_unstaged_files.return_value = [("M", "file1.py"), ("??", "new_file.txt")]
-        mock_gm_instance.stage_all.return_value = True
-        mock_gm_instance.stage_files.return_value = True
-        mock_gm_instance.get_staged_files.return_value = [("M", "file1.py"), ("A", "new_file.txt")]
-        mock_gm_instance.get_staged_diff.return_value = "diff content"
+    # Create a mock instance
+    mock_gm_instance = MagicMock(spec=GitManager)
+    mock_gm_instance.get_unstaged_files.return_value = [("M", "file1.py"), ("??", "new_file.txt")]
+    mock_gm_instance.stage_all.return_value = True
+    mock_gm_instance.stage_files.return_value = True
+    mock_gm_instance.get_staged_files.return_value = [("M", "file1.py"), ("A", "new_file.txt")]
+    mock_gm_instance.get_staged_diff.return_value = "diff content"
+    
+    # Patch the GitManager constructor to return our mock
+    with patch("gitwise.features.add.GitManager", return_value=mock_gm_instance):
         yield mock_gm_instance
 
 @pytest.fixture
 def mock_dependencies_add_feature():
-    with patch("gitwise.features.add.get_llm_backend", MagicMock(return_value="offline")), \
+    with patch("gitwise.features.add.load_config", return_value={}), \
+         patch("gitwise.features.add.get_llm_backend", return_value="offline"), \
          patch("gitwise.features.add.typer.confirm") as mock_confirm, \
          patch("gitwise.features.add.typer.prompt") as mock_prompt, \
          patch("gitwise.features.add.CommitFeature") as mock_commit_feature_constructor, \
