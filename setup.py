@@ -1,13 +1,18 @@
 from setuptools import setup, find_packages
 import os
 
+# Read version from package
+version = {}
+with open(os.path.join("gitwise", "__init__.py")) as f:
+    exec(f.read(), version)
+
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
     name="gitwise",
-    version="0.1.0",  # Update as needed
-    description="AI-powered Git workflow assistant for fast, smart commits, PRs, and changelogs.",
+    version=version["__version__"],  # Use version from __init__.py
+    description="AI-powered Git assistant with privacy-first design. Choose between local (Ollama/Offline) or cloud AI to automate commits, PRs, and changelogs.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Payas Pandey",
@@ -19,6 +24,7 @@ setup(
         "Issues": "https://github.com/PayasPandey11/gitwise/issues",
     },
     license="MIT",
+    keywords="git ai conventional-commits changelog pull-request automation llm ollama",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -63,7 +69,7 @@ setup(
     },
     include_package_data=True,
     package_data={
-        # Add non-Python files if needed
+        "gitwise": ["templates/*.md"],  # Include template files
     },
     zip_safe=False,
 )
