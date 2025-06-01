@@ -10,7 +10,7 @@ from gitwise.config import ConfigError, load_config
 DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3-haiku"
 
 
-def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]]) -> str:
+def get_llm_response(prompt_or_messages: Union[str, List[Dict[str, str]]], **kwargs) -> str:
     """Get response from online LLM (OpenRouter/OpenAI)."""
     api_key = None
     model_name = DEFAULT_OPENROUTER_MODEL
