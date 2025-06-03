@@ -1,6 +1,6 @@
 import time
 
-from gitwise.config import get_llm_backend
+from gitwise.config import get_llm_backend, load_config, ConfigError
 from gitwise.llm.ollama import OllamaError
 from gitwise.ui import components
 
@@ -16,12 +16,10 @@ def get_llm_response(*args, **kwargs):
 
     if backend == "online":
         try:
-            from gitwise.llm.online import get_llm_response as online_llm
-
-            return online_llm(*args, **kwargs)
+            return _get_online_llm_response(*args, **kwargs)
         except ImportError as e:
             raise RuntimeError(
-                f"Online backend requires 'openai' package. Install with: pip install openai"
+                f"Online backend dependencies missing. {str(e)}"
             ) from e
     elif backend == "offline":
         try:
@@ -102,4 +100,49 @@ def get_llm_response(*args, **kwargs):
         except ImportError as e:
             raise RuntimeError(
                 f"Unknown backend '{backend}' and offline fallback requires 'transformers' and 'torch'"
+            ) from e
+
+
+def _get_online_llm_response(*args, **kwargs):
+    """Handle online LLM requests using the new provider system.
+    
+    This function supports both the new provider system and backward compatibility
+    with the existing OpenRouter implementation.
+    """
+    try:
+        # Try new provider system first
+        from gitwise.llm.providers import get_provider_with_fallback
+        
+        config = load_config()
+        provider = get_provider_with_fallback(config)
+        return provider.get_response(*args, **kwargs)
+        
+    except ImportError as e:
+        # Fallback to legacy OpenRouter implementation
+        components.show_warning(
+            f"Provider system unavailable ({e}), falling back to OpenRouter..."
+        )
+        from gitwise.llm.online import get_llm_response as legacy_online_llm
+        return legacy_online_llm(*args, **kwargs)
+        
+    except ConfigError as e:
+        # No config file, try legacy implementation
+        components.show_warning(
+            f"Config error ({e}), falling back to OpenRouter..."
+        )
+        from gitwise.llm.online import get_llm_response as legacy_online_llm
+        return legacy_online_llm(*args, **kwargs)
+        
+    except Exception as e:
+        # If provider system fails, try legacy as final fallback
+        components.show_warning(
+            f"Provider system error ({str(e)}), trying OpenRouter fallback..."
+        )
+        try:
+            from gitwise.llm.online import get_llm_response as legacy_online_llm
+            return legacy_online_llm(*args, **kwargs)
+        except Exception as fallback_error:
+            raise RuntimeError(
+                f"Both provider system and OpenRouter fallback failed. "
+                f"Provider error: {str(e)}. Fallback error: {str(fallback_error)}"
             ) from e
