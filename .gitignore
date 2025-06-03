@@ -180,3 +180,4 @@ cython_debug/
 .internal/
 .gitwise/
 .gitwise/config.json
+.cursor/
