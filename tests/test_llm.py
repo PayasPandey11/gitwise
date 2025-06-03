@@ -179,14 +179,25 @@ def test_router_routes_to_offline(mock_offline_llm_func, mock_router_get_backend
 
 
 @patch("gitwise.llm.router.get_llm_backend")
-@patch("gitwise.llm.online.get_llm_response")
-def test_router_routes_to_online(mock_online_llm_func, mock_router_get_backend):
+@patch("gitwise.llm.router.load_config")  # Mock load_config in the router
+@patch("gitwise.llm.providers.get_provider_with_fallback")  # Mock the new provider path
+def test_router_routes_to_online(
+    mock_get_provider_with_fallback, mock_load_config, mock_router_get_backend
+):
     mock_router_get_backend.return_value = "online"
-    mock_online_llm_func.return_value = "Online response via router"
+    
+    # Simulate a successful config load
+    mock_load_config.return_value = {"some_config_key": "some_value"} 
+
+    mock_provider_instance = MagicMock()
+    mock_provider_instance.get_response.return_value = "Online response via router"
+    mock_get_provider_with_fallback.return_value = mock_provider_instance
 
     response = router.get_llm_response("test prompt")
     assert response == "Online response via router"
-    mock_online_llm_func.assert_called_once_with("test prompt")
+    
+    mock_get_provider_with_fallback.assert_called_once_with(mock_load_config.return_value)
+    mock_provider_instance.get_response.assert_called_once_with("test prompt")
 
 
 @patch("gitwise.llm.router.get_llm_backend")
