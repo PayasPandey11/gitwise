@@ -270,11 +270,32 @@ def _print_pr_commit_hashes(git_m: GitManager, base_branch: str) -> None:
 
 
 def _backend_display_name(backend_str: str) -> str:
-    return {
-        "ollama": "Ollama (local server)",
-        "offline": "Offline (local model)",
-        "online": "Online (OpenRouter)",
-    }.get(backend_str, backend_str)
+    """Get backend display name with provider detection for online mode."""
+    if backend_str == "online":
+        try:
+            from gitwise.llm.providers import detect_provider_from_config
+            from gitwise.config import load_config
+            
+            config = load_config()
+            provider = detect_provider_from_config(config)
+            
+            if provider == "google":
+                return "Online (Google Gemini)"
+            elif provider == "openai":
+                return "Online (OpenAI)"
+            elif provider == "anthropic":
+                return "Online (Anthropic Claude)"
+            elif provider == "openrouter":
+                return "Online (OpenRouter)"
+            else:
+                return "Online (Cloud provider)"
+        except:
+            return "Online (Cloud provider)"
+    else:
+        return {
+            "ollama": "Ollama (local server)",
+            "offline": "Offline (local model)",
+        }.get(backend_str, backend_str)
 
 
 class PrFeature:
