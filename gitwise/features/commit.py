@@ -366,9 +366,16 @@ class CommitFeature:
 
                             try:
                                 self.git_manager.stage_files(group_item["files"])
-                                commit_message_for_group = (
-                                    f"{group_item['type']}: {group_item['name']}"
-                                )
+                                
+                                # Generate LLM commit message for the group instead of hardcoded message
+                                group_diff = self.git_manager.get_staged_diff()
+                                if group_diff:
+                                    guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
+                                    commit_message_for_group = generate_commit_message(group_diff, guidance)
+                                else:
+                                    # Fallback to simple description if no diff
+                                    commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
+                                
                                 with components.show_spinner(
                                     f"Committing group - {len(group_item['files'])} files..."
                                 ):

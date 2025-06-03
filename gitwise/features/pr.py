@@ -119,8 +119,9 @@ def _generate_pr_description_llm(
     commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
     """Generate a PR description using LLM prompt only. The LLM outputs the full Markdown body."""
+    # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
     formatted_commits = "\n".join(
-        [f"- {commit['message']} ({commit['author']})" for commit in commits]
+        [f"- {commit['message']}" for commit in commits]
     )
     prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace(
         "{{guidance}}", guidance
