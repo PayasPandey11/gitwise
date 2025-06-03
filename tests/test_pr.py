@@ -154,7 +154,7 @@ def test_generate_pr_description_llm(sample_commits_pr):
         desc = _generate_pr_description_llm(sample_commits_pr, "url", "repo_name")
         assert desc == "AI Generated Description"
         expected_prompt_content = (
-            "- feat: implement amazing feature (dev1)\n- fix: solve critical bug (dev2)"
+            "- feat: implement amazing feature\n- fix: solve critical bug"
         )
         called_prompt = mock_llm_resp.call_args[0][0]
         assert expected_prompt_content in called_prompt

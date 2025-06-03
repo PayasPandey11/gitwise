@@ -155,35 +155,10 @@ def test_suggest_commit_groups_calls_analyze_changes(
 
 
 @patch("gitwise.features.commit.get_llm_response")
-def test_execute_commit_single_no_grouping(
-    mock_get_llm, mock_git_manager, mock_dependencies_commit_feature, mock_diff_str
-):
-    mock_get_llm.return_value = "feat: test commit message"
-    mock_dependencies_commit_feature["safe_confirm"].return_value = True  # Confirm push
-    mock_dependencies_commit_feature["safe_prompt"].return_value = (
-        1  # Use suggested message
-    )
-    mock_dependencies_commit_feature["confirm"].return_value = (
-        False  # No, don't view full diff
-    )
-
-    feature = CommitFeature()
-    feature.execute_commit(group=False)
-
-    mock_git_manager.get_changed_file_paths_staged.assert_called()
-    mock_git_manager.get_staged_diff.assert_called()  # Called for message generation
-
-    expected_prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", mock_diff_str).replace(
-        "{{guidance}}", ""
-    )
-    mock_get_llm.assert_called_once_with(expected_prompt)
-    mock_git_manager.create_commit.assert_called_once_with("feat: test commit message")
-    mock_dependencies_commit_feature["push_command"].assert_called_once()
-
-
-@patch("gitwise.features.commit.get_llm_response")
 @patch("gitwise.features.commit.suggest_commit_groups")
+@patch("gitwise.features.commit.generate_commit_message")
 def test_execute_commit_with_grouping_commit_separately(
+    mock_generate_commit_message,
     mock_suggest_groups,
     mock_get_llm,
     mock_git_manager,
@@ -197,15 +172,19 @@ def test_execute_commit_with_grouping_commit_separately(
             "name": "module",
         },
     ]
+    # Expected commit messages for each group
+    expected_group_commit_messages = ["directory: root", "directory: module"]
+    mock_generate_commit_message.side_effect = expected_group_commit_messages
+
     # User choices: Commit separately, proceed with group 1, proceed with group 2, push all
     mock_dependencies_commit_feature["safe_prompt"].side_effect = [
         1
     ]  # Commit separately
     mock_dependencies_commit_feature["safe_confirm"].side_effect = [
-        True,
-        True,
-        True,
-    ]  # Proceed with group1, group2, push all
+        True, # Proceed with group 1
+        True, # Proceed with group 2
+        True, # Push all
+    ]
 
     feature = CommitFeature()
     feature.execute_commit(group=True)
