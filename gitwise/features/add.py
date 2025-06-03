@@ -92,11 +92,32 @@ class AddFeature:
                 components.show_files_table(staged)
 
                 backend = get_llm_backend()
-                backend_display = {
-                    "ollama": "Ollama (local server)",
-                    "offline": "Offline (local model)",
-                    "online": "Online (OpenRouter)",
-                }.get(backend, backend)
+                
+                # Enhanced backend display with provider detection
+                if backend == "online":
+                    try:
+                        from gitwise.llm.providers import detect_provider_from_config
+                        config = load_config()
+                        provider = detect_provider_from_config(config)
+                        
+                        if provider == "google":
+                            backend_display = "Online (Google Gemini)"
+                        elif provider == "openai":
+                            backend_display = "Online (OpenAI)"
+                        elif provider == "anthropic":
+                            backend_display = "Online (Anthropic Claude)"
+                        elif provider == "openrouter":
+                            backend_display = "Online (OpenRouter)"
+                        else:
+                            backend_display = "Online (Cloud provider)"
+                    except:
+                        backend_display = "Online (Cloud provider)"
+                else:
+                    backend_display = {
+                        "ollama": "Ollama (local server)",
+                        "offline": "Offline (local model)",
+                    }.get(backend, backend)
+                    
                 components.show_section(f"[AI] LLM Backend: {backend_display}")
 
                 if auto_confirm:

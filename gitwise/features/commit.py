@@ -207,11 +207,32 @@ class CommitFeature:
                 return
 
             backend = get_llm_backend()
-            backend_display = {
-                "ollama": "Ollama (local server)",
-                "offline": "Offline (local model)",
-                "online": "Online (OpenRouter)",
-            }.get(backend, backend)
+            
+            # Enhanced backend display with provider detection
+            if backend == "online":
+                try:
+                    from gitwise.llm.providers import detect_provider_from_config
+                    config = load_config()
+                    provider = detect_provider_from_config(config)
+                    
+                    if provider == "google":
+                        backend_display = "Online (Google Gemini)"
+                    elif provider == "openai":
+                        backend_display = "Online (OpenAI)"
+                    elif provider == "anthropic":
+                        backend_display = "Online (Anthropic Claude)"
+                    elif provider == "openrouter":
+                        backend_display = "Online (OpenRouter)"
+                    else:
+                        backend_display = "Online (Cloud provider)"
+                except:
+                    backend_display = "Online (Cloud provider)"
+            else:
+                backend_display = {
+                    "ollama": "Ollama (local server)",
+                    "offline": "Offline (local model)",
+                }.get(backend, backend)
+                
             components.show_section(f"[AI] LLM Backend: {backend_display}")
 
             if backend == "offline":
@@ -345,9 +366,16 @@ class CommitFeature:
 
                             try:
                                 self.git_manager.stage_files(group_item["files"])
-                                commit_message_for_group = (
-                                    f"{group_item['type']}: {group_item['name']}"
-                                )
+                                
+                                # Generate LLM commit message for the group instead of hardcoded message
+                                group_diff = self.git_manager.get_staged_diff()
+                                if group_diff:
+                                    guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
+                                    commit_message_for_group = generate_commit_message(group_diff, guidance)
+                                else:
+                                    # Fallback to simple description if no diff
+                                    commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
+                                
                                 with components.show_spinner(
                                     f"Committing group - {len(group_item['files'])} files..."
                                 ):
