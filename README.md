@@ -221,16 +221,60 @@ export OPENROUTER_API_KEY="your_api_key"
 export OPENROUTER_MODEL="anthropic/claude-3-haiku"  # optional
 ```
 
+### 4. ⚡ Direct LLM Provider Mode
+
+**Best for**: Using your preferred LLM provider (OpenAI, Anthropic, Google Gemini) directly with your own API keys.
+
+GitWise now offers direct integration with major LLM providers, allowing you to use your existing accounts and preferred models.
+
+**Supported Providers:**
+- **OpenAI**: Access models like GPT-4, GPT-3.5-turbo, etc.
+- **Anthropic**: Access Claude models like Claude 3 Opus, Sonnet, Haiku.
+- **Google Gemini**: Access Gemini models like Gemini Pro.
+
+**Configuration:**
+
+To use a direct provider, set the `GITWISE_LLM_BACKEND` environment variable to `openai`, `anthropic`, or `google_gemini`, and provide the respective API key.
+
+**OpenAI:**
+```bash
+export GITWISE_LLM_BACKEND=openai
+export OPENAI_API_KEY="your_openai_api_key"
+export GITWISE_OPENAI_MODEL="gpt-4" # Optional, defaults to a recommended model
+```
+
+**Anthropic:**
+```bash
+export GITWISE_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
+export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229" # Optional
+```
+
+**Google Gemini:**
+```bash
+export GITWISE_LLM_BACKEND=google_gemini
+export GOOGLE_API_KEY="your_google_api_key"
+export GITWISE_GEMINI_MODEL="gemini-pro" # Optional
+```
+
+You can also configure these during `gitwise init` by selecting the specific provider.
+
+**Features**:
+- Use your own API keys and billing with providers.
+- Access to a wide range of models from each provider.
+- Potentially more up-to-date model access than through aggregators.
+- Internet connection required.
+
 ### Mode Comparison
 
-| Feature | Ollama | Offline | Online |
-|---------|---------|---------|---------|
-| Privacy | 🟢 Full | 🟢 Full | 🔴 API calls |
-| Internet | 🟡 Initial only | 🟢 Never | 🔴 Always |
-| Quality | 🟢 High | 🟡 Good | 🟢 Best |
-| Speed | 🟢 Fast | 🟢 Fast | 🟡 Network dependent |
-| Cost | 🟢 Free | 🟢 Free | 🔴 Per use |
-| Setup | 🟡 Medium | 🟢 Easy | 🟢 Easy |
+| Feature | Ollama | Offline | Online (OpenRouter) | Direct LLM (OpenAI, Anthropic, Gemini) |
+|---------|---------|---------|---------|---------------------------------------|
+| Privacy | 🟢 Full | 🟢 Full | 🔴 API calls | 🔴 API calls to provider             |
+| Internet | 🟡 Initial only | 🟢 Never | 🔴 Always | 🔴 Always                             |
+| Quality | 🟢 High | 🟡 Good | 🟢 Best | 🟢 Provider-dependent (Best available) |
+| Speed | 🟢 Fast | 🟢 Fast | 🟡 Network dependent | 🟡 Network dependent                  |
+| Cost | 🟢 Free | 🟢 Free | 🔴 Per use | 🔴 Per use (Provider billing)        |
+| Setup | 🟡 Medium | 🟢 Easy | 🟢 Easy | 🟢 Easy (API key)                    |
 
 ## 📖 Usage Examples
 
@@ -329,6 +373,20 @@ export GITWISE_OFFLINE_MODEL="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 # Online settings
 export OPENROUTER_API_KEY="your_api_key"
 export OPENROUTER_MODEL="anthropic/claude-3-haiku"
+
+# Direct Provider Settings
+# OpenAI
+export GITWISE_LLM_BACKEND=openai
+export OPENAI_API_KEY="your_openai_api_key"
+export GITWISE_OPENAI_MODEL="gpt-4"
+# Anthropic
+export GITWISE_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
+export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
+# Google Gemini
+export GITWISE_LLM_BACKEND=google_gemini
+export GOOGLE_API_KEY="your_google_api_key"
+export GITWISE_GEMINI_MODEL="gemini-pro"
 ```
 
 ### Configuration File
@@ -348,6 +406,18 @@ After running `gitwise init`, your settings are saved in `~/.gitwise/config.json
   "online": {
     "api_key": "your_api_key",
     "model": "anthropic/claude-3-haiku"
+  },
+  "openai": {
+    "api_key": "your_openai_api_key",
+    "model": "gpt-4"
+  },
+  "anthropic": {
+    "api_key": "your_anthropic_api_key",
+    "model": "claude-3-opus-20240229"
+  },
+  "google_gemini": {
+    "api_key": "your_google_api_key",
+    "model": "gemini-pro"
   }
 }
 ```
