@@ -37,7 +37,7 @@ title: "GitWise - Your AI-Powered Git Co-pilot"
   
   <div class="feature">
     <h3>🔒 Privacy-First</h3>
-    <p>Choose between local (Ollama/Offline) or cloud-based AI backends.</p>
+    <p>Choose between local (Ollama/Offline) or cloud-based AI backends (OpenRouter, OpenAI, Anthropic, Gemini).</p>
   </div>
 </div>
 
@@ -73,7 +73,8 @@ gitwise pr --labels --checklist  # AI generates PR with context
 |------|----------|---------|----------|
 | **🦙 Ollama** | High-quality local AI | 🟢 Full | 🟡 Setup only |
 | **🏠 Offline** | Air-gapped environments | 🟢 Full | 🟢 Never |
-| **🌐 Online** | Latest AI models (GPT-4, Claude) | 🔴 API calls | 🔴 Always |
+| **🌐 Online (OpenRouter)** | Access to many models (GPT-4, Claude) | 🔴 API calls | 🔴 Always |
+| **⚡ Direct LLM (OpenAI, Anthropic, Gemini)** | Preferred provider access | 🔴 API calls | 🔴 Always |
 
 ---
 

@@ -55,6 +55,46 @@ gitwise init  # Select Online
 - 💻 No local GPU required
 - 🌍 Always up-to-date
 
+### ⚡ Direct LLM Provider Mode
+**Best for**: Using your preferred LLM provider (OpenAI, Anthropic, Google Gemini) directly with your own API keys.
+
+GitWise now offers direct integration with major LLM providers:
+
+- **OpenAI**: Models like GPT-4, GPT-3.5-turbo.
+- **Anthropic**: Claude models (Opus, Sonnet, Haiku).
+- **Google Gemini**: Gemini Pro and other models.
+
+**Configuration Examples:**
+
+**OpenAI:**
+```bash
+export GITWISE_LLM_BACKEND=openai
+export OPENAI_API_KEY="your_openai_api_key"
+# Optional: export GITWISE_OPENAI_MODEL="gpt-4"
+```
+
+**Anthropic:**
+```bash
+export GITWISE_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
+# Optional: export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
+```
+
+**Google Gemini:**
+```bash
+export GITWISE_LLM_BACKEND=google_gemini
+export GOOGLE_API_KEY="your_google_api_key"
+# Optional: export GITWISE_GEMINI_MODEL="gemini-pro"
+```
+
+Select your provider during `gitwise init` or by setting environment variables.
+
+**Features**:
+- Direct use of your provider accounts and API keys.
+- Access to the full range of models offered by each provider.
+- Often the most current model versions available.
+- Requires an internet connection.
+
 ## 🧠 Smart Commit Messages
 
 ### Basic Commit Generation
@@ -212,6 +252,20 @@ export GITWISE_OFFLINE_MODEL="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 # Online configuration
 export OPENROUTER_API_KEY="your_key"
 export OPENROUTER_MODEL="anthropic/claude-3-haiku"
+
+# Direct Provider Settings
+# OpenAI
+export GITWISE_LLM_BACKEND=openai
+export OPENAI_API_KEY="your_openai_api_key"
+export GITWISE_OPENAI_MODEL="gpt-4"
+# Anthropic
+export GITWISE_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
+export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
+# Google Gemini
+export GITWISE_LLM_BACKEND=google_gemini
+export GOOGLE_API_KEY="your_google_api_key"
+export GITWISE_GEMINI_MODEL="gemini-pro"
 ```
 
 ### Configuration File
@@ -230,6 +284,18 @@ Located at `~/.gitwise/config.json`:
   "online": {
     "api_key": "your_key",
     "model": "anthropic/claude-3-haiku"
+  },
+  "openai": {
+    "api_key": "your_openai_api_key",
+    "model": "gpt-4"
+  },
+  "anthropic": {
+    "api_key": "your_anthropic_api_key",
+    "model": "claude-3-opus-20240229"
+  },
+  "google_gemini": {
+    "api_key": "your_google_api_key",
+    "model": "gemini-pro"
   }
 }
 ```
