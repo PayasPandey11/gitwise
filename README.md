@@ -1,7 +1,7 @@
 # GitWise: Your AI-Powered Git Co-pilot
 
-[![TestPyPI version](https://img.shields.io/badge/TestPyPI-v0.1.0-blue)](https://test.pypi.org/project/gitwise/)
-[![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://test.pypi.org/project/gitwise/)
+[![TestPyPI version](https://img.shields.io/badge/TestPyPI-v0.1.0-blue)](https://test.pypi.org/project/pygitwise/)
+[![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://test.pypi.org/project/pygitwise/)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
 [![codecov](https://codecov.io/gh/PayasPandey11/gitwise/branch/main/graph/badge.svg)](https://codecov.io/gh/PayasPandey11/gitwise)
 [![CI Status](https://github.com/PayasPandey11/gitwise/workflows/CI/badge.svg)](https://github.com/PayasPandey11/gitwise/actions)
@@ -25,10 +25,10 @@ Are you a seasoned developer who loves the power of Git but wishes some parts we
 
 ```bash
 # Install from PyPI
-pip install gitwise
+pip install pygitwise
 
 # For offline model support
-pip install "gitwise[offline]"
+pip install "pygitwise[offline]"
 ```
 
 📌 **[Quick Reference Guide →](https://payaspandey11.github.io/gitwise/QUICK_REFERENCE.html)** - Keep this handy for all commands and options!
@@ -113,7 +113,7 @@ For the best experience, use a [virtual environment](https://docs.python.org/3/t
 ```sh
 python3 -m venv venv
 source venv/bin/activate
-pip install gitwise
+pip install pygitwise
 ```
 
 This ensures the `gitwise` command is always available when the venv is activated.
@@ -173,7 +173,7 @@ export OLLAMA_MODEL=llama3  # or codellama, mistral, etc.
 
 ```bash
 # Install with offline support
-pip install "gitwise[offline]"
+pip install "pygitwise[offline]"
 
 # Configure GitWise
 gitwise init

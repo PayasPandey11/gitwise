@@ -11,10 +11,10 @@ Get GitWise up and running in under 5 minutes.
 
 ```bash
 # Install from PyPI
-pip install gitwise
+pip install pygitwise
 
 # For offline model support (optional)
-pip install "gitwise[offline]"
+pip install "pygitwise[offline]"
 ```
 
 ## 🚀 Initial Setup
@@ -73,7 +73,7 @@ gitwise pr --labels --checklist
 
 ### 🏠 Offline Mode (No Internet Required)
 ```bash
-pip install "gitwise[offline]"
+pip install "pygitwise[offline]"
 gitwise init  # Select "Offline (built-in model)"
 ```
 

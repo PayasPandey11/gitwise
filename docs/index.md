@@ -55,7 +55,7 @@ GitWise doesn't replace your Git knowledge—it augments it. Built for developer
 
 ```bash
 # Install GitWise
-pip install gitwise
+pip install pygitwise
 
 # Make your changes
 echo "print('Hello, GitWise!')" > hello.py

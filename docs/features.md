@@ -31,7 +31,7 @@ gitwise init  # Select Ollama
 **Best for**: Air-gapped environments, maximum privacy
 
 ```bash
-pip install "gitwise[offline]"
+pip install "pygitwise[offline]"
 gitwise init  # Select Offline
 ```
 

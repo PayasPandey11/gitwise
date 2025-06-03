@@ -7,8 +7,8 @@ title: "Quick Reference - GitWise"
 
 ## 🚀 Setup
 ```bash
-pip install gitwise               # Basic installation
-pip install "gitwise[offline]"    # With offline model support
+pip install pygitwise               # Basic installation
+pip install "pygitwise[offline]"    # With offline model support
 gitwise init                      # Configure AI backend
 ```
 
