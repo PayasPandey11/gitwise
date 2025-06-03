@@ -62,6 +62,7 @@ setup(
         "requests>=2.0.0",
         "openai>=1.0.0",
         "jinja2",
+        "google-generativeai>=0.3.0",  # For direct Gemini support
     ],
     extras_require={
         "dev": [
