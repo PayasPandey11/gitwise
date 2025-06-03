@@ -23,7 +23,7 @@ class CustomInstallCommand(install):
         print(msg)
 
 setup(
-    name="gitwise",
+    name="pygitwise",
     version=version["__version__"],  # Use version from __init__.py
     description="AI-powered Git assistant with privacy-first design. Choose between local (Ollama/Offline) or cloud AI to automate commits, PRs, and changelogs.",
     long_description=long_description,
