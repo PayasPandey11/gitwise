@@ -60,9 +60,7 @@ setup(
         "typer>=0.9.0",
         "rich>=13.0.0",
         "requests>=2.0.0",
-        "openai>=1.0.0",
         "jinja2",
-        "google-generativeai>=0.3.0",  # For direct Gemini support
     ],
     extras_require={
         "dev": [
@@ -76,6 +74,18 @@ setup(
         "offline": [
             "transformers>=4.36.0",
             "torch>=2.0.0",
+        ],
+        "cloud_llms": [
+            "google-generativeai>=0.3.0",
+            "openai>=1.0.0",
+            "anthropic>=0.20.0",
+        ],
+        "all_llms": [
+            "transformers>=4.36.0",
+            "torch>=2.0.0",
+            "google-generativeai>=0.3.0",
+            "openai>=1.0.0",
+            "anthropic>=0.20.0",
         ],
     },
     entry_points={

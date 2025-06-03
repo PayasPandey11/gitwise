@@ -15,19 +15,19 @@ def _lazy_import_providers():
     except ImportError:
         pass  # Gemini dependencies not available
     
-    # Import OpenAI provider (when implemented)
+    # Import OpenAI provider
     try:
         from .openai_provider import OpenAIProvider
         providers["openai"] = OpenAIProvider
     except ImportError:
-        pass  # Will be implemented later
+        pass  # OpenAI dependencies not available
     
-    # Import Claude provider (when implemented)
+    # Import Claude provider
     try:
-        from .claude_provider import ClaudeProvider
-        providers["anthropic"] = ClaudeProvider
+        from .anthropic_provider import AnthropicProvider
+        providers["anthropic"] = AnthropicProvider
     except ImportError:
-        pass  # Will be implemented later
+        pass  # Anthropic dependencies not available
     
     # Import OpenRouter provider (when converted)
     try:
