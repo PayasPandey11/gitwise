@@ -149,17 +149,81 @@ def configure_gemini_provider(config: dict) -> None:
 def configure_openai_provider(config: dict) -> None:
     """Configure OpenAI provider."""
     typer.echo("\n=== OpenAI Configuration ===")
-    typer.echo("⚠️  OpenAI direct support will be implemented soon.")
-    typer.echo("For now, please use OpenRouter option to access OpenAI models.")
-    raise typer.Exit()
+    
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        masked = mask(env_key)
+        use_env = typer.confirm(
+            f"An OpenAI API key was found in your environment (starts with: {masked}). Use this key?",
+            default=True,
+        )
+        if use_env:
+            config["openai_api_key"] = env_key.strip()
+        else:
+            typer.echo("Enter your OpenAI API key (get one at https://platform.openai.com/api-keys):")
+            api_key = typer.prompt("OpenAI API key", hide_input=True)
+            config["openai_api_key"] = api_key.strip()
+    else:
+        typer.echo("Enter your OpenAI API key (get one at https://platform.openai.com/api-keys):")
+        api_key = typer.prompt("OpenAI API key", hide_input=True)
+        config["openai_api_key"] = api_key.strip()
+    
+    config["provider"] = "openai"
+    
+    typer.echo("\nChoose your OpenAI model:")
+    typer.echo("  1. gpt-4o (Latest, Best Multimodal)")
+    typer.echo("  2. gpt-4-turbo (Powerful, Optimized)")
+    typer.echo("  3. gpt-3.5-turbo (Fast, Cost-effective - Recommended)")
+    
+    model_choice = typer.prompt("Enter choice [1/2/3]", default="3")
+    if model_choice == "1":
+        config["openai_model"] = "gpt-4o"
+    elif model_choice == "2":
+        config["openai_model"] = "gpt-4-turbo"
+    else:
+        config["openai_model"] = "gpt-3.5-turbo"
+    
+    typer.echo(f"✓ Configured OpenAI with model: {config['openai_model']}")
 
 
 def configure_anthropic_provider(config: dict) -> None:
     """Configure Anthropic provider."""
     typer.echo("\n=== Anthropic Claude Configuration ===")
-    typer.echo("⚠️  Anthropic direct support will be implemented soon.")
-    typer.echo("For now, please use OpenRouter option to access Claude models.")
-    raise typer.Exit()
+    
+    env_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY")
+    if env_key:
+        masked = mask(env_key)
+        use_env = typer.confirm(
+            f"An Anthropic API key was found in your environment (starts with: {masked}). Use this key?",
+            default=True,
+        )
+        if use_env:
+            config["anthropic_api_key"] = env_key.strip()
+        else:
+            typer.echo("Enter your Anthropic API key (get one at https://console.anthropic.com/settings/keys):")
+            api_key = typer.prompt("Anthropic API key", hide_input=True)
+            config["anthropic_api_key"] = api_key.strip()
+    else:
+        typer.echo("Enter your Anthropic API key (get one at https://console.anthropic.com/settings/keys):")
+        api_key = typer.prompt("Anthropic API key", hide_input=True)
+        config["anthropic_api_key"] = api_key.strip()
+
+    config["provider"] = "anthropic"
+    
+    typer.echo("\nChoose your Anthropic Claude model:")
+    typer.echo("  1. claude-3-opus-20240229 (Most Powerful)")
+    typer.echo("  2. claude-3-sonnet-20240229 (Balanced)")
+    typer.echo("  3. claude-3-haiku-20240307 (Fastest - Recommended)")
+    
+    model_choice = typer.prompt("Enter choice [1/2/3]", default="3")
+    if model_choice == "1":
+        config["anthropic_model"] = "claude-3-opus-20240229"
+    elif model_choice == "2":
+        config["anthropic_model"] = "claude-3-sonnet-20240229"
+    else:
+        config["anthropic_model"] = "claude-3-haiku-20240307"
+        
+    typer.echo(f"✓ Configured Anthropic Claude with model: {config['anthropic_model']}")
 
 
 def display_model_options() -> None:
