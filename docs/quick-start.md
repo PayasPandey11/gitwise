@@ -26,7 +26,7 @@ gitwise init
 ```
 
 This will guide you through:
-1. Choosing your AI backend (Ollama, Offline, or Online)
+1. Choosing your AI backend (Ollama, Offline, Online through OpenRouter, or Direct Providers like OpenAI, Anthropic, Google Gemini)
 2. Configuring API keys or model settings
 3. Testing your configuration
 4. Saving your preferences
@@ -83,6 +83,32 @@ gitwise init  # Select "Offline (built-in model)"
 export OPENROUTER_API_KEY="your_api_key"
 gitwise init  # Select "Online (OpenRouter API)"
 ```
+
+### ✨ Direct LLM Providers (OpenAI, Anthropic, Gemini)
+For direct integration with your preferred LLM provider:
+
+**OpenAI:**
+```bash
+export GITWISE_LLM_BACKEND=openai
+export OPENAI_API_KEY="your_openai_api_key"
+gitwise init # Select "OpenAI"
+```
+
+**Anthropic:**
+```bash
+export GITWISE_LLM_BACKEND=anthropic
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
+gitwise init # Select "Anthropic"
+```
+
+**Google Gemini:**
+```bash
+export GITWISE_LLM_BACKEND=google_gemini
+export GOOGLE_API_KEY="your_google_api_key"
+gitwise init # Select "Google Gemini"
+```
+
+During `gitwise init`, you can select your specific provider and enter the API key when prompted.
 
 ## 📋 Essential Commands
 
