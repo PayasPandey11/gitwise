@@ -1,2 +1,0 @@
-This is a test file for the push prompt fix.
-Adding a new line to test PR commit listing after a merge. 
