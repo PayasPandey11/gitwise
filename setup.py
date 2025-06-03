@@ -61,6 +61,7 @@ setup(
         "rich>=13.0.0",
         "requests>=2.0.0",
         "jinja2",
+        "openai>=1.0.0",
     ],
     extras_require={
         "dev": [
@@ -84,7 +85,6 @@ setup(
             "transformers>=4.36.0",
             "torch>=2.0.0",
             "google-generativeai>=0.3.0",
-            "openai>=1.0.0",
             "anthropic>=0.20.0",
         ],
     },
