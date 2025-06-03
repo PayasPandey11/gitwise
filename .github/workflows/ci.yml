@@ -54,7 +54,7 @@ jobs:
       if: matrix.test-type == 'full'  # Only upload coverage once
       uses: codecov/codecov-action@v5
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         fail_ci_if_error: false
 
   test-deploy:
