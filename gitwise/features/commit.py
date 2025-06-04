@@ -173,37 +173,53 @@ def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
         return None
 
 
-def generate_commit_message(diff: str, guidance: str = "", skip_context: bool = False) -> str:
+def generate_commit_message(diff: str, guidance: str = "") -> str:
     """Generate a commit message using LLM prompt with context from ContextFeature."""
-    context_string = ""
+    # Get context for the current branch
+    context_feature = ContextFeature()
+    # First try to parse branch name for context if we don't have it already
+    context_feature.parse_branch_context()
+    # Then get context as a formatted string for the prompt
+    context_string = context_feature.get_context_for_ai_prompt()
     
-    # Skip context gathering if requested (e.g., for tests)
-    if not skip_context:
-        # Get context for the current branch
-        context_feature = ContextFeature()
-        # First try to parse branch name for context if we don't have it already
-        context_feature.parse_branch_context()
-        # Then get context as a formatted string for the prompt
-        context_string = context_feature.get_context_for_ai_prompt()
+    # Prompt user for context if needed
+    if not context_string:
+        context_string = context_feature.prompt_for_context_if_needed() or ""
+    
+    # Show visual indication that context is being used
+    if context_string:
+        # Trim long contexts for display
+        display_context = context_string
+        if len(display_context) > 100:
+            display_context = display_context[:97] + "..."
+        components.show_section("Context Used for Commit Message")
+        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
         
-        # Prompt user for context if needed
-        if not context_string:
-            context_string = context_feature.prompt_for_context_if_needed() or ""
+        # Add context to guidance
+        if guidance:
+            guidance = f"{context_string} {guidance}"
+        else:
+            guidance = context_string
+    
+    # Get list of staged files to include in the prompt
+    staged_files = git_manager.get_staged_files()
+    file_info = "\nFiles changed:\n"
+    
+    for status, file_path in staged_files:
+        # Determine file type
+        file_type = "Documentation" if file_path.endswith(('.md', '.rst', '.txt')) else "Code"
+        if "test" in file_path.lower():
+            file_type = "Test"
+        elif "docs/" in file_path.lower():
+            file_type = "Documentation"
         
-        # Show visual indication that context is being used
-        if context_string:
-            # Trim long contexts for display
-            display_context = context_string
-            if len(display_context) > 100:
-                display_context = display_context[:97] + "..."
-            components.show_section("Context Used for Commit Message")
-            components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
-            
-            # Add context to guidance
-            if guidance:
-                guidance = f"{context_string} {guidance}"
-            else:
-                guidance = context_string
+        file_info += f"- {status} {file_path} ({file_type})\n"
+    
+    # Add file information to guidance
+    if guidance:
+        guidance = f"{guidance}\n\n{file_info}"
+    else:
+        guidance = file_info
     
     prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
         "{{guidance}}", guidance
