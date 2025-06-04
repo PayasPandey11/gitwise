@@ -6,6 +6,7 @@ import subprocess
 import re
 from typing import List, Dict, Optional, Tuple
 
+from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
 from ..prompts import PROMPT_PR_DESCRIPTION
 from .pr_enhancements import enhance_pr_description, get_pr_labels
@@ -27,13 +28,6 @@ def _clean_pr_body(raw_body: str) -> str:
     """
     cleaned_body = raw_body.strip()
 
-    # Remove common preambles if they exist before a markdown heading or key section
-    # For example, "Here is the PR description:" or similar chatty starts.
-    # This looks for the first real markdown content (e.g., #, ##, ###, - , * , **Summary**)
-    # REMOVE: preamble_patterns = [
-    # REMOVE:     r"^(.*?)(?=^#\s|^- |^\* |^\*\*Summary of Changes\*\*)M"
-    # REMOVE: ]
-    # Try to find if there's a preamble before the main content using a simplified check
     lines = cleaned_body.split("\n")
     start_index = 0
     for i, line in enumerate(lines):
@@ -49,10 +43,8 @@ def _clean_pr_body(raw_body: str) -> str:
             and "Key Enhancements" not in line
             and "Key Features" not in line
         ):
-            # Likely preamble if first few lines don't look like markdown content headers
             continue
         else:
-            # If it looks like content, stop assuming preamble
             if i == 0:  # No preamble found
                 start_index = 0
             else:
@@ -118,7 +110,21 @@ def _generate_pr_title(commits: List[Dict]) -> str:
 def _generate_pr_description_llm(
     commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
-    """Generate a PR description using LLM prompt only. The LLM outputs the full Markdown body."""
+    """Generate a PR description using LLM prompt with context from ContextFeature."""
+    # Get context for the current branch
+    context_feature = ContextFeature()
+    # First try to parse branch name for context if we don't have it already
+    context_feature.parse_branch_context()
+    # Then get context as a formatted string for the prompt
+    context_string = context_feature.get_context_for_ai_prompt()
+    
+    # Add context to guidance if available
+    if context_string:
+        if guidance:
+            guidance = f"{context_string} {guidance}"
+        else:
+            guidance = context_string
+    
     # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
     formatted_commits = "\n".join(
         [f"- {commit['message']}" for commit in commits]
@@ -232,12 +238,6 @@ def _get_repository_info(git_m: GitManager) -> Dict[str, str]:
     """
     info = {}
     try:
-        # result = subprocess.run( # Old call
-        #     ["git", "config", "--get", "remote.origin.url"],
-        #     capture_output=True,
-        #     text=True
-        # )
-        # info["url"] = result.stdout.strip() if result.returncode == 0 else ""
         config_get_result = git_m._run_git_command(
             ["config", "--get", "remote.origin.url"], check=False
         )
