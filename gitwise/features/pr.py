@@ -108,34 +108,76 @@ def _generate_pr_title(commits: List[Dict]) -> str:
 
 
 def _generate_pr_description_llm(
-    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = "", skip_context: bool = False
+    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
 ) -> str:
     """Generate a PR description using LLM prompt with context from ContextFeature."""
-    context_string = ""
+    # Get context for the current branch
+    context_feature = ContextFeature()
+    # First try to parse branch name for context if we don't have it already
+    context_feature.parse_branch_context()
+    # Then get context as a formatted string for the prompt
+    context_string = context_feature.get_context_for_ai_prompt()
     
-    # Skip context gathering if requested (e.g., for tests)
-    if not skip_context:
-        # Get context for the current branch
-        context_feature = ContextFeature()
-        # First try to parse branch name for context if we don't have it already
-        context_feature.parse_branch_context()
-        # Then get context as a formatted string for the prompt
-        context_string = context_feature.get_context_for_ai_prompt()
+    # Show visual indication that context is being used
+    if context_string:
+        # Trim long contexts for display
+        display_context = context_string
+        if len(display_context) > 100:
+            display_context = display_context[:97] + "..."
+        components.show_section("Context Used for PR Description")
+        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
         
-        # Show visual indication that context is being used
-        if context_string:
-            # Trim long contexts for display
-            display_context = context_string
-            if len(display_context) > 100:
-                display_context = display_context[:97] + "..."
-            components.show_section("Context Used for PR Description")
-            components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
+        # Add context to guidance
+        if guidance:
+            guidance = f"{context_string} {guidance}"
+        else:
+            guidance = context_string
+    
+    # Get information about changed files across all commits
+    git_m = GitManager()
+    changed_files = set()
+    
+    # First try to get files from the commits
+    for commit in commits:
+        if 'files' in commit:
+            changed_files.update(commit['files'])
+    
+    # If that doesn't work, get files from current PR changes
+    if not changed_files:
+        current_branch = git_m.get_current_branch()
+        default_branch = git_m.get_default_remote_branch_name()
+        if current_branch and default_branch:
+            try:
+                files_output = git_m._run_git_command(
+                    ["diff", "--name-only", f"origin/{default_branch}...{current_branch}"], 
+                    check=False
+                )
+                if files_output.returncode == 0:
+                    changed_files.update(files_output.stdout.strip().split('\n'))
+            except:
+                pass  # Silently fail if we can't get the file list
+    
+    # Add file information to guidance
+    if changed_files:
+        file_info = "\nFiles changed in this PR:\n"
+        for file_path in sorted(changed_files):
+            if not file_path:  # Skip empty entries
+                continue
+                
+            # Determine file type
+            file_type = "Documentation" if file_path.endswith(('.md', '.rst', '.txt')) else "Code"
+            if "test" in file_path.lower():
+                file_type = "Test"
+            elif "docs/" in file_path.lower():
+                file_type = "Documentation"
             
-            # Add context to guidance
-            if guidance:
-                guidance = f"{context_string} {guidance}"
-            else:
-                guidance = context_string
+            file_info += f"- {file_path} ({file_type})\n"
+        
+        # Add file information to guidance
+        if guidance:
+            guidance = f"{guidance}\n\n{file_info}"
+        else:
+            guidance = file_info
     
     # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
     formatted_commits = "\n".join(
@@ -559,10 +601,9 @@ class PrFeature:
         """Generate a PR body using LLM and clean it for use in PR."""
         try:
             with components.show_spinner("Generating PR description..."):
-                # When skip_prompts is True (test mode), also skip context gathering to avoid
-                # test issues with branch detection
+                # Generate PR description using the LLM
                 pr_body = _generate_pr_description_llm(
-                    commits, repo_url, repo_name, skip_context=skip_prompts
+                    commits, repo_url, repo_name
                 )
             if not pr_body:
                 # Fallback if LLM fails
