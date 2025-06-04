@@ -72,6 +72,7 @@ gitwise pr --labels --checklist
 - **⚡ Streamlined Workflow**: Auto-confirm mode (`gitwise add -y`) for fully automated stage → commit → push → PR workflow.
 - **✍️ Intelligent PR Descriptions**: AI-generated PR titles and descriptions.
 - **🏷️ Automated PR Enhancements**: Optional label suggestions based on commit types and file-specific checklists for PRs.
+- **🧩 Context Management**: Store and use contextual information per branch to improve AI suggestions.
 - **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
 - **⚙️ Git Command Passthrough**: Use `gitwise` as a wrapper for any `git` command (e.g., `gitwise status`, `gitwise log`).
 - **🔒 Privacy-First**: Choose between local (Ollama/Offline) or cloud-based AI backends.
@@ -479,6 +480,17 @@ GitWise commands are designed to be intuitive. Here are the main ones:
 - Use `--group` (or `-g`) for GitWise to analyze changes and suggest breaking them into multiple logical commits. This is powerful for refactoring or large feature work but can be slower due to more LLM calls.
 - Example: `gitwise commit` (for a single smart commit)
 - Example: `gitwise commit --group` (to try grouping)
+
+### `gitwise set-context "<context_string>"`
+- Sets contextual information for the current branch to improve AI suggestions.
+- This context is used when generating commit messages and PR descriptions.
+- Helps the AI understand the "why" behind your changes for more relevant outputs.
+- Example: `gitwise set-context "Working on login authentication feature"`
+
+### `gitwise get-context`
+- Displays the current context information for the active branch.
+- Shows user-set context, automatically parsed ticket IDs from branch names, and keywords.
+- Example: `gitwise get-context`
 
 ### `gitwise push`
 - Pushes your committed changes to the remote repository.
