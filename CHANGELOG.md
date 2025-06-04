@@ -32,3 +32,7 @@
 ### Documentation
 
 - update installation guide
+
+### Added
+- Automatic installation of provider-specific dependencies when selecting Google Gemini, OpenAI, or Anthropic during initialization
+- Configuration system (`gitwise init`) for LLM backends and API keys.
