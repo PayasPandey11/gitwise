@@ -186,8 +186,16 @@ def generate_commit_message(diff: str, guidance: str = "") -> str:
     if not context_string:
         context_string = context_feature.prompt_for_context_if_needed() or ""
     
-    # Add context to guidance if available
+    # Show visual indication that context is being used
     if context_string:
+        # Trim long contexts for display
+        display_context = context_string
+        if len(display_context) > 100:
+            display_context = display_context[:97] + "..."
+        components.show_section("Context Used for Commit Message")
+        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
+        
+        # Add context to guidance
         if guidance:
             guidance = f"{context_string} {guidance}"
         else:

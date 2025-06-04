@@ -118,8 +118,16 @@ def _generate_pr_description_llm(
     # Then get context as a formatted string for the prompt
     context_string = context_feature.get_context_for_ai_prompt()
     
-    # Add context to guidance if available
+    # Show visual indication that context is being used
     if context_string:
+        # Trim long contexts for display
+        display_context = context_string
+        if len(display_context) > 100:
+            display_context = display_context[:97] + "..."
+        components.show_section("Context Used for PR Description")
+        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
+        
+        # Add context to guidance
         if guidance:
             guidance = f"{context_string} {guidance}"
         else:
