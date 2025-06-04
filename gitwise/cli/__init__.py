@@ -10,6 +10,7 @@ from gitwise.cli.add import add_command_cli
 from gitwise.cli.init import init_command
 from gitwise.features.changelog import ChangelogFeature
 from gitwise.features.commit import CommitFeature
+from gitwise.features.context import ContextFeature
 from gitwise.features.pr import PrFeature
 from gitwise.features.push import PushFeature
 from gitwise.ui import components
@@ -250,6 +251,22 @@ def offline_model_cmd():
 def setup_gitwise() -> None:
     """Interactively set up GitWise in this repo or globally."""
     init_command()
+
+
+@app.command(name="set-context", help="Set context for the current branch to improve AI suggestions")
+def set_context_cli_entrypoint(
+    context: str = typer.Argument(..., help="Context string describing what you're working on")
+) -> None:
+    """Set context information for the current branch."""
+    feature = ContextFeature()
+    feature.execute_set_context(context)
+
+
+@app.command(name="get-context", help="Display the current context for this branch")
+def get_context_cli_entrypoint() -> None:
+    """Show stored context for the current branch."""
+    feature = ContextFeature()
+    feature.execute_get_context()
 
 
 def main() -> None:

@@ -6,6 +6,7 @@ import subprocess
 import re
 from typing import List, Dict, Optional, Tuple
 
+from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
 from ..prompts import PROMPT_PR_DESCRIPTION
 from .pr_enhancements import enhance_pr_description, get_pr_labels
@@ -27,13 +28,6 @@ def _clean_pr_body(raw_body: str) -> str:
     """
     cleaned_body = raw_body.strip()
 
-    # Remove common preambles if they exist before a markdown heading or key section
-    # For example, "Here is the PR description:" or similar chatty starts.
-    # This looks for the first real markdown content (e.g., #, ##, ###, - , * , **Summary**)
-    # REMOVE: preamble_patterns = [
-    # REMOVE:     r"^(.*?)(?=^#\s|^- |^\* |^\*\*Summary of Changes\*\*)M"
-    # REMOVE: ]
-    # Try to find if there's a preamble before the main content using a simplified check
     lines = cleaned_body.split("\n")
     start_index = 0
     for i, line in enumerate(lines):
@@ -49,10 +43,8 @@ def _clean_pr_body(raw_body: str) -> str:
             and "Key Enhancements" not in line
             and "Key Features" not in line
         ):
-            # Likely preamble if first few lines don't look like markdown content headers
             continue
         else:
-            # If it looks like content, stop assuming preamble
             if i == 0:  # No preamble found
                 start_index = 0
             else:
@@ -116,9 +108,35 @@ def _generate_pr_title(commits: List[Dict]) -> str:
 
 
 def _generate_pr_description_llm(
-    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
+    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = "", skip_context: bool = False
 ) -> str:
-    """Generate a PR description using LLM prompt only. The LLM outputs the full Markdown body."""
+    """Generate a PR description using LLM prompt with context from ContextFeature."""
+    context_string = ""
+    
+    # Skip context gathering if requested (e.g., for tests)
+    if not skip_context:
+        # Get context for the current branch
+        context_feature = ContextFeature()
+        # First try to parse branch name for context if we don't have it already
+        context_feature.parse_branch_context()
+        # Then get context as a formatted string for the prompt
+        context_string = context_feature.get_context_for_ai_prompt()
+        
+        # Show visual indication that context is being used
+        if context_string:
+            # Trim long contexts for display
+            display_context = context_string
+            if len(display_context) > 100:
+                display_context = display_context[:97] + "..."
+            components.show_section("Context Used for PR Description")
+            components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
+            
+            # Add context to guidance
+            if guidance:
+                guidance = f"{context_string} {guidance}"
+            else:
+                guidance = context_string
+    
     # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
     formatted_commits = "\n".join(
         [f"- {commit['message']}" for commit in commits]
@@ -232,12 +250,6 @@ def _get_repository_info(git_m: GitManager) -> Dict[str, str]:
     """
     info = {}
     try:
-        # result = subprocess.run( # Old call
-        #     ["git", "config", "--get", "remote.origin.url"],
-        #     capture_output=True,
-        #     text=True
-        # )
-        # info["url"] = result.stdout.strip() if result.returncode == 0 else ""
         config_get_result = git_m._run_git_command(
             ["config", "--get", "remote.origin.url"], check=False
         )
@@ -544,34 +556,28 @@ class PrFeature:
     def _generate_and_clean_pr_body(
         self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool, auto_confirm: bool
     ) -> Optional[str]:
+        """Generate a PR body using LLM and clean it for use in PR."""
         try:
-            with components.show_spinner("Analyzing changes for PR description..."):
-                raw_body = _generate_pr_description_llm(
-                    commits, repo_url, repo_name
-                )  # Calls module helper
-                if not raw_body:
-                    raise ValueError("Empty LLM response for PR body")
-                return _clean_pr_body(raw_body)  # Calls module helper
+            with components.show_spinner("Generating PR description..."):
+                # When skip_prompts is True (test mode), also skip context gathering to avoid
+                # test issues with branch detection
+                pr_body = _generate_pr_description_llm(
+                    commits, repo_url, repo_name, skip_context=skip_prompts
+                )
+            if not pr_body:
+                # Fallback if LLM fails
+                components.show_warning("Could not generate PR description using LLM.")
+                components.console.print(
+                    "Using basic description derived from commits instead."
+                )
+                pr_body = self._generate_fallback_description(commits)
         except Exception as e:
             components.show_error(f"Could not generate PR description: {str(e)}")
-            if skip_prompts or auto_confirm or not typer.confirm(
-                "Try generating PR description again?", default=False
-            ):
-                return None
-            try:
-                with components.show_spinner("Retrying PR description generation..."):
-                    raw_body = _generate_pr_description_llm(
-                        commits, repo_url, repo_name
-                    )
-                    if not raw_body:
-                        components.show_error("Still empty LLM response on retry.")
-                        return None
-                    return _clean_pr_body(raw_body)
-            except Exception as e_retry:
-                components.show_error(
-                    f"Failed to generate PR description on retry: {str(e_retry)}"
-                )
-                return None
+            return None
+        
+        # Clean any unwanted text from PR body
+        pr_body = _clean_pr_body(pr_body)
+        return pr_body
 
     def _display_pr_preview(
         self,
@@ -622,3 +628,20 @@ class PrFeature:
         finally:
             if os.path.exists(tf.name):
                 os.unlink(tf.name)
+
+    def _generate_fallback_description(self, commits: List[Dict]) -> str:
+        """Generate a basic PR description from commits when LLM fails."""
+        lines = ["## Summary", ""]
+        
+        # Add a basic summary line
+        if commits:
+            lines.append(f"This PR contains {len(commits)} commit(s).")
+            lines.append("")
+        
+        # Add commit list
+        lines.append("## Commits")
+        lines.append("")
+        for commit in commits:
+            lines.append(f"* {commit['message']}")
+        
+        return "\n".join(lines)

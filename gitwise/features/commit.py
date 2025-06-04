@@ -9,6 +9,7 @@ import typer
 
 from gitwise.config import ConfigError, get_llm_backend, load_config
 from gitwise.core.git_manager import GitManager
+from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
 from gitwise.prompts import PROMPT_COMMIT_MESSAGE
 from gitwise.ui import components
@@ -172,8 +173,38 @@ def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
         return None
 
 
-def generate_commit_message(diff: str, guidance: str = "") -> str:
-    """Generate a commit message using LLM prompt only. The LLM outputs the full message."""
+def generate_commit_message(diff: str, guidance: str = "", skip_context: bool = False) -> str:
+    """Generate a commit message using LLM prompt with context from ContextFeature."""
+    context_string = ""
+    
+    # Skip context gathering if requested (e.g., for tests)
+    if not skip_context:
+        # Get context for the current branch
+        context_feature = ContextFeature()
+        # First try to parse branch name for context if we don't have it already
+        context_feature.parse_branch_context()
+        # Then get context as a formatted string for the prompt
+        context_string = context_feature.get_context_for_ai_prompt()
+        
+        # Prompt user for context if needed
+        if not context_string:
+            context_string = context_feature.prompt_for_context_if_needed() or ""
+        
+        # Show visual indication that context is being used
+        if context_string:
+            # Trim long contexts for display
+            display_context = context_string
+            if len(display_context) > 100:
+                display_context = display_context[:97] + "..."
+            components.show_section("Context Used for Commit Message")
+            components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
+            
+            # Add context to guidance
+            if guidance:
+                guidance = f"{context_string} {guidance}"
+            else:
+                guidance = context_string
+    
     prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
         "{{guidance}}", guidance
     )
