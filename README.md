@@ -258,13 +258,14 @@ export GOOGLE_API_KEY="your_google_api_key"
 export GITWISE_GEMINI_MODEL="gemini-pro" # Optional
 ```
 
-You can also configure these during `gitwise init` by selecting the specific provider.
+You can also configure these during `gitwise init` by selecting the specific provider. GitWise will automatically install the required dependencies for your chosen provider during initialization.
 
 **Features**:
 - Use your own API keys and billing with providers.
 - Access to a wide range of models from each provider.
 - Potentially more up-to-date model access than through aggregators.
 - Internet connection required.
+- Required dependencies are automatically installed when you select a provider.
 
 ### Mode Comparison
 

@@ -1,5 +1,7 @@
 import os
 import typer
+import subprocess
+import sys
 
 from gitwise.config import ConfigError, config_exists, load_config, write_config
 from gitwise.core.git_manager import GitManager
@@ -12,6 +14,39 @@ from gitwise.llm.model_presets import (
 )
 
 app = typer.Typer()
+
+# Add a function to install required dependencies
+def install_provider_dependencies(provider: str) -> bool:
+    """
+    Install required dependencies for a specific provider.
+    
+    Args:
+        provider: The provider name ("google", "openai", "anthropic")
+        
+    Returns:
+        True if installation was successful, False otherwise
+    """
+    dependency_map = {
+        "google": ["google-generativeai>=0.3.0"],
+        "openai": ["openai>=1.0.0"],
+        "anthropic": ["anthropic>=0.20.0"],
+    }
+    
+    if provider not in dependency_map:
+        return True  # No specific dependencies needed
+    
+    dependencies = dependency_map[provider]
+    
+    typer.echo(f"\nInstalling required dependencies for {provider}...")
+    
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install"] + dependencies)
+        typer.echo(f"✓ Successfully installed dependencies for {provider}")
+        return True
+    except subprocess.CalledProcessError as e:
+        typer.echo(f"❌ Failed to install dependencies: {e}")
+        typer.echo(f"Please install manually with: pip install {' '.join(dependencies)}")
+        return False
 
 
 def mask(s):
@@ -107,6 +142,9 @@ def configure_gemini_provider(config: dict) -> None:
     """Configure Google Gemini provider."""
     typer.echo("\n=== Google Gemini Configuration ===")
     
+    # Install required dependencies
+    install_provider_dependencies("google")
+    
     # Check for existing API key
     env_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if env_key:
@@ -150,6 +188,9 @@ def configure_openai_provider(config: dict) -> None:
     """Configure OpenAI provider."""
     typer.echo("\n=== OpenAI Configuration ===")
     
+    # Install required dependencies
+    install_provider_dependencies("openai")
+    
     env_key = os.environ.get("OPENAI_API_KEY")
     if env_key:
         masked = mask(env_key)
@@ -189,6 +230,9 @@ def configure_openai_provider(config: dict) -> None:
 def configure_anthropic_provider(config: dict) -> None:
     """Configure Anthropic provider."""
     typer.echo("\n=== Anthropic Claude Configuration ===")
+    
+    # Install required dependencies
+    install_provider_dependencies("anthropic")
     
     env_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY")
     if env_key:
