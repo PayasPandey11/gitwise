@@ -314,9 +314,9 @@ def test_execute_commit_edit_message(
         mock_os_unlink.assert_called_once_with(mock_tf.name)  # Verify unlink was called
 
 
-@patch("gitwise.features.commit.get_llm_response")
+@patch("gitwise.features.commit.generate_commit_message")
 def test_execute_commit_handle_uncommitted_changes_stage_all(
-    mock_get_llm, mock_git_manager, mock_dependencies_commit_feature
+    mock_generate_message, mock_git_manager, mock_dependencies_commit_feature
 ):
     mock_git_manager.get_list_of_unstaged_tracked_files.return_value = [
         "unstaged.py"
@@ -328,7 +328,7 @@ def test_execute_commit_handle_uncommitted_changes_stage_all(
         ["initial_staged.py"],  # Before staging all
         ["initial_staged.py", "unstaged.py", "untracked.txt"],  # After staging all
     ]
-    mock_get_llm.return_value = "chore: committed all changes"
+    mock_generate_message.return_value = "chore: committed all changes"
 
     # User choices: Stage all, Use LLM message, Push
     mock_dependencies_commit_feature["safe_prompt"].side_effect = [

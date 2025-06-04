@@ -168,10 +168,26 @@ def test_generate_pr_title(sample_commits_pr):
 
 
 def test_generate_pr_description_llm(sample_commits_pr):
-    with patch("gitwise.features.pr.get_llm_response") as mock_llm_resp:
+    # Patch both get_llm_response and ContextFeature to avoid branch checking issues
+    with patch("gitwise.features.pr.get_llm_response") as mock_llm_resp, \
+         patch("gitwise.features.pr.ContextFeature") as MockContextFeature:
+        # Setup the context feature mock
+        mock_context_instance = MagicMock()
+        mock_context_instance.get_context_for_ai_prompt.return_value = ""
+        mock_context_instance.parse_branch_context.return_value = None
+        MockContextFeature.return_value = mock_context_instance
+        
+        # Setup the LLM response
         mock_llm_resp.return_value = "AI Generated Description"
+        
+        # Call the function we're testing - no need to use skip_context
+        # since we're properly mocking the ContextFeature
         desc = _generate_pr_description_llm(sample_commits_pr, "url", "repo_name")
+        
+        # Verify the result
         assert desc == "AI Generated Description"
+        
+        # Verify prompt contents
         expected_prompt_content = (
             "- feat: implement amazing feature\n- fix: solve critical bug"
         )
