@@ -601,10 +601,9 @@ class PrFeature:
         """Generate a PR body using LLM and clean it for use in PR."""
         try:
             with components.show_spinner("Generating PR description..."):
-                # When skip_prompts is True (test mode), also skip context gathering to avoid
-                # test issues with branch detection
+                # Generate PR description using the LLM
                 pr_body = _generate_pr_description_llm(
-                    commits, repo_url, repo_name, skip_context=skip_prompts
+                    commits, repo_url, repo_name
                 )
             if not pr_body:
                 # Fallback if LLM fails
