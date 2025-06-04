@@ -33,6 +33,12 @@ gitwise commit                    # AI-generated commit message
 gitwise commit --group            # Split into multiple commits
 ```
 
+### Context Management
+```bash
+gitwise set-context "description" # Set context for better AI suggestions
+gitwise get-context               # View current branch context
+```
+
 ### Push & PR
 ```bash
 gitwise push                      # Push with PR prompt

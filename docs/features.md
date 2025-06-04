@@ -170,6 +170,34 @@ gitwise setup-hooks
 # Installs pre-commit hook that updates [Unreleased] section
 ```
 
+## 🧩 Context Management
+
+### Setting Context for Better AI Suggestions
+```bash
+# Set context for the current branch
+gitwise set-context "Working on user authentication with JWT implementation"
+# This context will be used to improve AI-generated commit messages and PR descriptions
+```
+
+### Viewing Current Context
+```bash
+# Check the current context for this branch
+gitwise get-context
+# Shows:
+# - User-set context
+# - Automatically parsed ticket IDs from branch names
+# - Keywords extracted from branch names
+```
+
+### How Context Works
+GitWise stores context information per branch in `.git/gitwise/context/` files. This context provides the AI with:
+- The "why" behind your changes
+- Project-specific terminology
+- Ticket/issue references
+- Feature goals and requirements
+
+This leads to more relevant and accurate commit messages and PR descriptions that better align with your actual development intent.
+
 ## 🚀 Real-World Workflows
 
 ### Feature Development
@@ -177,17 +205,21 @@ gitwise setup-hooks
 # Create feature branch
 gitwise checkout -b feature/user-auth
 
+# Set context for better AI understanding
+gitwise set-context "Implementing JWT authentication for user login"
+
 # Make changes to multiple files
 vim src/auth.py src/models.py tests/test_auth.py
 
 # Smart staging and commit
 gitwise add .
 gitwise commit --group
-# Results in clean, logical commit history
+# Results in clean, logical commit history with context-aware messages
 
 # Push and create enhanced PR
 gitwise push
 gitwise pr --labels --checklist
+# PR description incorporates the context about JWT authentication
 ```
 
 ### Bug Fix Workflow
