@@ -255,7 +255,7 @@ export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229" # Optional
 ```bash
 export GITWISE_LLM_BACKEND=google_gemini
 export GOOGLE_API_KEY="your_google_api_key"
-export GITWISE_GEMINI_MODEL="gemini-pro" # Optional
+export GITWISE_GEMINI_MODEL="gemini-2.0-flash" # Optional
 ```
 
 You can also configure these during `gitwise init` by selecting the specific provider. GitWise will automatically install the required dependencies for your chosen provider during initialization.
@@ -388,7 +388,7 @@ export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
 # Google Gemini
 export GITWISE_LLM_BACKEND=google_gemini
 export GOOGLE_API_KEY="your_google_api_key"
-export GITWISE_GEMINI_MODEL="gemini-pro"
+export GITWISE_GEMINI_MODEL="gemini-2.0-flash"
 ```
 
 ### Configuration File
@@ -419,7 +419,7 @@ After running `gitwise init`, your settings are saved in `~/.gitwise/config.json
   },
   "google_gemini": {
     "api_key": "your_google_api_key",
-    "model": "gemini-pro"
+    "model": "gemini-2.0-flash"
   }
 }
 ```
