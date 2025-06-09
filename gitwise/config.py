@@ -72,6 +72,12 @@ def validate_config(config: Dict[str, Any]) -> bool:
         return False
     if backend == "ollama" and not config.get("ollama_model"):
         return False
+    
+    # Validate logging config if present
+    log_level = config.get("log_level", "INFO").upper()
+    if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+        return False
+    
     return True
 
 

@@ -14,6 +14,9 @@ from gitwise.features.context import ContextFeature
 from gitwise.features.pr import PrFeature
 from gitwise.features.push import PushFeature
 from gitwise.ui import components
+from gitwise.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Create the main app
 app = typer.Typer(
@@ -104,8 +107,10 @@ def commit_cli_entrypoint(
     )
 ) -> None:
     """Create a commit with AI-generated message."""
+    logger.info("Starting commit operation", extra={'operation': 'commit', 'group': group})
     feature = CommitFeature()
     feature.execute_commit(group=group)
+    logger.info("Commit operation completed", extra={'operation': 'commit'})
 
 
 @app.command(name="push")
@@ -269,11 +274,60 @@ def get_context_cli_entrypoint() -> None:
     feature.execute_get_context()
 
 
+@app.command(name="debug", help="Debug tools: view logs, create diagnostic packages, cleanup")
+def debug_cli_entrypoint(
+    action: str = typer.Argument(..., help="Action: 'status', 'share', 'cleanup', or 'recent'"),
+    hours: int = typer.Option(24, "--hours", "-h", help="Hours for recent logs or log sharing"),
+    days: int = typer.Option(30, "--days", "-d", help="Days to keep logs during cleanup"),
+    include_config: bool = typer.Option(False, "--include-config", help="Include config in shareable package")
+) -> None:
+    """Debug GitWise: manage logs and create diagnostic packages."""
+    from gitwise.logging.utils import get_log_summary, create_shareable_log_package, cleanup_old_logs, get_recent_logs
+    
+    if action == "status":
+        summary = get_log_summary()
+        components.console.print(f"📊 GitWise Logging Status")
+        components.console.print(f"Log Directory: {summary['log_directory']}")
+        components.console.print(f"Total Files: {summary['total_files']}")
+        components.console.print(f"Total Size: {summary['total_size_mb']} MB")
+        if summary['oldest_log']:
+            components.console.print(f"Oldest Log: {summary['oldest_log']}")
+            components.console.print(f"Newest Log: {summary['newest_log']}")
+    
+    elif action == "share":
+        components.console.print(f"🔒 Creating shareable diagnostic package (last {hours} hours)...")
+        package_path = create_shareable_log_package(hours=hours, include_config=include_config)
+        components.show_success(f"Diagnostic package created: {package_path}")
+        components.console.print("✅ This package is safe to share - sensitive data has been redacted.")
+    
+    elif action == "cleanup":
+        components.console.print(f"🧹 Cleaning up logs older than {days} days...")
+        cleaned_count = cleanup_old_logs(days=days)
+        components.show_success(f"Cleaned up {cleaned_count} old log files")
+    
+    elif action == "recent":
+        components.console.print(f"📝 Recent logs (last {hours} hours):")
+        recent_logs = get_recent_logs(hours=hours)
+        if recent_logs:
+            components.console.print(recent_logs)
+        else:
+            components.console.print("No recent logs found")
+    
+    else:
+        components.show_error(f"Unknown action: {action}")
+        components.console.print("Available actions: status, share, cleanup, recent")
+        components.console.print("Example: gitwise debug status")
+        raise typer.Exit(code=1)
+
+
 def main() -> None:
     """Main entry point for the application."""
+    logger.info("GitWise started", extra={'operation': 'startup'})
     try:
         app()
+        logger.info("GitWise completed successfully", extra={'operation': 'shutdown'})
     except Exception as e:
+        logger.error("GitWise failed with error", extra={'operation': 'shutdown', 'error': str(e)})
         components.show_error(str(e))
         raise typer.Exit(code=1)
 

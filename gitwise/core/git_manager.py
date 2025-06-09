@@ -3,6 +3,10 @@
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
+from gitwise.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class GitManager:
     """
@@ -43,19 +47,42 @@ class GitManager:
             A subprocess.CompletedProcess instance.
         """
         full_command = ["git"] + command
+        logger.debug("Executing git command", extra={
+            'operation': 'git_command',
+            'command': ' '.join(command),  # Don't log full_command to avoid 'git' prefix
+            'repo_path': self.repo_path
+        })
+        
         try:
-            return subprocess.run(
+            result = subprocess.run(
                 full_command,
                 cwd=self.repo_path,
                 capture_output=capture_output,
                 text=text,
                 check=check,
             )
+            
+            logger.debug("Git command completed", extra={
+                'operation': 'git_command',
+                'command': ' '.join(command),
+                'return_code': result.returncode,
+                'stdout_length': len(result.stdout) if result.stdout else 0
+            })
+            
+            return result
+            
         except FileNotFoundError:
+            logger.error("Git command not found", extra={'operation': 'git_command', 'command': ' '.join(command)})
             raise RuntimeError(
                 "Git command not found. Please ensure Git is installed and in your PATH."
             )
         except subprocess.CalledProcessError as e:
+            logger.error("Git command failed", extra={
+                'operation': 'git_command',
+                'command': ' '.join(command),
+                'return_code': e.returncode,
+                'stderr_length': len(e.stderr) if e.stderr else 0
+            })
             # Add more context to the error
             error_message = f"Git command '{' '.join(full_command)}' failed with exit code {e.returncode}."
             if e.stderr:
@@ -64,6 +91,11 @@ class GitManager:
                 error_message += f"\nStdout:\n{e.stdout.strip()}"
             raise RuntimeError(error_message) from e
         except Exception as e:  # Catch-all for other potential subprocess issues
+            logger.error("Unexpected error in git command", extra={
+                'operation': 'git_command',
+                'command': ' '.join(command),
+                'error': str(e)
+            })
             raise RuntimeError(
                 f"An unexpected error occurred while running git command '{' '.join(full_command)}': {e}"
             )

@@ -14,6 +14,9 @@ from gitwise.llm.router import get_llm_response
 from gitwise.prompts import PROMPT_COMMIT_MESSAGE
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Initialize GitManager
 git_manager = GitManager()
@@ -175,6 +178,12 @@ def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
     """Generate a commit message using LLM prompt with context from ContextFeature."""
+    logger.debug("Generating commit message", extra={
+        'operation': 'commit_message_generation',
+        'diff_length': len(diff),
+        'guidance_provided': bool(guidance)
+    })
+    
     # Get context for the current branch
     context_feature = ContextFeature()
     # First try to parse branch name for context if we don't have it already
@@ -237,20 +246,34 @@ class CommitFeature:
 
     def execute_commit(self, group: bool = True, auto_confirm: bool = False) -> None:
         """Create a commit, with an option for AI-assisted message generation and change grouping."""
+        logger.info("Commit operation started", extra={
+            'operation': 'commit',
+            'group': group,
+            'auto_confirm': auto_confirm
+        })
+        
         try:
             # Config check
             try:
-                load_config()
+                config = load_config()
+                logger.debug("Configuration loaded successfully", extra={'operation': 'commit'})
             except ConfigError as e:
+                logger.error("Configuration error during commit", extra={
+                    'operation': 'commit',
+                    'error': str(e)
+                })
                 components.show_error(str(e))
                 if auto_confirm or typer.confirm(
                     "Would you like to run 'gitwise init' now?", default=True
                 ):
+                    logger.info("User chose to run init after config error", extra={'operation': 'commit'})
                     from gitwise.cli.init import (
                         init_command,
                     )  # Keep local import for CLI specific call
 
                     init_command()
+                else:
+                    logger.info("User declined to run init after config error", extra={'operation': 'commit'})
                 return
 
             backend = get_llm_backend()
@@ -292,7 +315,13 @@ class CommitFeature:
             current_staged_files_paths = (
                 self.git_manager.get_changed_file_paths_staged()
             )
+            logger.debug("Checked staged files", extra={
+                'operation': 'commit',
+                'staged_files_count': len(current_staged_files_paths)
+            })
+            
             if not current_staged_files_paths:
+                logger.warning("No files staged for commit", extra={'operation': 'commit'})
                 components.show_warning(
                     "No files staged for commit. Please stage files first."
                 )
@@ -632,21 +661,42 @@ class CommitFeature:
                     return
 
             if commit_success:
+                logger.info("Commit created successfully", extra={
+                    'operation': 'commit',
+                    'message_length': len(message),
+                    'staged_files_count': len(current_staged_files_paths)
+                })
+                
                 if auto_confirm:
                     # Check if we're on main/master branch
                     current_branch = self.git_manager.get_current_branch()
                     default_branch = self.git_manager.get_local_base_branch_name()
                     if current_branch and default_branch and current_branch == default_branch:
+                        logger.info("Skipping auto-push on main branch", extra={'operation': 'commit'})
                         components.show_section("Auto-confirm: Skipping push (on main branch)")
                     else:
+                        logger.info("Auto-pushing commit", extra={'operation': 'commit'})
                         components.show_section("Auto-confirm: Pushing commit")
                         get_push_command()(auto_confirm)
                 elif safe_confirm("Push this commit now?", default=True):
+                    logger.info("User chose to push commit", extra={'operation': 'commit'})
                     get_push_command()(auto_confirm)
+                else:
+                    logger.info("User chose not to push commit", extra={'operation': 'commit'})
 
         except RuntimeError as e:
+            logger.error("Critical Git operation failed during commit", extra={
+                'operation': 'commit',
+                'error': str(e),
+                'error_type': 'git_runtime_error'
+            })
             components.show_error(f"A critical Git operation failed: {str(e)}")
         except Exception as e:
+            logger.error("Unexpected error during commit operation", extra={
+                'operation': 'commit',
+                'error': str(e),
+                'error_type': type(e).__name__
+            })
             components.show_error(f"An unexpected error occurred: {str(e)}")
 
 

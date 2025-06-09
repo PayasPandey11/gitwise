@@ -12,6 +12,9 @@ from gitwise.llm.model_presets import (
     get_model_display_info,
     DEFAULT_MODEL
 )
+from gitwise.logging import get_logger
+
+logger = get_logger(__name__)
 
 app = typer.Typer()
 
@@ -365,10 +368,12 @@ def configure_openrouter_provider(config: dict) -> None:
 
 
 def init_command():
+    logger.info("GitWise initialization started", extra={'operation': 'init'})
     typer.echo("\n[gitwise] Initializing GitWise for this project...\n")
 
     # 1. Check for existing config
     if config_exists():
+        logger.info("Existing config found", extra={'operation': 'init'})
         try:
             current = load_config()
             typer.echo("A GitWise config already exists:")
@@ -379,17 +384,23 @@ def init_command():
             action = typer.prompt(
                 "Overwrite, merge, or abort? [o/m/a]", default="a"
             ).lower()
+            logger.info("User config action", extra={'operation': 'init', 'action': action})
             if action == "a":
+                logger.info("User aborted initialization", extra={'operation': 'init'})
                 typer.echo("Aborted.")
                 raise typer.Exit()
             elif action == "m":
                 config = current.copy()
+                logger.info("Merging with existing config", extra={'operation': 'init'})
             else:
                 config = {}
-        except ConfigError:
+                logger.info("Overwriting existing config", extra={'operation': 'init'})
+        except ConfigError as e:
+            logger.warning("Existing config is corrupt", extra={'operation': 'init', 'error': str(e)})
             typer.echo("Existing config is corrupt. Overwriting.")
             config = {}
     else:
+        logger.info("No existing config found, creating new", extra={'operation': 'init'})
         config = {}
 
     # 2. Prompt for backend
@@ -404,6 +415,8 @@ def init_command():
         config["llm_backend"] = "offline"
     else:
         config["llm_backend"] = "ollama"
+    
+    logger.info("Backend selected", extra={'operation': 'init', 'backend': config["llm_backend"], 'choice': backend_choice})
 
     # 3. Backend-specific prompts
     if config["llm_backend"] == "online":
@@ -447,10 +460,29 @@ def init_command():
         )
 
     # 5. Write config
-    path = write_config(config, global_config=global_config)
-    typer.echo(f"\n[gitwise] Config written to: {path}")
+    try:
+        path = write_config(config, global_config=global_config)
+        logger.info("Configuration written successfully", extra={
+            'operation': 'init', 
+            'config_path': path,
+            'global_config': global_config
+        })
+        typer.echo(f"\n[gitwise] Config written to: {path}")
+    except Exception as e:
+        logger.error("Failed to write configuration", extra={
+            'operation': 'init',
+            'error': str(e),
+            'global_config': global_config
+        })
+        typer.echo(f"❌ Failed to write config: {e}")
+        raise typer.Exit(code=1)
 
     # 6. Summary & next steps
+    logger.info("GitWise initialization completed successfully", extra={
+        'operation': 'init',
+        'backend': config.get("llm_backend"),
+        'global_config': global_config
+    })
     typer.echo("\n[gitwise] Setup complete! Config summary:")
     for k, v in config.items():
         if "key" in k:

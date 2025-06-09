@@ -3,6 +3,9 @@ import time
 from gitwise.config import get_llm_backend, load_config, ConfigError
 from gitwise.llm.ollama import OllamaError
 from gitwise.ui import components
+from gitwise.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_llm_response(*args, **kwargs):
@@ -13,11 +16,28 @@ def get_llm_response(*args, **kwargs):
     If Ollama is selected, try up to 3 times before falling back.
     """
     backend = get_llm_backend()
+    logger.info("LLM request initiated", extra={
+        'operation': 'llm_request',
+        'backend': backend,
+        'prompt_length': len(args[0]) if args and isinstance(args[0], str) else 0
+    })
 
     if backend == "online":
         try:
-            return _get_online_llm_response(*args, **kwargs)
+            logger.debug("Using online LLM backend", extra={'operation': 'llm_request', 'backend': 'online'})
+            result = _get_online_llm_response(*args, **kwargs)
+            logger.info("LLM request completed successfully", extra={
+                'operation': 'llm_request',
+                'backend': 'online',
+                'response_length': len(result) if isinstance(result, str) else 0
+            })
+            return result
         except ImportError as e:
+            logger.error("Online backend dependencies missing", extra={
+                'operation': 'llm_request',
+                'backend': 'online',
+                'error': str(e)
+            })
             raise RuntimeError(
                 f"Online backend dependencies missing. {str(e)}"
             ) from e
