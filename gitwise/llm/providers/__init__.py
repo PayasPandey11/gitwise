@@ -31,6 +31,7 @@ def _lazy_import_providers():
     
     # Import OpenRouter provider (when converted)
     try:
+        # use legacy online.py for now
         from gitwise.llm.online import get_llm_response as legacy_online_llm
         providers["openrouter"] = legacy_online_llm
     except ImportError:
