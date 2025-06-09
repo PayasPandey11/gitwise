@@ -84,7 +84,7 @@ export ANTHROPIC_API_KEY="your_anthropic_api_key"
 ```bash
 export GITWISE_LLM_BACKEND=google_gemini
 export GOOGLE_API_KEY="your_google_api_key"
-# Optional: export GITWISE_GEMINI_MODEL="gemini-pro"
+# Optional: export GITWISE_GEMINI_MODEL="gemini-2.0-flash"
 ```
 
 Select your provider during `gitwise init` or by setting environment variables.
@@ -327,7 +327,7 @@ Located at `~/.gitwise/config.json`:
   },
   "google_gemini": {
     "api_key": "your_google_api_key",
-    "model": "gemini-pro"
+    "model": "gemini-2.0-flash"
   }
 }
 ```

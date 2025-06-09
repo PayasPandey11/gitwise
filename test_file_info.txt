@@ -1,1 +1,0 @@
-Test file to verify file information is included in prompts
