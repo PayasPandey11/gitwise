@@ -425,7 +425,7 @@ def init_command():
         typer.echo(
             "\n[Reminder] If you use Ollama, make sure the server is running (run 'ollama serve') and your model is pulled. See https://ollama.com/download for help."
         )
-        model = typer.prompt("Ollama model name", default="llama3")
+        model = typer.prompt("Ollama model name", default="codellama:7b")
         config["ollama_model"] = model.strip()
     elif config["llm_backend"] == "offline":
         typer.echo("\nChecking for offline model...")

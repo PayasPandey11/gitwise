@@ -344,9 +344,6 @@ class GitManager:
             return [line.strip() for line in result.stdout.splitlines() if line.strip()]
         return []
 
-    # Example of a more complex function that might use GitPython if kept,
-    # or would need more elaborate subprocess logic.
-    # For now, using a simpler subprocess approach for get_base_branch
     def get_local_base_branch_name(self) -> Optional[str]:
         """
         Tries to determine a local base branch, commonly 'main' or 'master'.
@@ -376,7 +373,6 @@ class GitManager:
         return None
 
 
-# Example usage (for testing purposes, normally not here)
 if __name__ == "__main__":
     try:
         manager = GitManager()

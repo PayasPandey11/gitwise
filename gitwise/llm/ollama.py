@@ -33,10 +33,19 @@ def get_llm_response(prompt: str, model: str = None, **kwargs) -> str:
     # Fetch default model at runtime to respect mocked env vars in tests
     default_model_from_env = os.environ.get("OLLAMA_MODEL", "llama3")
     effective_model = model or default_model_from_env
-    payload = {"model": effective_model, "prompt": prompt, "stream": False}
+    payload = {
+        "model": effective_model,
+        "prompt": prompt,
+        "stream": False
+    }
+    
+    # Debug output
+    print(f"[DEBUG] Ollama URL: {OLLAMA_URL}")
+    print(f"[DEBUG] Payload: {payload}")
+    
     try:
         if _HAS_REQUESTS:
-            resp = requests.post(OLLAMA_URL, json=payload, timeout=30)
+            resp = requests.post(OLLAMA_URL, json=payload, timeout=60)
             resp.raise_for_status()
             data = resp.json()
         else:
@@ -45,10 +54,12 @@ def get_llm_response(prompt: str, model: str = None, **kwargs) -> str:
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"},
             )
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 data = json.load(resp)
+        
         if "response" in data:
             return data["response"].strip()
-        raise OllamaError(f"Unexpected Ollama response: {data}")
+        else:
+            raise OllamaError(f"Unexpected Ollama response: {data}")
     except Exception as e:
         raise OllamaError(f"Could not connect to Ollama at {OLLAMA_URL}: {e}")
