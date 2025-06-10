@@ -419,7 +419,7 @@ After running `gitwise init`, your settings are saved in `~/.gitwise/config.json
   },
   "google_gemini": {
     "api_key": "your_google_api_key",
-    "model": "gemini-pro"
+    "model": "gemini-2.0-flash-liteo"
   }
 }
 ```
