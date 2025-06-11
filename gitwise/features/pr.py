@@ -17,7 +17,9 @@ import tempfile
 import typer
 from ..llm.offline import ensure_offline_model_ready
 from gitwise.config import get_llm_backend, load_config, ConfigError
-from ..core.git_manager import GitManager  # New import
+from ..core.git_manager import GitManager
+from .generate import generate_pr_and_commits
+from .commit import suggest_commit_groups, safe_confirm, safe_prompt, build_commit_message_interactive
 
 console = Console()
 
@@ -671,18 +673,137 @@ class PrFeature:
                 os.unlink(tf.name)
 
     def _generate_fallback_description(self, commits: List[Dict]) -> str:
-        """Generate a basic PR description from commits when LLM fails."""
-        lines = ["## Summary", ""]
+        """Generates a simple PR description if the LLM fails."""
+        if not commits:
+            return "No commits found for this PR."
         
-        # Add a basic summary line
-        if commits:
-            lines.append(f"This PR contains {len(commits)} commit(s).")
-            lines.append("")
-        
-        # Add commit list
-        lines.append("## Commits")
-        lines.append("")
+        body = "## Summary of Changes\n\n"
+        body += "This PR includes the following changes:\n\n"
         for commit in commits:
-            lines.append(f"* {commit['message']}")
+            subject = commit['message'].split('\n')[0]
+            body += f"- {subject}\n"
         
-        return "\n".join(lines)
+        return body
+
+    def generate_and_create_pr_from_staged(self, auto_confirm: bool = False) -> bool:
+        """
+        Orchestrates the new, unified flow for generating a PR and commits from staged files.
+        """
+        git_m = GitManager()
+        if not git_m.get_changed_file_paths_staged():
+            components.show_warning("No files staged. Please stage files to generate a PR.")
+            return False
+
+        # 1. Group staged changes
+        components.show_section("Analyzing staged changes for commit groups")
+        staged_files_list = git_m.get_changed_file_paths_staged()
+        groups = suggest_commit_groups()
+
+        commit_groups = []
+        if groups and len(groups) > 1:
+            components.show_section("Suggested Commit Groups")
+            for i, group_item in enumerate(groups, 1):
+                components.console.print(f"\n[bold]Group {i}:[/bold] {', '.join(group_item['files'])}")
+            
+            if not auto_confirm and not safe_confirm("Proceed with these groups?", default=True):
+                 components.show_warning("Grouping cancelled. Treating all as a single commit.")
+                 groups = None # User opted out of grouping
+            else:
+                 commit_groups = groups
+
+        if not commit_groups: # No groups found or user opted out
+            commit_groups = [{
+                "type": "consolidated",
+                "name": "all changes",
+                "files": staged_files_list,
+            }]
+
+        # 2. Prepare diffs for each group
+        diffs_for_llm = []
+        original_staged_files = git_m.get_changed_file_paths_staged()
+        
+        with components.show_spinner("Calculating diffs for each group..."):
+            git_m.unstage_all()
+            for i, group in enumerate(commit_groups):
+                group_id = f"group_{i+1}"
+                git_m.stage_files(group['files'])
+                diff = git_m.get_staged_diff(is_cached=True)
+                if diff:
+                    diffs_for_llm.append({"group_id": group_id, "diff": diff})
+                git_m.unstage_all()
+
+            # Restore original staged state
+            git_m.stage_files(original_staged_files)
+
+        if not diffs_for_llm:
+            components.show_error("Could not generate diffs for the staged files. Aborting.")
+            return False
+
+        # 3. Call the unified generator
+        # For now, guidance is empty. We can add context features later.
+        generation_result = generate_pr_and_commits(diffs_for_llm, guidance="")
+        
+        if not generation_result:
+            components.show_error("Failed to generate PR and commit messages from LLM.")
+            # Restore staged files to how they were
+            git_m.unstage_all()
+            git_m.stage_files(original_staged_files)
+            return False
+
+        # 4. Display preview and ask for confirmation
+        pr_info = generation_result.pull_request
+        commit_messages = generation_result.commits
+
+        self._display_pr_preview(pr_info.title, [], pr_info.body, section_title="🤖 AI Generated Pull Request")
+
+        components.show_section("🤖 AI Generated Commit Messages")
+        for commit in commit_messages:
+            group_id = commit.group_id
+            group_index = int(group_id.split('_')[-1]) - 1
+            group_files = commit_groups[group_index]['files']
+            components.console.print(f"[bold]Commit for Group: {', '.join(group_files)}[/bold]")
+            components.console.print("[cyan]" + commit.message.replace("\n", "\n> ") + "[/cyan]\n")
+
+        if not auto_confirm:
+            choice = safe_prompt(
+                "Apply these changes?",
+                options=["Create commits and PR", "Edit messages", "Cancel"],
+                default="Create commits and PR"
+            )
+            if choice == 3: # Cancel
+                components.show_warning("Operation cancelled.")
+                return False
+            if choice == 2: # Edit
+                components.show_warning("Editing is not yet implemented in this flow.")
+                # Here we could implement a loop to edit messages, but for now we'll just cancel.
+                return False
+
+        # 5. Execute the commits and create the PR
+        components.show_section("Executing Commits")
+        git_m.unstage_all()
+        for i, group in enumerate(commit_groups):
+            group_id = f"group_{i+1}"
+            commit_info = next((c for c in commit_messages if c.group_id == group_id), None)
+            
+            if not commit_info:
+                components.show_warning(f"No commit message found for group {group_id}. Skipping.")
+                continue
+
+            with components.show_spinner(f"Committing group {group_id}..."):
+                git_m.stage_files(group['files'])
+                if git_m.create_commit(commit_info.message):
+                    components.show_success(f"✓ Commit created for group {group_id}")
+                else:
+                    components.show_error(f"✗ Failed to create commit for group {group_id}")
+                    # Decide how to handle failure - for now, we stop
+                    return False
+        
+        # 6. Create the PR
+        current_branch = git_m.get_current_branch()
+        base_branch, _ = self._determine_base_branches(None, git_m.get_remote_name())
+        if not current_branch or not base_branch:
+            components.show_error("Could not determine current or base branch. Cannot create PR.")
+            return False
+            
+        _create_gh_pr(pr_info.title, pr_info.body, base_branch, current_branch, labels=[], draft=False)
+        return True

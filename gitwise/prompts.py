@@ -50,3 +50,43 @@ Commits:
 
 {{guidance}}
 """
+
+PROMPT_PR_AND_COMMITS = """
+You are an expert programmer responsible for creating pull requests and commit messages.
+Your task is to generate a comprehensive JSON object that contains a pull request title, a pull request body, and a list of commit messages for given groups of code changes.
+
+**Input:**
+You will receive a list of change groups. Each group has a unique `group_id` and a `diff` associated with it.
+
+**Output Rules:**
+- You MUST respond with a single, valid JSON object.
+- Do not include any preamble, explanations, or markdown formatting around the JSON object.
+- The JSON object must conform to the specified schema.
+- **Pull Request Title:** Create a concise, one-line title summarizing all changes.
+- **Pull Request Body:** Write a clear, Markdown-formatted description. It should include sections for "Motivation" and a "Summary of Changes".
+- **Commit Messages:** For each change group, write a conventional commit message. The message must have a subject line (<=50 chars) and an optional body.
+
+**JSON Schema:**
+```json
+{
+  "pullRequest": {
+    "title": "A brief, descriptive title for the PR",
+    "body": "A detailed description of the changes in Markdown."
+  },
+  "commits": [
+    {
+      "group_id": "the_id_of_the_group",
+      "message": "feat(scope): concise subject line\\n\\nOptional detailed body explaining what and why."
+    }
+  ]
+}
+```
+
+**Example of a single commit message in the JSON:**
+`"message": "refactor(ui): improve button component accessibility\\n\\nUpdated the button component to include ARIA attributes and better focus management, improving usability for screen reader users."`
+
+Here are the change groups:
+{{change_groups_json}}
+
+{{guidance}}
+"""

@@ -117,6 +117,12 @@ def push_cli_entrypoint() -> None:
 
 @app.command(name="pr")
 def pr_cli_entrypoint(
+    from_staged: bool = typer.Option(
+        False,
+        "--from-staged",
+        "-s",
+        help="[New] Generate PR and commits together from staged files in a single AI call.",
+    ),
     use_labels: bool = typer.Option(
         False, "--labels", "-l", help="Add labels to the PR"
     ),
@@ -132,18 +138,29 @@ def pr_cli_entrypoint(
     skip_prompts: bool = typer.Option(
         False, "--skip-prompts", help="Skip all interactive prompts and use defaults."
     ),
+    auto_confirm: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Automatically answer 'yes' to all prompts (group, push, PR, labels)",
+    ),
 ) -> None:
     """Create a pull request with AI-generated description."""
     feature = PrFeature()
-    feature.execute_pr(
-        use_labels=use_labels,
-        use_checklist=use_checklist,
-        skip_general_checklist=skip_general_checklist,
-        title=title,
-        base=base,
-        draft=draft,
-        skip_prompts=skip_prompts,
-    )
+
+    if from_staged:
+        feature.generate_and_create_pr_from_staged(auto_confirm=auto_confirm)
+    else:
+        feature.execute_pr(
+            use_labels=use_labels,
+            use_checklist=use_checklist,
+            skip_general_checklist=skip_general_checklist,
+            title=title,
+            base=base,
+            draft=draft,
+            skip_prompts=skip_prompts,
+            auto_confirm=auto_confirm,
+        )
 
 
 @app.command(name="changelog")
