@@ -85,6 +85,16 @@ class GitManager:
         """Checks if the current path is a Git repository."""
         return self._find_git_root() is not None
 
+    def is_branch_tracking(self) -> bool:
+        """Checks if the current branch is tracking a remote branch."""
+        tracking_result = self._run_git_command(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return tracking_result.returncode == 0
+
     def get_staged_files(self) -> List[Tuple[str, str]]:
         """Get list of staged files with their status (e.g., 'A', 'M', 'D')."""
         result = self._run_git_command(
