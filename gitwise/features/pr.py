@@ -204,25 +204,16 @@ def _create_gh_pr(
     components.show_section("Creating Pull Request via gh CLI")
     with components.show_spinner("Running `gh pr create`..."):
         try:
-            # This subprocess call is for `gh` (GitHub CLI), not `git`.
-            # It should remain a direct subprocess call unless we abstract `gh` interactions later.
+            # Check if a PR for this branch already exists
             pr_list_cmd = [
-                "gh",
-                "pr",
-                "list",
-                "--head",
-                current_branch,
-                "--base",
-                base,
-                "--state",
-                "open",
-                "--json",
-                "url",
+                "gh", "pr", "list", "--head", current_branch, "--base", base,
+                "--state", "open", "--json", "url",
             ]
-            pr_list_result = subprocess.run(pr_list_cmd, capture_output=True, text=True)
+            pr_list_result = subprocess.run(
+                pr_list_cmd, capture_output=True, text=True
+            )
             if pr_list_result.returncode == 0 and pr_list_result.stdout.strip():
-                import json  # Import here as it's only needed for this block
-
+                import json
                 pr_list_data = json.loads(pr_list_result.stdout)
                 if pr_list_data:
                     pr_url = pr_list_data[0].get("url")
@@ -231,17 +222,8 @@ def _create_gh_pr(
                     )
                     return
 
-            cmd = [
-                "gh",
-                "pr",
-                "create",
-                "--title",
-                title,
-                "--body",
-                body,
-                "--base",
-                base,
-            ]
+            # Create the new PR
+            cmd = ["gh", "pr", "create", "--title", title, "--body", body, "--base", base]
             if draft:
                 cmd.append("--draft")
             for label in labels:
@@ -250,41 +232,19 @@ def _create_gh_pr(
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
                 components.show_success("Pull request created successfully by gh CLI.")
-                components.console.print(result.stdout)
+                pr_url = result.stdout.strip()
+                components.console.print(f"[bold green]PR URL: {pr_url}[/bold green]")
             else:
-                components.show_error("Failed to create pull request using gh CLI.")
-                error_details = (
-                    f"`gh pr create` exited with code {result.returncode}.\n"
-                )
-                if result.stderr:
-                    error_details += f"\nStderr:\n{result.stderr}"
-                if result.stdout:
-                    error_details += f"\nStdout:\n{result.stdout}"
-                components.console.print(error_details)
-        except FileNotFoundError as fnf_error:
-            if "gh" in str(fnf_error):
-                components.show_error(
-                    "GitHub CLI (gh) not found. Please install it to create PRs."
-                )
+                components.show_error("Failed to create pull request via gh CLI.")
                 components.console.print(
-                    "\n[dim]You can install it from: https://cli.github.com/[/dim]"
+                    f"[dim]gh stdout:\n{result.stdout}[/dim]\n[dim]gh stderr:\n{result.stderr}[/dim]"
                 )
-            elif "git" in str(fnf_error):
-                components.show_error(
-                    "Git command not found. Please ensure Git is installed."
-                )
-            else:
-                components.show_error(f"A required command was not found: {fnf_error}")
-        except (
-            subprocess.CalledProcessError
-        ) as cpe_error:  # Catch errors from the git rev-parse call
+        except FileNotFoundError:
             components.show_error(
-                f"Failed to get current branch for PR creation: {cpe_error}"
+                "GitHub CLI ('gh') not found. Please install it to create pull requests."
             )
         except Exception as e:
-            components.show_error(
-                f"An unexpected error occurred during PR creation: {str(e)}"
-            )
+            components.show_error(f"An unexpected error occurred with gh CLI: {e}")
 
 
 def _get_repository_info(git_m: GitManager) -> Dict[str, str]:
@@ -349,354 +309,68 @@ def _backend_display_name(backend_str: str) -> str:
         except:
             return "Online (Cloud provider)"
     else:
-        return {
-            "ollama": "Ollama (local server)",
-            "offline": "Offline (local model)",
-        }.get(backend_str, backend_str)
+        return {"ollama": "Ollama (local server)", "offline": "Offline (local model)"}.get(
+            backend_str, backend_str
+        )
 
 
 class PrFeature:
+    """Handles the logic for creating pull requests from staged files."""
+
     def __init__(self):
+        """Initializes the PrFeature, using a GitManager instance."""
         self.git_manager = GitManager()
 
     def execute_pr(
-        self,
-        use_labels: bool = False,
-        use_checklist: bool = False,
-        skip_general_checklist: bool = False,
-        title: Optional[str] = None,
-        base: Optional[str] = None,
-        draft: bool = False,
-        skip_prompts: bool = False,
-        auto_confirm: bool = False,
+        self, auto_confirm: bool = False, draft: bool = False, labels: List[str] = []
     ) -> bool:
-        """Create a pull request with AI-generated description.
-        Orchestrates commit collection, title/description generation, and PR creation.
-        Returns True if PR was created or already exists, False otherwise.
         """
-        try:
-            # Config check
-            try:
-                load_config()
-            except ConfigError as e:
-                from ..cli.init import init_command  # Moved import here
-
-                components.show_error(str(e))
-                if auto_confirm or typer.confirm(
-                    "Would you like to run 'gitwise init' now?", default=True
-                ):
-                    init_command()  # Assumes init_command is imported from ..cli.init
-                return False
-
-            # Handle uncommitted changes
-            if self.git_manager.has_uncommitted_changes():
-                components.show_warning(
-                    "You have uncommitted changes (staged or unstaged). These will not be included in the PR unless you commit them."
-                )
-                if auto_confirm or typer.confirm(
-                    "Would you like to stage and commit all changes before creating the PR?",
-                    default=True,
-                ):
-                    with components.show_spinner("Staging all changes..."):
-                        if not self.git_manager.stage_all():
-                            components.show_error(
-                                "Failed to stage all changes. Aborting PR creation."
-                            )
-                            return False
-                    components.show_section("Commit All Changes Before PR")
-                    commit_message = ("chore: auto-commit before PR creation" if auto_confirm else 
-                                     typer.prompt(
-                                         "Enter a commit message for all staged changes",
-                                         default="chore: auto-commit before PR creation",
-                                     ))
-                    with components.show_spinner("Committing changes..."):
-                        if not self.git_manager.create_commit(commit_message):
-                            components.show_error(
-                                "Failed to commit changes. Aborting PR creation."
-                            )
-                            return False
-                        else:
-                            components.show_success("All changes committed.")
-
-                    if auto_confirm or typer.confirm(
-                        "Would you like to update the changelog for the changes just committed?",
-                        default=True,
-                    ):
-                        from gitwise.features.changelog import (
-                            ChangelogFeature,
-                        )  # Import the class
-
-                        with components.show_spinner("Updating changelog..."):
-                            ChangelogFeature().execute_changelog(
-                                auto_update=True
-                            )  # Call the method
-                            if self.git_manager.stage_files(["CHANGELOG.md"]):
-                                changelog_commit_msg = (
-                                    "docs: update changelog for PR changes"
-                                )
-                                if self.git_manager.create_commit(changelog_commit_msg):
-                                    components.show_success(
-                                        "Changelog updated and committed."
-                                    )
-                                else:
-                                    components.show_warning(
-                                        f"Failed to commit changelog."
-                                    )
-                            else:
-                                components.show_warning(
-                                    "Failed to stage CHANGELOG.md after update."
-                                )
-                else:
-                    components.show_warning(
-                        "PR creation cancelled due to uncommitted changes."
-                    )
-                    return False
-
-            backend = get_llm_backend()
-            components.show_section(
-                f"[AI] LLM Backend: {_backend_display_name(backend)}"
-            )
-
-            if backend == "offline":
-                try:
-                    ensure_offline_model_ready()
-                except Exception as e:
-                    components.show_error(f"Failed to load offline model: {e}")
-                    return False
-
-            current_branch = self.git_manager.get_current_branch()
-            if not current_branch:
-                components.show_error("Not on any branch")
-                return False
-
-            default_remote_name = "origin"
-            base_branch_for_analysis, base_branch_for_gh = (
-                self._determine_base_branches(base, default_remote_name)
-            )
-            if not base_branch_for_analysis:
-                return False
-
-            components.show_section("Analyzing Changes")
-            with components.show_spinner("Checking for commits..."):
-                commits = _get_pr_commits(self.git_manager, base_branch_for_analysis)
-                if not commits:
-                    components.show_warning("No commits to create PR for")
-                    return False
-
-            pr_generated_title = title or _generate_pr_title(commits)
-
-            self._display_commits(commits)
-
-            components.show_section("Generating PR Description")
-            repo_info = _get_repository_info(self.git_manager)
-            pr_body = self._generate_and_clean_pr_body(
-                commits, repo_info["url"], repo_info["name"], skip_prompts, auto_confirm
-            )
-            if pr_body is None:
-                return False
-
-            final_labels = []
-            if use_labels:
-                with components.show_spinner("Generating labels..."):
-                    final_labels = get_pr_labels(
-                        commits
-                    )  # Module level helper from pr_enhancements
-
-            if use_checklist:
-                with components.show_spinner("Generating checklist..."):
-                    # enhance_pr_description is from pr_enhancements and takes git_manager implicitly via its own get_changed_files if needed
-                    pr_body, _ = enhance_pr_description(
-                        commits,
-                        pr_body,
-                        False,
-                        True,
-                        skip_general_checklist,
-                        base_branch_for_analysis,
-                    )
-
-            self._display_pr_preview(pr_generated_title, final_labels, pr_body)
-
-            if skip_prompts:
-                _create_gh_pr(
-                    pr_generated_title,
-                    pr_body,
-                    base_branch_for_gh,
-                    current_branch,
-                    final_labels,
-                    draft,
-                )
-                return True  # Assuming _create_gh_pr handles its own success/failure output and PR existence check
-            else:
-                user_choice = self._prompt_for_pr_creation()
-                if user_choice.lower() == "no":
-                    components.show_warning("PR creation cancelled")
-                    return False
-
-                if user_choice.lower() == "edit description":
-                    edited_pr_body = self._edit_pr_body(pr_body)
-                    if edited_pr_body is None:
-                        return False
-                    pr_body = edited_pr_body
-                    self._display_pr_preview(
-                        pr_generated_title,
-                        final_labels,
-                        pr_body,
-                        "Edited PR Description",
-                    )
-                    if not typer.confirm(
-                        "Proceed with PR creation using the edited description?",
-                        default=True,
-                    ):
-                        components.show_warning("PR creation cancelled after edit.")
-                        return False
-
-                _create_gh_pr(
-                    pr_generated_title,
-                    pr_body,
-                    base_branch_for_gh,
-                    current_branch,
-                    final_labels,
-                    draft,
-                )
-                return True  # Assuming _create_gh_pr handles its own success/failure output and PR existence check
-
-        except Exception as e:
-            components.show_error(
-                f"An unexpected error occurred in PR command: {str(e)}"
-            )
-            import traceback
-
-            components.console.print(f"[dim]{traceback.format_exc()}[/dim]")
-            return False
-
-    # --- Private helper methods for PrFeature ---
-    def _determine_base_branches(
-        self, base_input: Optional[str], remote_name: str
-    ) -> Tuple[Optional[str], Optional[str]]:
-        if base_input:
-            analysis_base = (
-                base_input if "/" in base_input else f"{remote_name}/{base_input}"
-            )
-            gh_base = base_input.split(f"{remote_name}/", 1)[-1]
-            return analysis_base, gh_base
-        else:
-            simple_default_branch = self.git_manager.get_default_remote_branch_name(
-                remote_name
-            )
-            if not simple_default_branch:
-                components.show_error(
-                    f"Could not determine default remote branch for '{remote_name}'."
-                )
-                return None, None
-            return f"{remote_name}/{simple_default_branch}", simple_default_branch
-
-    def _display_commits(self, commits: List[Dict]):
-        components.show_section("Commits to Include in PR")
-        for commit in commits:
-            components.console.print(
-                f"[bold cyan]{commit['hash'][:7]}[/bold cyan] {commit['message']}"
-            )
-
-    def _generate_and_clean_pr_body(
-        self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool, auto_confirm: bool
-    ) -> Optional[str]:
-        """Generate a PR body using LLM and clean it for use in PR."""
-        try:
-            with components.show_spinner("Generating PR description..."):
-                # Generate PR description using the LLM
-                pr_body = _generate_pr_description_llm(
-                    commits, repo_url, repo_name
-                )
-            if not pr_body:
-                # Fallback if LLM fails
-                components.show_warning("Could not generate PR description using LLM.")
-                components.console.print(
-                    "Using basic description derived from commits instead."
-                )
-                pr_body = self._generate_fallback_description(commits)
-        except Exception as e:
-            components.show_error(f"Could not generate PR description: {str(e)}")
-            return None
-        
-        # Clean any unwanted text from PR body
-        pr_body = _clean_pr_body(pr_body)
-        return pr_body
-
-    def _display_pr_preview(
-        self,
-        title: str,
-        labels: List[str],
-        body: str,
-        section_title: str = "Suggested PR Description",
-    ):
-        components.show_section(section_title)
-        components.console.print(f"[bold]Title:[/bold] {title}")
-        if labels:
-            components.console.print(f"[bold]Labels:[/bold] {', '.join(labels)}")
-        components.console.print(f"[bold]Body:[/bold]\n{body}")
-
-    def _prompt_for_pr_creation(self) -> str:
-        components.show_prompt(
-            "Create this pull request?",
-            options=["Yes", "Edit description", "No"],
-            default="Yes",
-        )
-        choice_num = typer.prompt("Select an option", type=int, default=1)
-        return {1: "yes", 2: "edit description", 3: "no"}.get(choice_num, "no")
-
-    def _edit_pr_body(self, current_body: str) -> Optional[str]:
-        with tempfile.NamedTemporaryFile(
-            suffix=".md", delete=False, mode="w+", encoding="utf-8"
-        ) as tf:
-            tf.write(current_body)
-            tf.flush()
-        editor = os.environ.get("EDITOR", "vi")
-        try:
-            subprocess.run([editor, tf.name], check=True)
-            with open(tf.name, "r", encoding="utf-8") as f_read:
-                edited_body = f_read.read().strip()
-            return edited_body
-        except FileNotFoundError:
-            components.show_error(
-                f"Editor '{editor}' not found. Please set EDITOR env var."
-            )
-            return typer.prompt(
-                "PR Body (editor not found)", default=current_body, multi_line_ok=True
-            )
-        except subprocess.CalledProcessError:
-            components.show_warning("Editor closed without changes or with an error.")
-            return typer.prompt(
-                "PR Body (editor error)", default=current_body, multi_line_ok=True
-            )
-        finally:
-            if os.path.exists(tf.name):
-                os.unlink(tf.name)
-
-    def _generate_fallback_description(self, commits: List[Dict]) -> str:
-        """Generates a simple PR description if the LLM fails."""
-        if not commits:
-            return "No commits found for this PR."
-        
-        body = "## Summary of Changes\n\n"
-        body += "This PR includes the following changes:\n\n"
-        for commit in commits:
-            subject = commit['message'].split('\n')[0]
-            body += f"- {subject}\n"
-        
-        return body
-
-    def generate_and_create_pr_from_staged(self, auto_confirm: bool = False) -> bool:
+        Orchestrates the unified flow for generating a PR and commits from staged files.
         """
-        Orchestrates the new, unified flow for generating a PR and commits from staged files.
-        """
-        git_m = GitManager()
-        if not git_m.get_changed_file_paths_staged():
+        if not self.git_manager.get_changed_file_paths_staged():
             components.show_warning("No files staged. Please stage files to generate a PR.")
             return False
 
-        # 1. Group staged changes
+        # Group staged changes
+        commit_groups = self._suggest_and_confirm_groups(auto_confirm)
+
+        # Prepare diffs for each group
+        diffs_for_llm, original_staged_files = self._prepare_diffs(commit_groups)
+        if not diffs_for_llm:
+            components.show_error("Could not generate diffs for the staged files. Aborting.")
+            return False
+
+        # Generate PR and commit messages from LLM
+        generation_result = self._get_generation_from_llm(diffs_for_llm)
+        if not generation_result:
+            self.git_manager.stage_files(original_staged_files)  # Restore staging
+            return False
+
+        # Preview and get user confirmation
+        pr_info = generation_result.pull_request
+        commit_messages = generation_result.commits
+        self._display_pr_preview(pr_info.title, labels, pr_info.body)
+        self._display_commits_preview(commit_messages, commit_groups)
+
+        if not auto_confirm:
+            if not self._confirm_creation():
+                return False # User cancelled
+
+        # Execute commits
+        if not self._execute_commits(commit_messages, commit_groups):
+            return False # A commit failed
+
+        # Push changes
+        if not self._push_changes(auto_confirm):
+            return False
+
+        # Create the PR
+        return self._create_final_pr(pr_info.title, pr_info.body, draft, labels)
+
+    def _suggest_and_confirm_groups(self, auto_confirm: bool) -> List[Dict]:
+        """Suggests commit groups and gets user confirmation."""
         components.show_section("Analyzing staged changes for commit groups")
-        staged_files_list = git_m.get_changed_file_paths_staged()
+        staged_files_list = self.git_manager.get_changed_file_paths_staged()
         groups = suggest_commit_groups()
 
         commit_groups = []
@@ -704,106 +378,132 @@ class PrFeature:
             components.show_section("Suggested Commit Groups")
             for i, group_item in enumerate(groups, 1):
                 components.console.print(f"\n[bold]Group {i}:[/bold] {', '.join(group_item['files'])}")
-            
-            if not auto_confirm and not safe_confirm("Proceed with these groups?", default=True):
-                 components.show_warning("Grouping cancelled. Treating all as a single commit.")
-                 groups = None # User opted out of grouping
-            else:
-                 commit_groups = groups
 
-        if not commit_groups: # No groups found or user opted out
+            if auto_confirm or safe_confirm("Proceed with these groups?", default=True):
+                commit_groups = groups
+            else:
+                components.show_warning("Grouping cancelled. Treating all as a single commit.")
+                groups = None
+
+        if not commit_groups:
             commit_groups = [{
                 "type": "consolidated",
                 "name": "all changes",
                 "files": staged_files_list,
             }]
+        return commit_groups
 
-        # 2. Prepare diffs for each group
+    def _prepare_diffs(self, commit_groups: List[Dict]) -> Tuple[List[Dict], List[str]]:
+        """Unstages files, creates diffs for each group, then restores staging."""
         diffs_for_llm = []
-        original_staged_files = git_m.get_changed_file_paths_staged()
-        
+        original_staged_files = self.git_manager.get_changed_file_paths_staged()
+
         with components.show_spinner("Calculating diffs for each group..."):
-            git_m.unstage_all()
+            self.git_manager.unstage_all()
             for i, group in enumerate(commit_groups):
                 group_id = f"group_{i+1}"
-                git_m.stage_files(group['files'])
-                diff = git_m.get_staged_diff(is_cached=True)
+                self.git_manager.stage_files(group['files'])
+                diff = self.git_manager.get_staged_diff(is_cached=True)
                 if diff:
                     diffs_for_llm.append({"group_id": group_id, "diff": diff})
-                git_m.unstage_all()
+                self.git_manager.unstage_all()
 
-            # Restore original staged state
-            git_m.stage_files(original_staged_files)
+        self.git_manager.stage_files(original_staged_files) # Restore for safety
+        return diffs_for_llm, original_staged_files
 
-        if not diffs_for_llm:
-            components.show_error("Could not generate diffs for the staged files. Aborting.")
-            return False
-
-        # 3. Call the unified generator
-        # For now, guidance is empty. We can add context features later.
-        generation_result = generate_pr_and_commits(diffs_for_llm, guidance="")
-        
+    def _get_generation_from_llm(self, diffs_for_llm: List[Dict]):
+        """Calls the LLM and returns the structured generation output."""
+        context_feature = ContextFeature()
+        context_feature.parse_branch_context()
+        guidance = context_feature.get_context_for_ai_prompt() or ""
+        generation_result = generate_pr_and_commits(diffs_for_llm, guidance=guidance)
         if not generation_result:
             components.show_error("Failed to generate PR and commit messages from LLM.")
-            # Restore staged files to how they were
-            git_m.unstage_all()
-            git_m.stage_files(original_staged_files)
-            return False
+        return generation_result
 
-        # 4. Display preview and ask for confirmation
-        pr_info = generation_result.pull_request
-        commit_messages = generation_result.commits
+    def _display_pr_preview(self, title: str, labels: List[str], body: str):
+        """Displays a preview of the generated PR."""
+        components.show_section("🤖 AI Generated Pull Request")
+        components.console.print(f"[bold]Title:[/bold] {title}")
+        if labels:
+            components.console.print(f"[bold]Labels:[/bold] {', '.join(labels)}")
+        components.console.print(f"[bold]Body:[/bold]\n{body}")
 
-        self._display_pr_preview(pr_info.title, [], pr_info.body, section_title="🤖 AI Generated Pull Request")
-
+    def _display_commits_preview(self, commit_messages: List, commit_groups: List[Dict]):
+        """Displays a preview of the generated commits."""
         components.show_section("🤖 AI Generated Commit Messages")
         for commit in commit_messages:
             group_id = commit.group_id
-            group_index = int(group_id.split('_')[-1]) - 1
-            group_files = commit_groups[group_index]['files']
-            components.console.print(f"[bold]Commit for Group: {', '.join(group_files)}[/bold]")
-            components.console.print("[cyan]" + commit.message.replace("\n", "\n> ") + "[/cyan]\n")
+            try:
+                group_index = int(group_id.split('_')[-1]) - 1
+                group_files = commit_groups[group_index]['files']
+                components.console.print(f"[bold]For files: {', '.join(group_files)}[/bold]")
+                components.console.print("[cyan]> " + commit.message.replace("\n", "\n> ") + "[/cyan]\n")
+            except (ValueError, IndexError):
+                components.show_warning(f"Could not map commit with group_id '{commit.group_id}' to a file group.")
+                components.console.print("[cyan]> " + commit.message.replace("\n", "\n> ") + "[/cyan]\n")
 
-        if not auto_confirm:
-            choice = safe_prompt(
-                "Apply these changes?",
-                options=["Create commits and PR", "Edit messages", "Cancel"],
-                default="Create commits and PR"
-            )
-            if choice == 3: # Cancel
-                components.show_warning("Operation cancelled.")
-                return False
-            if choice == 2: # Edit
-                components.show_warning("Editing is not yet implemented in this flow.")
-                # Here we could implement a loop to edit messages, but for now we'll just cancel.
-                return False
+    def _confirm_creation(self) -> bool:
+        """Asks the user to confirm, edit, or cancel."""
+        choice = safe_prompt(
+            "Apply these changes?",
+            options=["Create commits and PR", "Edit messages (not implemented)", "Cancel"],
+            default="Create commits and PR"
+        )
+        if choice == 3:  # Cancel
+            components.show_warning("Operation cancelled.")
+            return False
+        if choice == 2:  # Edit
+            components.show_warning("Editing is not yet implemented in this flow. Please cancel and edit your files manually if needed.")
+            return False
+        return True
 
-        # 5. Execute the commits and create the PR
+    def _execute_commits(self, commit_messages: List, commit_groups: List[Dict]) -> bool:
+        """Stages and creates each commit."""
         components.show_section("Executing Commits")
-        git_m.unstage_all()
+        self.git_manager.unstage_all()
         for i, group in enumerate(commit_groups):
             group_id = f"group_{i+1}"
             commit_info = next((c for c in commit_messages if c.group_id == group_id), None)
-            
+
             if not commit_info:
                 components.show_warning(f"No commit message found for group {group_id}. Skipping.")
                 continue
 
             with components.show_spinner(f"Committing group {group_id}..."):
-                git_m.stage_files(group['files'])
-                if git_m.create_commit(commit_info.message):
-                    components.show_success(f"✓ Commit created for group {group_id}")
+                self.git_manager.stage_files(group['files'])
+                if self.git_manager.create_commit(commit_info.message):
+                    components.show_success(f"✓ Commit created for {group_id}")
                 else:
-                    components.show_error(f"✗ Failed to create commit for group {group_id}")
-                    # Decide how to handle failure - for now, we stop
+                    components.show_error(f"✗ Failed to create commit for {group_id}")
                     return False
-        
-        # 6. Create the PR
-        current_branch = git_m.get_current_branch()
-        base_branch, _ = self._determine_base_branches(None, git_m.get_remote_name())
+        return True
+
+    def _push_changes(self, auto_confirm: bool) -> bool:
+        """Pushes the new commits to the remote."""
+        from gitwise.features.push import PushFeature # Local import to break circular dependency
+
+        push_feature = PushFeature()
+        if not push_feature.execute_push(auto_confirm=auto_confirm):
+            components.show_error("Failed to push changes. Cannot create PR.")
+            return False
+        return True
+
+    def _determine_base_branch(self) -> Optional[str]:
+        """Determines the base branch for the PR."""
+        remote_name = self.git_manager.get_remote_name()
+        base_branch = self.git_manager.get_default_remote_branch_name(remote_name)
+        if not base_branch:
+            components.show_error(f"Could not determine default remote branch for '{remote_name}'.")
+        return base_branch
+
+    def _create_final_pr(self, title: str, body: str, draft: bool, labels: List[str]) -> bool:
+        """Creates the pull request on GitHub."""
+        current_branch = self.git_manager.get_current_branch()
+        base_branch = self._determine_base_branch()
         if not current_branch or not base_branch:
             components.show_error("Could not determine current or base branch. Cannot create PR.")
             return False
-            
-        _create_gh_pr(pr_info.title, pr_info.body, base_branch, current_branch, labels=[], draft=False)
+
+        _create_gh_pr(title, body, base_branch, current_branch, labels=labels, draft=draft)
         return True

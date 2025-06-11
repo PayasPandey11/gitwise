@@ -109,58 +109,41 @@ def commit_cli_entrypoint(
 
 
 @app.command(name="push")
-def push_cli_entrypoint() -> None:
+def push_cli_entrypoint(
+    auto_confirm: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Automatically answer 'yes' to all prompts and push.",
+    )
+) -> None:
     """Push changes and optionally create a PR."""
     feature = PushFeature()
-    feature.execute_push()
+    feature.execute_push(auto_confirm=auto_confirm)
 
 
 @app.command(name="pr")
 def pr_cli_entrypoint(
-    from_staged: bool = typer.Option(
-        False,
-        "--from-staged",
-        "-s",
-        help="[New] Generate PR and commits together from staged files in a single AI call.",
+    draft: bool = typer.Option(
+        False, "--draft", "-d", help="Create a draft PR."
     ),
-    use_labels: bool = typer.Option(
-        False, "--labels", "-l", help="Add labels to the PR"
-    ),
-    use_checklist: bool = typer.Option(
-        False, "--checklist", "-c", help="Add checklist to the PR description"
-    ),
-    skip_general_checklist: bool = typer.Option(
-        False, "--skip-checklist", help="Skip general checklist items"
-    ),
-    title: str = typer.Option(None, "--title", "-t", help="Custom title for the PR"),
-    base: str = typer.Option(None, "--base", "-b", help="Base branch for the PR"),
-    draft: bool = typer.Option(False, "--draft", "-d", help="Create a draft PR"),
-    skip_prompts: bool = typer.Option(
-        False, "--skip-prompts", help="Skip all interactive prompts and use defaults."
+    label: List[str] = typer.Option(
+        [], "--label", "-l", help="Add a label to the PR (can be used multiple times)."
     ),
     auto_confirm: bool = typer.Option(
         False,
         "--yes",
         "-y",
-        help="Automatically answer 'yes' to all prompts (group, push, PR, labels)",
+        help="Automatically answer 'yes' to all prompts.",
     ),
 ) -> None:
-    """Create a pull request with AI-generated description."""
+    """Create a pull request with AI-generated description from staged files."""
     feature = PrFeature()
-
-    if from_staged:
-        feature.generate_and_create_pr_from_staged(auto_confirm=auto_confirm)
-    else:
-        feature.execute_pr(
-            use_labels=use_labels,
-            use_checklist=use_checklist,
-            skip_general_checklist=skip_general_checklist,
-            title=title,
-            base=base,
-            draft=draft,
-            skip_prompts=skip_prompts,
-            auto_confirm=auto_confirm,
-        )
+    feature.execute_pr(
+        auto_confirm=auto_confirm,
+        draft=draft,
+        labels=label,
+    )
 
 
 @app.command(name="changelog")
