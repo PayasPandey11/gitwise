@@ -101,11 +101,22 @@ def commit_cli_entrypoint(
         "--group",
         "-g",
         help="Enable automatic grouping of related changes into separate commits (can be slower).",
-    )
+    ),
+    pr: bool = typer.Option(
+        False,
+        "--pr",
+        help="[New] After committing, automatically push and create a Pull Request.",
+    ),
+    auto_confirm: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Automatically answer 'yes' to all prompts.",
+    ),
 ) -> None:
     """Create a commit with AI-generated message."""
     feature = CommitFeature()
-    feature.execute_commit(group=group)
+    feature.execute_commit(group=group, auto_confirm=auto_confirm, create_pr=pr)
 
 
 @app.command(name="push")

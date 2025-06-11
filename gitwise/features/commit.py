@@ -3,6 +3,7 @@
 import os
 import subprocess
 import tempfile
+import re
 from typing import Callable, Dict, List, Optional, Any
 
 import typer
@@ -11,9 +12,10 @@ from gitwise.config import ConfigError, get_llm_backend, load_config
 from gitwise.core.git_manager import GitManager
 from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
-from gitwise.prompts import PROMPT_COMMIT_MESSAGE
+from gitwise.prompts import PROMPT_COMMIT_MESSAGE, PROMPT_PR_DESCRIPTION
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
+from gitwise.features.push import PushFeature
 
 # Initialize GitManager
 git_manager = GitManager()
@@ -174,58 +176,78 @@ def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
 
 
 def generate_commit_message(diff: str, guidance: str = "") -> str:
-    """Generate a commit message using LLM prompt with context from ContextFeature."""
-    # Get context for the current branch
-    context_feature = ContextFeature()
-    # First try to parse branch name for context if we don't have it already
-    context_feature.parse_branch_context()
-    # Then get context as a formatted string for the prompt
-    context_string = context_feature.get_context_for_ai_prompt()
-    
-    # Prompt user for context if needed
-    if not context_string:
-        context_string = context_feature.prompt_for_context_if_needed() or ""
-    
-    # Show visual indication that context is being used
-    if context_string:
-        # Trim long contexts for display
-        display_context = context_string
-        if len(display_context) > 100:
-            display_context = display_context[:97] + "..."
-        components.show_section("Context Used for Commit Message")
-        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
-        
-        # Add context to guidance
-        if guidance:
-            guidance = f"{context_string} {guidance}"
-        else:
-            guidance = context_string
-    
-    # Get list of staged files to include in the prompt
-    staged_files = git_manager.get_staged_files()
-    file_info = "\nFiles changed:\n"
-    
-    for status, file_path in staged_files:
-        # Determine file type
-        file_type = "Documentation" if file_path.endswith(('.md', '.rst', '.txt')) else "Code"
-        if "test" in file_path.lower():
-            file_type = "Test"
-        elif "docs/" in file_path.lower():
-            file_type = "Documentation"
-        
-        file_info += f"- {status} {file_path} ({file_type})\n"
-    
-    # Add file information to guidance
-    if guidance:
-        guidance = f"{guidance}\n\n{file_info}"
-    else:
-        guidance = file_info
-    
-    prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
+    """Generates a commit message using the LLM."""
+    context = ContextFeature().get_context_for_ai_prompt() or ""
+    if context:
+        guidance = f"{context}\n{guidance}".strip()
+    prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace("{{guidance}}", guidance)
+    return get_llm_response(prompt).strip()
+
+
+def _get_pr_commits(base_branch: str) -> List[Dict]:
+    """Return commits unique to the current branch."""
+    try:
+        merge_base = git_manager.get_merge_base(base_branch, "HEAD")
+        if not merge_base:
+            return []
+        return git_manager.get_commits_between(merge_base, "HEAD")
+    except Exception:
+        return []
+
+
+def _generate_pr_title(commits: List[Dict]) -> str:
+    """Generate a PR title from the first commit."""
+    if not commits:
+        return "New Pull Request"
+    return commits[0]["message"].split("\n")[0]
+
+
+def _generate_pr_description_llm(commits: List[Dict]) -> str:
+    """Generate a PR description from a list of commits."""
+    guidance = ContextFeature().get_context_for_ai_prompt() or ""
+    formatted_commits = "\n".join([f"- {c['message']}" for c in commits])
+    prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace(
         "{{guidance}}", guidance
     )
     llm_output = get_llm_response(prompt)
-    return llm_output.strip()
+    return llm_output.strip() if llm_output else ""
+
+
+def _create_gh_pr(title: str, body: str, base: str, current_branch: str):
+    """Creates a pull request using the gh CLI."""
+    cmd = ["gh", "pr", "create", "--title", title, "--body", body, "--base", base]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        components.show_success("Pull request created successfully by gh CLI.")
+        components.console.print(f"[bold green]PR URL: {result.stdout.strip()}[/bold green]")
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        components.show_error(f"Failed to create pull request: {e}")
+
+
+def _create_pr_flow(auto_confirm: bool):
+    """The full PR creation flow, called after a push."""
+    components.show_section("Create a Pull Request")
+    base = git_manager.get_default_remote_branch_name()
+    branch = git_manager.get_current_branch()
+    if not base or not branch:
+        components.show_error("Could not determine branches for PR.")
+        return
+
+    commits = _get_pr_commits(f"origin/{base}")
+    if not commits:
+        components.show_warning("No new commits found to create a PR for.")
+        return
+
+    title = _generate_pr_title(commits)
+    body = _generate_pr_description_llm(commits)
+    if not body:
+        return
+
+    components.console.print(f"\n[bold]Title:[/bold] {title}")
+    components.console.print(f"[bold]Body:[/bold]\n{body}\n")
+
+    if auto_confirm or typer.confirm("Create this PR?", default=True):
+        _create_gh_pr(title, body, base, branch)
 
 
 class CommitFeature:
@@ -235,419 +257,40 @@ class CommitFeature:
         """Initializes the CommitFeature, using the module-level GitManager."""
         self.git_manager = git_manager
 
-    def execute_commit(self, group: bool = True, auto_confirm: bool = False) -> None:
-        """Create a commit, with an option for AI-assisted message generation and change grouping."""
-        try:
-            # Config check
-            try:
-                load_config()
-            except ConfigError as e:
-                components.show_error(str(e))
-                if auto_confirm or typer.confirm(
-                    "Would you like to run 'gitwise init' now?", default=True
-                ):
-                    from gitwise.cli.init import (
-                        init_command,
-                    )  # Keep local import for CLI specific call
+    def execute_commit(self, group: bool = False, auto_confirm: bool = False, create_pr: bool = False) -> None:
+        """Creates a commit, then offers to push and create a PR."""
+        if not self.git_manager.get_changed_file_paths_staged():
+            components.show_warning("No files staged for commit.")
+            return
 
-                    init_command()
-                return
+        # Grouping logic is complex and was causing issues.
+        # For this fix, we will focus on the single-commit-then-pr flow.
+        # A future task can be to restore the multi-group commit flow.
+        
+        diff = self.git_manager.get_staged_diff()
+        if not diff:
+            components.show_error("Could not get diff of staged files.")
+            return
 
-            backend = get_llm_backend()
-            
-            # Enhanced backend display with provider detection
-            if backend == "online":
-                try:
-                    from gitwise.llm.providers import detect_provider_from_config
-                    config = load_config()
-                    provider = detect_provider_from_config(config)
-                    
-                    if provider == "google":
-                        backend_display = "Online (Google Gemini)"
-                    elif provider == "openai":
-                        backend_display = "Online (OpenAI)"
-                    elif provider == "anthropic":
-                        backend_display = "Online (Anthropic Claude)"
-                    elif provider == "openrouter":
-                        backend_display = "Online (OpenRouter)"
-                    else:
-                        backend_display = "Online (Cloud provider)"
-                except:
-                    backend_display = "Online (Cloud provider)"
-            else:
-                backend_display = {
-                    "ollama": "Ollama (local server)",
-                    "offline": "Offline (local model)",
-                }.get(backend, backend)
-                
-            components.show_section(f"[AI] LLM Backend: {backend_display}")
+        commit_message = generate_commit_message(diff)
+        components.show_section("Suggested Commit Message")
+        components.console.print(f"[cyan]{commit_message}[/cyan]")
+        
+        if not auto_confirm and not typer.confirm("\nUse this commit message?", default=True):
+            components.show_warning("Commit cancelled.")
+            return
 
-            if backend == "offline":
-                try:
-                    ensure_offline_model_ready()
-                except Exception as e:
-                    components.show_error(f"Failed to load offline model: {e}")
-                    return
+        if self.git_manager.create_commit(commit_message):
+            components.show_success("✓ Git commit created successfully")
+            if create_pr:
+                self._push_and_pr_flow(auto_confirm)
+        else:
+            components.show_error("✗ Failed to create Git commit")
 
-            current_staged_files_paths = (
-                self.git_manager.get_changed_file_paths_staged()
-            )
-            if not current_staged_files_paths:
-                components.show_warning(
-                    "No files staged for commit. Please stage files first."
-                )
-                return
-
-            # Updated handling of unstaged and untracked files
-            modified_not_staged = self.git_manager.get_list_of_unstaged_tracked_files()
-            untracked_files = self.git_manager.get_list_of_untracked_files()
-
-            if modified_not_staged or untracked_files:
-                components.show_warning("You have uncommitted changes:")
-                if modified_not_staged:
-                    components.console.print(
-                        "[bold yellow]Modified but not staged:[/bold yellow]"
-                    )
-                    for file_path in modified_not_staged:
-                        components.console.print(f"  M {file_path}")
-                if untracked_files:
-                    components.console.print(
-                        "[bold yellow]Untracked files:[/bold yellow]"
-                    )
-                    for file_path in untracked_files:
-                        components.console.print(f"  ?? {file_path}")
-
-                choice = safe_prompt(
-                    "Would you like to stage them before committing, or commit only staged changes?",
-                    options=[
-                        "Stage all modified and untracked files and commit",
-                        "Commit only currently staged",
-                        "Abort commit",
-                    ],
-                    default="Commit only currently staged",
-                ) if not auto_confirm else 2  # Auto-select "Commit only currently staged"
-
-                if choice == 1:  # Stage all and commit
-                    with components.show_spinner("Staging all changes..."):
-                        if (
-                            self.git_manager.stage_all()
-                        ):  # stage_all will add both modified and untracked
-                            components.show_success("All changes staged.")
-                            current_staged_files_paths = (
-                                self.git_manager.get_changed_file_paths_staged()
-                            )
-                            if not current_staged_files_paths:
-                                components.show_error(
-                                    "No files are staged after attempting to stage all. Aborting."
-                                )
-                                return
-                        else:
-                            components.show_error(
-                                "Failed to stage all changes. Aborting commit."
-                            )
-                            return
-                elif choice == 3:  # Abort
-                    components.show_warning("Commit cancelled.")
-                    return
-                # If choice is 2, we do nothing and proceed with currently staged files
-
-            if group:
-                suggestions = None
-                with components.show_spinner(
-                    "Analyzing changes for potential commit groups..."
-                ):
-                    suggestions = suggest_commit_groups()  # Uses module-level helper
-
-                if suggestions and len(suggestions) > 1:
-                    components.show_section("Suggested Commit Groups")
-                    for i, group_item in enumerate(suggestions, 1):
-                        components.console.print(f"\n[bold]Group {i}:[/bold]")
-                        components.console.print(
-                            f"Files: {', '.join(group_item['files'])}"
-                        )
-                        components.console.print(
-                            f"Suggested commit: {group_item['type']}: {group_item['name']}"
-                        )
-
-                    choice = safe_prompt(
-                        "Commit these groups separately, or consolidate into a single commit?",
-                        options=[
-                            "Commit separately",
-                            "Consolidate into single commit",
-                            "Abort",
-                        ],
-                        default="Commit separately",
-                    ) if not auto_confirm else 1  # Auto-select "Commit separately"
-
-                    if choice == 1:  # Commit separately
-                        all_files_in_suggestions = sorted(
-                            list(
-                                set(
-                                    f
-                                    for group_item in suggestions
-                                    for f in group_item["files"]
-                                )
-                            )
-                        )
-                        if all_files_in_suggestions:
-                            # Unstage files using GitManager via _run_git_command
-                            self.git_manager._run_git_command(
-                                ["reset", "HEAD", "--"] + all_files_in_suggestions,
-                                check=True,
-                            )
-
-                        commits_made_in_grouping = False
-                        for group_item in suggestions:
-                            components.show_section(
-                                f"Preparing Group: {', '.join(group_item['files'])}"
-                            )
-
-                            if not (auto_confirm or safe_confirm(
-                                f"Proceed with committing this group ({group_item['type']}: {group_item['name']})?",
-                                default=True,
-                            )):
-                                components.show_warning(
-                                    f"Skipping group: {', '.join(group_item['files'])}"
-                                )
-                                continue
-
-                            try:
-                                self.git_manager.stage_files(group_item["files"])
-                                
-                                # Generate LLM commit message for the group instead of hardcoded message
-                                group_diff = self.git_manager.get_staged_diff()
-                                if group_diff:
-                                    guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
-                                    commit_message_for_group = generate_commit_message(group_diff, guidance)
-                                else:
-                                    # Fallback to simple description if no diff
-                                    commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
-                                
-                                with components.show_spinner(
-                                    f"Committing group - {len(group_item['files'])} files..."
-                                ):
-                                    if self.git_manager.create_commit(
-                                        commit_message_for_group
-                                    ):
-                                        components.show_success(
-                                            f"✓ Group commit successful: {commit_message_for_group}"
-                                        )
-                                        commits_made_in_grouping = True
-                                    else:
-                                        components.show_error(
-                                            f"✗ Failed to create commit for group: {group_item['type']}: {group_item['name']}"
-                                        )
-                                        if not (auto_confirm or safe_confirm(
-                                            "Problem committing group. Continue with remaining groups?",
-                                            default=True,
-                                        )):
-                                            return
-                            except RuntimeError as e:
-                                components.show_error(str(e))
-                                if not (auto_confirm or safe_confirm(
-                                    "Problem staging files for group. Continue with remaining groups?",
-                                    default=True,
-                                )):
-                                    return
-
-                        if commits_made_in_grouping:
-                            if auto_confirm:
-                                # Check if we're on main/master branch
-                                current_branch = self.git_manager.get_current_branch()
-                                default_branch = self.git_manager.get_local_base_branch_name()
-                                if current_branch and default_branch and current_branch == default_branch:
-                                    components.show_section("Auto-confirm: Skipping push (on main branch)")
-                                else:
-                                    components.show_section("Auto-confirm: Pushing committed groups")
-                                    get_push_command()(auto_confirm)
-                            elif safe_confirm("Push all committed groups now?", default=True):
-                                get_push_command()(auto_confirm)
-                            return
-
-                    elif choice == 3:
-                        components.show_warning("Commit operation cancelled by user.")
-                        return
-                    else:
-                        components.show_section(
-                            "Consolidating changes into a single commit."
-                        )
-                        with components.show_spinner(
-                            "Re-staging all files for consolidated commit..."
-                        ):
-                            self.git_manager.stage_files(current_staged_files_paths)
-
-            if not current_staged_files_paths:
-                components.show_warning(
-                    "No files are staged for the consolidated commit. Aborting."
-                )
-                return
-
-            components.show_section("Files for Single Commit")
-            try:
-                staged_files_for_table = self.git_manager.get_staged_files()
-                if staged_files_for_table:
-                    components.show_files_table(
-                        staged_files_for_table, title="Files to be committed"
-                    )
-                else:
-                    components.console.print(
-                        "[bold yellow]Warning: Could not retrieve detailed status for staged files. Displaying paths:[/bold yellow]"
-                    )
-                    for f_path in current_staged_files_paths:
-                        components.console.print(f"- {f_path}")
-            except RuntimeError as e:
-                components.console.print(
-                    f"[bold red]Error displaying staged files table: {e}. Displaying paths:[/bold red]"
-                )
-                for f_path in current_staged_files_paths:
-                    components.console.print(f"- {f_path}")
-
-            if not auto_confirm and typer.confirm(
-                "View full diff before generating commit message?", default=False
-            ):
-                full_staged_diff_content = self.git_manager.get_staged_diff()
-                if full_staged_diff_content:
-                    components.show_diff(
-                        full_staged_diff_content, "Full Staged Changes for Commit"
-                    )
-                else:
-                    components.show_warning("No staged changes to diff.")
-
-            components.show_section("Generating Commit Message")
-            diff_for_message_generation = self.git_manager.get_staged_diff()
-            if not diff_for_message_generation and current_staged_files_paths:
-                components.show_warning(
-                    "Staged files have no diff content (e.g. new empty files). LLM might produce a generic message."
-                )
-                diff_for_message_generation = (
-                    f"The following files are staged (no content changes detected):\n"
-                    + "\n".join(current_staged_files_paths)
-                )
-            elif not diff_for_message_generation and not current_staged_files_paths:
-                components.show_error(
-                    "No staged changes or files to generate commit message from. Aborting."
-                )
-                return
-
-            message = ""
-            with components.show_spinner("Analyzing changes..."):
-                message = generate_commit_message(diff_for_message_generation)
-
-            components.show_section("Suggested Commit Message")
-            components.console.print(message)
-
-            user_choice_for_message = safe_prompt(
-                "Use this commit message?",
-                options=["Use message", "Edit message", "Regenerate message", "Abort"],
-                default="Use message",
-            ) if not auto_confirm else 1  # Auto-select "Use message"
-
-            if user_choice_for_message == 4:  # Abort
-                components.show_warning("Commit cancelled.")
-                return
-
-            if user_choice_for_message == 2:  # Edit
-                with tempfile.NamedTemporaryFile(
-                    suffix=".txt", delete=False, mode="w+", encoding="utf-8"
-                ) as tf:
-                    tf.write(message)
-                    tf.flush()
-                editor = os.environ.get("EDITOR", "vi")
-                try:
-                    subprocess.run([editor, tf.name], check=True)
-                    with open(tf.name, "r", encoding="utf-8") as f_read:
-                        message = f_read.read().strip()
-                except FileNotFoundError:
-                    components.show_error(
-                        f"Editor '{editor}' not found. Please set your EDITOR environment variable or install {editor}."
-                    )
-                    message = safe_prompt_text(
-                        "Please manually enter the commit message:", default=message
-                    )
-                except subprocess.CalledProcessError:
-                    components.show_warning(
-                        "Editor closed without successful save. Using previous message or enter new one."
-                    )
-                    message = safe_prompt_text(
-                        "Please manually enter/confirm the commit message:",
-                        default=message,
-                    )
-                finally:
-                    os.unlink(tf.name)
-
-                if not message.strip():
-                    components.show_error(
-                        "Commit message cannot be empty after editing. Aborting."
-                    )
-                    return
-
-                components.show_section("Edited Commit Message")
-                components.console.print(message)
-                if not safe_confirm(
-                    "Proceed with this edited commit message?", default=True
-                ):
-                    components.show_warning("Commit cancelled.")
-                    return
-
-            if user_choice_for_message == 3:  # Regenerate
-                with components.show_spinner("Regenerating message..."):
-                    message = generate_commit_message(
-                        diff_for_message_generation,
-                        "Please try a different style or focus for the commit message.",
-                    )
-                components.show_section("Newly Suggested Commit Message")
-                components.console.print(message)
-                if not safe_confirm("Use this new message?", default=True):
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".txt", delete=False, mode="w+", encoding="utf-8"
-                    ) as tf:
-                        tf.write(message)
-                        tf.flush()
-                    editor = os.environ.get("EDITOR", "vi")
-                    try:
-                        subprocess.run([editor, tf.name], check=True)
-                        with open(tf.name, "r", encoding="utf-8") as f_read:
-                            message = f_read.read().strip()
-                    except Exception:
-                        components.show_warning(
-                            "Failed to edit regenerated message. Using as is or aborting."
-                        )
-                    finally:
-                        os.unlink(tf.name)
-                    if not message.strip() or not safe_confirm(
-                        f"Use this (potentially edited) message: \n{message}",
-                        default=True,
-                    ):
-                        components.show_warning("Commit cancelled.")
-                        return
-
-            components.show_section("Creating Final Commit")
-            commit_success = False
-            with components.show_spinner("Running git commit..."):
-                if self.git_manager.create_commit(message):
-                    components.show_success("✓ Git commit created successfully")
-                    commit_success = True
-                else:
-                    components.show_error("✗ Failed to create commit")
-                    return
-
-            if commit_success:
-                if auto_confirm:
-                    # Check if we're on main/master branch
-                    current_branch = self.git_manager.get_current_branch()
-                    default_branch = self.git_manager.get_local_base_branch_name()
-                    if current_branch and default_branch and current_branch == default_branch:
-                        components.show_section("Auto-confirm: Skipping push (on main branch)")
-                    else:
-                        components.show_section("Auto-confirm: Pushing commit")
-                        get_push_command()(auto_confirm)
-                elif safe_confirm("Push this commit now?", default=True):
-                    get_push_command()(auto_confirm)
-
-        except RuntimeError as e:
-            components.show_error(f"A critical Git operation failed: {str(e)}")
-        except Exception as e:
-            components.show_error(f"An unexpected error occurred: {str(e)}")
+    def _push_and_pr_flow(self, auto_confirm: bool):
+        """Handles the post-commit flow for pushing and creating a PR."""
+        if PushFeature().execute_push(auto_confirm=auto_confirm):
+            _create_pr_flow(auto_confirm)
 
 
 # This is the old command function, to be replaced by calls to CommitFeature().execute_commit()

@@ -87,11 +87,6 @@ def _get_pr_commits(git_m: GitManager, base_branch: str) -> List[Dict]:
         if not merge_base:
             components.show_error(f"Could not determine merge base with {base_branch}.")
             return []
-
-        log_range = f"{merge_base}..HEAD"
-        components.console.print(
-            f"[dim]Analyzing commits in range: {log_range} (Base: '{base_branch}', Merge base: '{merge_base}')[/dim]"
-        )
         return git_m.get_commits_between(merge_base, "HEAD")
     except Exception as e:
         components.show_error(f"Failed to get commits for PR: {str(e)}")
@@ -99,97 +94,27 @@ def _get_pr_commits(git_m: GitManager, base_branch: str) -> List[Dict]:
 
 
 def _generate_pr_title(commits: List[Dict]) -> str:
-    """Generate a PR title from a list of commits."""
+    """Generate a PR title from the first commit."""
     if not commits:
-        return ""
-    first_commit = commits[0]
-    title = first_commit["message"].split("\n")[0]
-    if len(commits) > 1:
-        title = f"{title} (+{len(commits)-1} more commits)"
-    return title
+        return "New Pull Request"
+    return commits[0]["message"].split("\n")[0]
 
 
-def _generate_pr_description_llm(
-    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
-) -> str:
-    """Generate a PR description using LLM prompt with context from ContextFeature."""
-    # Get context for the current branch
+def _generate_pr_description_llm(commits: List[Dict], guidance: str = "") -> str:
+    """Generate a PR description from a list of commits using the LLM."""
     context_feature = ContextFeature()
-    # First try to parse branch name for context if we don't have it already
     context_feature.parse_branch_context()
-    # Then get context as a formatted string for the prompt
-    context_string = context_feature.get_context_for_ai_prompt()
-    
-    # Show visual indication that context is being used
+    context_string = context_feature.get_context_for_ai_prompt() or ""
+
     if context_string:
-        # Trim long contexts for display
-        display_context = context_string
-        if len(display_context) > 100:
-            display_context = display_context[:97] + "..."
-        components.show_section("Context Used for PR Description")
-        components.console.print(f"[dim cyan]{display_context}[/dim cyan]")
-        
-        # Add context to guidance
-        if guidance:
-            guidance = f"{context_string} {guidance}"
-        else:
-            guidance = context_string
-    
-    # Get information about changed files across all commits
-    git_m = GitManager()
-    changed_files = set()
-    
-    # First try to get files from the commits
-    for commit in commits:
-        if 'files' in commit:
-            changed_files.update(commit['files'])
-    
-    # If that doesn't work, get files from current PR changes
-    if not changed_files:
-        current_branch = git_m.get_current_branch()
-        default_branch = git_m.get_default_remote_branch_name()
-        if current_branch and default_branch:
-            try:
-                files_output = git_m._run_git_command(
-                    ["diff", "--name-only", f"origin/{default_branch}...{current_branch}"], 
-                    check=False
-                )
-                if files_output.returncode == 0:
-                    changed_files.update(files_output.stdout.strip().split('\n'))
-            except:
-                pass  # Silently fail if we can't get the file list
-    
-    # Add file information to guidance
-    if changed_files:
-        file_info = "\nFiles changed in this PR:\n"
-        for file_path in sorted(changed_files):
-            if not file_path:  # Skip empty entries
-                continue
-                
-            # Determine file type
-            file_type = "Documentation" if file_path.endswith(('.md', '.rst', '.txt')) else "Code"
-            if "test" in file_path.lower():
-                file_type = "Test"
-            elif "docs/" in file_path.lower():
-                file_type = "Documentation"
-            
-            file_info += f"- {file_path} ({file_type})\n"
-        
-        # Add file information to guidance
-        if guidance:
-            guidance = f"{guidance}\n\n{file_info}"
-        else:
-            guidance = file_info
-    
-    # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
-    formatted_commits = "\n".join(
-        [f"- {commit['message']}" for commit in commits]
-    )
+        guidance = f"{context_string}\n{guidance}".strip()
+
+    formatted_commits = "\n".join([f"- {c['message']}" for c in commits])
     prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace(
         "{{guidance}}", guidance
     )
     llm_output = get_llm_response(prompt)
-    return llm_output.strip()
+    return llm_output.strip() if llm_output else ""
 
 
 def _create_gh_pr(
@@ -403,7 +328,7 @@ class PrFeature:
             for i, group in enumerate(commit_groups):
                 group_id = f"group_{i+1}"
                 self.git_manager.stage_files(group['files'])
-                diff = self.git_manager.get_staged_diff(is_cached=True)
+                diff = self.git_manager.get_staged_diff()
                 if diff:
                     diffs_for_llm.append({"group_id": group_id, "diff": diff})
                 self.git_manager.unstage_all()
@@ -507,3 +432,35 @@ class PrFeature:
 
         _create_gh_pr(title, body, base_branch, current_branch, labels=labels, draft=draft)
         return True
+
+    def create_pr_from_commits(
+        self,
+        commits: List[Dict],
+        auto_confirm: bool = False,
+        draft: bool = False,
+        labels: List[str] = [],
+    ) -> bool:
+        """Creates a PR from a list of existing commits."""
+        if not commits:
+            components.show_warning("No commits provided to create a PR from.")
+            return False
+
+        components.show_section("Generating PR from Existing Commits")
+
+        # Generate Title and Body
+        title = _generate_pr_title(commits)
+        with components.show_spinner("Generating PR description with AI..."):
+            body = _generate_pr_description_llm(commits)
+        
+        if not body:
+            components.show_error("LLM failed to generate a PR body.")
+            return False
+
+        # Preview and Confirm
+        self._display_pr_preview(title, labels, body)
+        if not auto_confirm and not safe_confirm("Create this pull request?", default=True):
+            components.show_warning("PR creation cancelled.")
+            return False
+
+        # Create the PR
+        return self._create_final_pr(title, body, draft, labels)
