@@ -107,102 +107,61 @@ class PushFeature:
 
             default_remote_for_log = f"origin/{default_remote_branch_name_only}"
 
+            # Push changes first
             with components.show_spinner("Pushing changes..."):
                 push_success_main = self.git_manager.push_to_remote(
                     local_branch=current_branch
                 )
+            if push_success_main:
+                components.show_success("Changes pushed successfully")
+            else:
+                components.show_error("Failed to push changes")
+                return False
 
-                if push_success_main:
-                    components.show_success("Changes pushed successfully")
-                else:
-                    components.show_error("Failed to push changes")
-                    return False
+            # Check if there are new commits to create a PR for
+            commits_to_push = self.git_manager.get_commits_between(
+                default_remote_for_log, "HEAD"
+            )
 
-            with components.show_spinner("Checking for commits..."):
-                commits_to_push = self.git_manager.get_commits_between(
-                    default_remote_for_log, "HEAD"
+            if not commits_to_push:
+                components.show_warning(
+                    "No new commits to push relative to the default branch. "
+                    "Use 'gitwise pr' to create a PR from staged files instead."
                 )
+                return True # Push was successful, no new commits to create a PR for.
 
-                if not commits_to_push:
-                    components.show_warning(
-                        "No new commits to push relative to remote default branch."
-                    )
-                    components.console.line()
-                    # Determine if we should create a PR even with no new commits
-                    should_create_pr_anyway = False
-                    if auto_confirm:
-                        # Check if we're on main/master branch
-                        current_branch = self.git_manager.get_current_branch()
-                        default_branch = self.git_manager.get_local_base_branch_name()
-                        if current_branch and default_branch and current_branch == default_branch:
-                            components.show_section("Auto-confirm: Skipping PR creation (on main branch)")
-                            should_create_pr_anyway = False
-                        else:
-                            components.show_section("Auto-confirm: Creating PR anyway (no new commits)")
-                            should_create_pr_anyway = True
-                    else:
-                        should_create_pr_anyway = typer.confirm(
-                            "Would you like to create a pull request anyway?", default=True
-                        )
-                    
-                    if should_create_pr_anyway:
-                        try:
-                            include_extras = (True if auto_confirm else typer.confirm(
-                                "Include labels and checklist in the PR?", default=True
-                            ))
-                            components.console.line()
-                            pr_feature_instance = PrFeature()  # Create instance
-                            pr_created = pr_feature_instance.execute_pr(  # Call method
-                                use_labels=include_extras,
-                                use_checklist=include_extras,
-                                skip_general_checklist=not include_extras,
-                                skip_prompts=auto_confirm,
-                                auto_confirm=auto_confirm,
-                                base=default_remote_branch_name_only,
-                            )
-                            return pr_created
-                        except Exception as e:
-                            components.show_error(f"Failed to create PR: {str(e)}")
-                            return False
-                    return False
-
-            components.console.line()
-            
-            # Determine if we should create a PR
+            # Ask to create a PR
             should_create_pr = False
             if auto_confirm:
-                # Check if we're on main/master branch
-                current_branch = self.git_manager.get_current_branch()
-                default_branch = self.git_manager.get_local_base_branch_name()
-                if current_branch and default_branch and current_branch == default_branch:
-                    components.show_section("Auto-confirm: Skipping PR creation (on main branch)")
-                    should_create_pr = False
+                # On main/master, don't auto-create a PR
+                if current_branch == self.git_manager.get_local_base_branch_name():
+                    components.show_section("Auto-confirm: Skipping PR creation (on default branch)")
                 else:
-                    components.show_section("Auto-confirm: Creating PR with labels and checklist")
+                    components.show_section("Auto-confirm: Creating PR")
                     should_create_pr = True
             else:
-                should_create_pr = typer.confirm("Would you like to create a pull request?", default=True)
-            
+                should_create_pr = typer.confirm(
+                    "Would you like to create a pull request for the commits you just pushed?",
+                    default=True,
+                )
+
             if should_create_pr:
                 try:
-                    include_extras = (True if auto_confirm else typer.confirm(
-                        "Include labels and checklist in the PR?", default=True
-                    ))
-                    components.console.line()
-                    pr_feature_instance = PrFeature()  # Create instance
-                    pr_created = pr_feature_instance.execute_pr(  # Call method
-                        use_labels=include_extras,
-                        use_checklist=include_extras,
-                        skip_general_checklist=not include_extras,
-                        skip_prompts=auto_confirm,
-                        auto_confirm=auto_confirm,
-                        base=default_remote_branch_name_only,
+                    # The new `pr` command works from staged files, not previous commits.
+                    # We should instruct the user to use the `pr` command directly.
+                    components.show_section("Create a Pull Request")
+                    components.console.print(
+                        "The `push` command no longer creates PRs directly.\n"
+                        "To create a PR with AI-generated commits, please run:"
                     )
-                    return pr_created
+                    components.console.print("\n[bold cyan]gitwise pr[/bold cyan]\n")
+                    return True # Indicate that the push was successful
                 except Exception as e:
-                    components.show_error(f"Failed to create PR: {str(e)}")
+                    components.show_error(f"An unexpected error occurred: {str(e)}")
                     return False
-            return True  # Push was successful, user opted out of PR. This is a successful completion.
+
+            return True  # Push was successful, user opted out of PR
+
         except Exception as e:
             components.show_error(str(e))
             return False
