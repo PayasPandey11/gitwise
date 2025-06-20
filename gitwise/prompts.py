@@ -52,26 +52,31 @@ Commits:
 """
 
 # Smart Merge Prompts
-PROMPT_CONFLICT_EXPLANATION = """
-Analyze the following merge conflict and provide a clear explanation.
+PROMPT_CONFLICT_EXPLANATION = """You are a Git merge conflict analysis expert. Analyze the following merge conflict and provide a clear, human-readable explanation.
 
-Rules:
-- Explain what each side (ours vs theirs) is trying to accomplish
-- Identify the root cause of the conflict
-- Use non-technical language when possible
-- Be concise but comprehensive
-- Focus on the intent behind the changes
+{{file_content}}
 
-File: {{file_path}}
+MERGE CONTEXT: {{context}}
 
-Our changes:
-{{our_content}}
+Please provide:
 
-Their changes:
-{{their_content}}
+1. **SUMMARY**: A brief overview of what the conflict is about (1-2 sentences)
 
-Context: {{context}}
-"""
+2. **OUR INTENT**: What the current branch was trying to accomplish with its changes
+
+3. **THEIR INTENT**: What the incoming branch was trying to accomplish with its changes  
+
+4. **SUGGESTED APPROACH**: The best strategy to resolve this conflict
+
+5. **RESOLUTION STEPS**: Specific steps to manually resolve the conflict
+
+Focus on understanding the PURPOSE and INTENT behind each change, not just the mechanical differences. Consider:
+- What functionality each version is implementing
+- Whether changes can be combined or if one should take precedence
+- Any potential side effects or dependencies
+- The broader context of what this code does
+
+Provide practical, actionable guidance that helps the developer make an informed decision."""
 
 PROMPT_RESOLUTION_STRATEGY = """
 Suggest a strategy for resolving the following merge conflicts.

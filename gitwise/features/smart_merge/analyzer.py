@@ -166,7 +166,7 @@ class MergeAnalyzer:
                 conflicted_files = self.git_manager.get_merge_conflicts()
                 
                 for file_path in conflicted_files:
-                    conflict_info = self._analyze_file_conflict(file_path)
+                    conflict_info = self._create_conflict_info(file_path)
                     if conflict_info:
                         conflicts.append(conflict_info)
                         
@@ -186,46 +186,36 @@ class MergeAnalyzer:
                 
         return conflicts
 
-    def _analyze_file_conflict(self, file_path: str) -> Optional[ConflictInfo]:
-        """
-        Analyze a specific file's conflict content.
-        
-        Args:
-            file_path: Path to the conflicted file
-            
-        Returns:
-            ConflictInfo object or None if analysis fails
-        """
-        try:
-            conflict_content = self.git_manager.get_conflict_content(file_path)
-            if not conflict_content:
-                return None
-            
-            # Determine conflict type
-            conflict_type = ConflictType.CONTENT  # Default
-            
-            # Parse conflict lines (simplified)
-            conflict_lines = []
-            full_content = conflict_content.get("full_content", "")
-            lines = full_content.splitlines()
-            
-            for i, line in enumerate(lines):
-                if line.startswith('<<<<<<< '):
-                    conflict_lines.append(i + 1)
-                    
-            return ConflictInfo(
-                file_path=file_path,
-                conflict_type=conflict_type,
-                conflict_lines=conflict_lines,
-                our_content=conflict_content.get("our_content", ""),
-                their_content=conflict_content.get("their_content", ""),
-                base_content=None,  # Could be enhanced to get base content
-                line_start=conflict_lines[0] if conflict_lines else None,
-                line_end=None  # Could be calculated from conflict markers
-            )
-            
-        except Exception:
+    def _create_conflict_info(self, file_path: str) -> Optional[ConflictInfo]:
+        """Create ConflictInfo object for a conflicted file with enhanced context."""
+        conflict_data = self.git_manager.get_conflict_content(file_path)
+        if not conflict_data:
             return None
+        
+        # Get the first conflict (could be enhanced to handle multiple conflicts per file)
+        conflicts = conflict_data.get("conflicts", [])
+        if not conflicts:
+            return None
+        
+        # For now, focus on the first conflict in the file
+        # TODO: Could be enhanced to handle multiple conflicts per file
+        first_conflict = conflicts[0]
+        
+        return ConflictInfo(
+            file_path=file_path,
+            conflict_lines=list(range(first_conflict["start_line"], first_conflict["end_line"] + 1)),
+            our_content=first_conflict["our_content"],
+            their_content=first_conflict["their_content"],
+            base_content=None,  # Could be enhanced to get common ancestor content
+            before_context=first_conflict["before_context"],
+            after_context=first_conflict["after_context"],
+            full_context=first_conflict["full_context"],
+            full_file_content=conflict_data["full_content"],
+            start_line=first_conflict["start_line"],
+            end_line=first_conflict["end_line"],
+            context_start_line=first_conflict["context_start_line"],
+            context_end_line=first_conflict["context_end_line"]
+        )
 
     def get_merge_preview(self, source_branch: str, target_branch: Optional[str] = None) -> str:
         """

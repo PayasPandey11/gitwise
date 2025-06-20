@@ -31,8 +31,15 @@ class ConflictInfo:
     our_content: str
     their_content: str
     base_content: Optional[str] = None
-    line_start: Optional[int] = None
-    line_end: Optional[int] = None
+    # Enhanced context fields
+    before_context: str = ""
+    after_context: str = ""
+    full_context: str = ""
+    full_file_content: str = ""
+    start_line: int = 0
+    end_line: int = 0
+    context_start_line: int = 0
+    context_end_line: int = 0
 
 
 @dataclass
