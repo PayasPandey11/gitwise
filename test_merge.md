@@ -1,1 +1,1 @@
-# Test file for smart merge
+# Different content for conflict test
