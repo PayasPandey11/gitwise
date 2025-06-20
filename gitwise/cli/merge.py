@@ -57,7 +57,7 @@ def merge_command_cli(
             
         # Regular merge operation
         if not source_branch:
-            components.show_error("Source branch is required")
+            components.show_error("Source branch is required for merge operations")
             raise typer.Exit(code=1)
             
         # Create merge options

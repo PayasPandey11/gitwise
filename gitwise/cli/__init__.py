@@ -273,7 +273,7 @@ def get_context_cli_entrypoint() -> None:
 
 @app.command(name="merge")
 def merge_cli_entrypoint(
-    source_branch: str = typer.Argument(..., help="Branch to merge from"),
+    source_branch: str = typer.Argument(None, help="Branch to merge from"),
     strategy: str = typer.Option(
         "auto", 
         "--strategy", 
