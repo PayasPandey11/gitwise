@@ -42,17 +42,56 @@ class ConflictExplainer:
             return self._generate_fallback_explanation(conflict)
 
     def _build_explanation_prompt(self, conflict: ConflictInfo, context: str) -> str:
-        """Build the AI prompt for conflict explanation."""
+        """Build the AI prompt for conflict explanation with enhanced context."""
         # Determine file type context
         file_context = self._get_file_context(conflict.file_path)
         
-        # Combine context
+        # Decide whether to use full file or just context based on file size
+        use_full_file = len(conflict.full_file_content.splitlines()) <= 100
+        
+        if use_full_file:
+            # For smaller files, provide the complete file content
+            content_for_ai = f"""
+=== FULL FILE CONTENT ({conflict.file_path}) ===
+{conflict.full_file_content}
+
+=== CONFLICT LOCATION ===
+Lines {conflict.start_line + 1}-{conflict.end_line + 1} have conflicts.
+
+=== OUR VERSION (Current Branch) ===
+{conflict.our_content}
+
+=== THEIR VERSION (Incoming Branch) ===
+{conflict.their_content}
+"""
+        else:
+            # For larger files, provide context window around the conflict
+            content_for_ai = f"""
+=== CONTEXT AROUND CONFLICT ({conflict.file_path}) ===
+Showing lines {conflict.context_start_line + 1}-{conflict.context_end_line + 1}
+
+{conflict.full_context}
+
+=== CONFLICT DETAILS ===
+Location: Lines {conflict.start_line + 1}-{conflict.end_line + 1}
+
+Our Version (Current Branch):
+{conflict.our_content}
+
+Their Version (Incoming Branch):
+{conflict.their_content}
+"""
+        
+        # Combine all context
         full_context = f"{file_context}. {context}".strip()
         
         prompt = PROMPT_CONFLICT_EXPLANATION.replace("{{file_path}}", conflict.file_path)
+        prompt = prompt.replace("{{file_content}}", content_for_ai)
+        prompt = prompt.replace("{{context}}", full_context)
+        
+        # Legacy support for older prompt format
         prompt = prompt.replace("{{our_content}}", conflict.our_content or "No content")
         prompt = prompt.replace("{{their_content}}", conflict.their_content or "No content")
-        prompt = prompt.replace("{{context}}", full_context)
         
         return prompt
 

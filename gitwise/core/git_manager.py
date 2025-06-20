@@ -399,7 +399,7 @@ class GitManager:
         return []
 
     def get_conflict_content(self, file_path: str) -> Optional[Dict[str, str]]:
-        """Get conflict markers content for a specific file."""
+        """Get conflict markers content for a specific file with enhanced context."""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -407,32 +407,94 @@ class GitManager:
             if '<<<<<<< HEAD' not in content:
                 return None
             
-            # Parse conflict markers
+            # Parse conflict markers with line numbers and context
             lines = content.splitlines()
             conflicts = []
-            in_conflict = False
-            current_conflict = {"ours": [], "theirs": [], "base": []}
+            conflict_regions = []
             
-            for line in lines:
-                if line.startswith('<<<<<<< '):
-                    in_conflict = True
-                    current_conflict = {"ours": [], "theirs": [], "base": []}
-                elif line.startswith('======='):
-                    # Switch from ours to theirs
-                    pass
-                elif line.startswith('>>>>>>> '):
-                    in_conflict = False
-                    conflicts.append(current_conflict.copy())
-                elif in_conflict:
-                    if '=======' not in [l for l in lines if l.startswith('=======')]:
-                        current_conflict["ours"].append(line)
-                    else:
-                        current_conflict["theirs"].append(line)
+            i = 0
+            while i < len(lines):
+                if lines[i].startswith('<<<<<<< '):
+                    # Found start of conflict
+                    start_line = i
+                    our_lines = []
+                    their_lines = []
+                    separator_line = None
+                    end_line = None
+                    
+                    i += 1
+                    # Collect "our" content
+                    while i < len(lines):
+                        if lines[i].startswith('======='):
+                            separator_line = i
+                            break
+                        our_lines.append(lines[i])
+                        i += 1
+                    
+                    i += 1
+                    # Collect "their" content
+                    while i < len(lines):
+                        if lines[i].startswith('>>>>>>> '):
+                            end_line = i
+                            break
+                        their_lines.append(lines[i])
+                        i += 1
+                    
+                    if end_line is not None:
+                        conflicts.append({
+                            "start_line": start_line,
+                            "end_line": end_line,
+                            "our_content": "\n".join(our_lines),
+                            "their_content": "\n".join(their_lines),
+                            "our_lines": our_lines,
+                            "their_lines": their_lines
+                        })
+                        
+                        conflict_regions.append((start_line, end_line))
+                
+                i += 1
+            
+            # Get context around conflicts (10 lines before and after each conflict)
+            context_window = 10
+            enhanced_conflicts = []
+            
+            for conflict in conflicts:
+                start_line = conflict["start_line"]
+                end_line = conflict["end_line"]
+                
+                # Get context before conflict
+                context_start = max(0, start_line - context_window)
+                before_context = lines[context_start:start_line]
+                
+                # Get context after conflict
+                context_end = min(len(lines), end_line + 1 + context_window)
+                after_context = lines[end_line + 1:context_end]
+                
+                enhanced_conflict = {
+                    **conflict,
+                    "before_context": "\n".join(before_context),
+                    "after_context": "\n".join(after_context),
+                    "context_start_line": context_start,
+                    "context_end_line": context_end - 1,
+                    "full_context": "\n".join(
+                        before_context + 
+                        [f"<<<< CONFLICT START (line {start_line + 1}) >>>>"] +
+                        conflict["our_lines"] +
+                        ["======= THEIR CHANGES ======="] +
+                        conflict["their_lines"] +
+                        [f"<<<< CONFLICT END (line {end_line + 1}) >>>>"] +
+                        after_context
+                    )
+                }
+                enhanced_conflicts.append(enhanced_conflict)
             
             return {
-                "our_content": "\n".join(sum([c["ours"] for c in conflicts], [])),
-                "their_content": "\n".join(sum([c["theirs"] for c in conflicts], [])),
-                "full_content": content
+                "our_content": "\n".join(sum([c["our_lines"] for c in conflicts], [])),
+                "their_content": "\n".join(sum([c["their_lines"] for c in conflicts], [])),
+                "full_content": content,
+                "conflicts": enhanced_conflicts,
+                "total_lines": len(lines),
+                "conflict_count": len(conflicts)
             }
         except Exception:
             return None
