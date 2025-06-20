@@ -8,6 +8,7 @@ import typer
 
 from gitwise.cli.add import add_command_cli
 from gitwise.cli.init import init_command
+from gitwise.cli.merge import merge_command_cli
 from gitwise.features.changelog import ChangelogFeature
 from gitwise.features.commit import CommitFeature
 from gitwise.features.context import ContextFeature
@@ -24,6 +25,7 @@ app = typer.Typer(
     Features:
     • Smart commit messages
     • Intelligent PR descriptions
+    • Smart merge with conflict analysis
     • Automatic changelog generation
     • Interactive staging and committing
     
@@ -267,6 +269,66 @@ def get_context_cli_entrypoint() -> None:
     """Show stored context for the current branch."""
     feature = ContextFeature()
     feature.execute_get_context()
+
+
+@app.command(name="merge")
+def merge_cli_entrypoint(
+    source_branch: str = typer.Argument(None, help="Branch to merge from"),
+    strategy: str = typer.Option(
+        "auto", 
+        "--strategy", 
+        "-s", 
+        help="Merge strategy (auto, manual, ours, theirs)"
+    ),
+    no_commit: bool = typer.Option(
+        False, 
+        "--no-commit", 
+        help="Don't create merge commit automatically"
+    ),
+    no_ff: bool = typer.Option(
+        False, 
+        "--no-ff", 
+        help="Create merge commit even for fast-forward"
+    ),
+    squash: bool = typer.Option(
+        False, 
+        "--squash", 
+        help="Squash commits from source branch"
+    ),
+    continue_merge: bool = typer.Option(
+        False, 
+        "--continue", 
+        help="Continue merge after resolving conflicts"
+    ),
+    abort_merge: bool = typer.Option(
+        False, 
+        "--abort", 
+        help="Abort ongoing merge"
+    ),
+    edit_message: bool = typer.Option(
+        True, 
+        "--edit-message/--no-edit-message", 
+        help="Allow editing merge message"
+    ),
+    auto_confirm: bool = typer.Option(
+        False,
+        "--yes",
+        "-y", 
+        help="Skip interactive prompts"
+    )
+) -> None:
+    """Smart merge with AI-powered conflict analysis and resolution assistance."""
+    merge_command_cli(
+        source_branch=source_branch if not (continue_merge or abort_merge) else "",
+        strategy=strategy,
+        no_commit=no_commit,
+        no_ff=no_ff,
+        squash=squash,
+        edit_message=edit_message,
+        continue_merge=continue_merge,
+        abort_merge=abort_merge,
+        auto_confirm=auto_confirm
+    )
 
 
 def main() -> None:
