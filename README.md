@@ -15,6 +15,7 @@
 Are you a seasoned developer who loves the power of Git but wishes some parts were faster or smarter? GitWise is built for you. We don't replace your Git knowledge; we augment it. GitWise helps you:
 
 - **Craft Perfect Commits, Instantly**: Generate Conventional Commit messages from your staged diffs in seconds.
+- **Smart Merge with AI Conflict Analysis**: AI explains conflicts in human terms, suggests resolution strategies, and generates intelligent merge commit messages.
 - **Streamline PR Creation**: Get AI-generated PR titles and descriptions, plus automated label and checklist suggestions.
 - **Maintain Changelogs Effortlessly**: Keep your `CHANGELOG.md` up-to-date with minimal fuss.
 - **Retain Full Git Control**: Use any standard Git command via `gitwise git ...` with the speed you expect. AI features are opt-in enhancements.
@@ -69,6 +70,7 @@ gitwise pr --labels --checklist
 
 - **🚀 Blazing Fast Core**: Standard Git commands passed through `gitwise git ...` run at native Git speed.
 - **🧠 Smart Commit Messages**: AI-generated Conventional Commits (opt-in grouping for complex changes via `gitwise commit --group`).
+- **🔀 AI-Powered Smart Merge**: Intelligent conflict analysis with human-readable explanations and resolution strategies.
 - **⚡ Streamlined Workflow**: Auto-confirm mode (`gitwise add -y`) for fully automated stage → commit → push → PR workflow.
 - **✍️ Intelligent PR Descriptions**: AI-generated PR titles and descriptions.
 - **🏷️ Automated PR Enhancements**: Optional label suggestions based on commit types and file-specific checklists for PRs.
@@ -336,6 +338,23 @@ gitwise commit --group
 # 3. "test: add user validation tests"
 ```
 
+#### Smart Merge with AI Conflict Analysis
+```bash
+# AI-powered merge with conflict resolution assistance
+gitwise merge feature/payment-system
+
+# For conflicts, AI explains what's happening:
+# 🔍 Analyzing merge: feature/payment-system
+# ⚠️ 2 conflicts detected in config.py and requirements.txt
+# 🧠 AI explains: "Both branches modified database config..."
+# 💡 AI suggests: "Combine both configurations..."
+# 🛠️ Manual resolution required - resolve conflicts then:
+gitwise merge --continue
+
+# Or abort if needed
+gitwise merge --abort
+```
+
 #### Changelog Management
 ```bash
 # Update changelog before release
@@ -504,6 +523,24 @@ GitWise commands are designed to be intuitive. Here are the main ones:
 - `--checklist`: Adds a context-aware checklist to the PR body based on changed file types (e.g., reminders for tests, docs for Python files).
 - Example: `gitwise pr --labels --checklist --base develop`
 
+### `gitwise merge <branch> [--strategy <strategy>] [--continue] [--abort] [--yes]`
+- **AI-powered merge with intelligent conflict analysis and resolution assistance**.
+- Analyzes merge scenarios, detects conflicts, and provides human-readable explanations.
+- **Conflict Analysis**: AI explains what each side is trying to accomplish and suggests resolution strategies.
+- **Smart Merge Messages**: Generates intelligent merge commit messages based on the changes.
+- **Safe by Design**: Never auto-resolves conflicts - always requires user confirmation.
+- `--strategy`: Merge strategy (`auto`, `manual`, `ours`, `theirs`) - defaults to `auto`
+- `--continue`: Continue merge after manually resolving conflicts
+- `--abort`: Abort an ongoing merge operation  
+- `--yes` or `-y`: Skip interactive prompts for automated workflows
+- `--no-commit`: Don't create merge commit automatically
+- `--no-ff`: Create merge commit even for fast-forward merges
+- `--squash`: Squash commits from source branch
+- Example: `gitwise merge feature/auth` (basic merge with AI analysis)
+- Example: `gitwise merge feature/payment --strategy manual` (manual strategy)
+- Example: `gitwise merge --continue` (continue after resolving conflicts)
+- Example: `gitwise merge --abort` (abort ongoing merge)
+
 ### `gitwise changelog [--version <version>] [--output-file <file>]`
 - Generates or updates your `CHANGELOG.md`.
 - **For New Releases**: Run `gitwise changelog`. It will suggest a semantic version based on your recent commits. Confirm or provide a version (e.g., `v1.2.3`). The AI will generate entries for this version. The command will also offer to create a git tag for the version.
@@ -554,16 +591,41 @@ gitwise commit --group
 # 3. "test: add integration tests for concurrent cache access"
 ```
 
+### Smart Merge with Conflict Resolution
+
+```bash
+# Merge a feature branch with potential conflicts
+gitwise merge feature/database-migration
+
+# GitWise analyzes the merge:
+# 🔍 Analyzing merge: feature/database-migration
+# 📊 3-way merge required
+# ⚠️ 2 conflict(s) detected
+
+# AI explains conflicts in human terms:
+# 📁 src/models.py
+# "Both branches modified the User model. Your branch added 
+#  email validation while the feature branch added password hashing."
+
+# 💡 Resolution Strategy: "Combine both features by keeping both 
+#     the email validation and password hashing changes"
+
+# Resolve conflicts manually, then:
+gitwise merge --continue
+# ✅ Generates intelligent merge commit message
+```
+
 **[→ More examples and advanced workflows](https://payaspandey11.github.io/gitwise/features.html#real-world-workflows)**
 
 ## 💡 Quick Tips
 
 1. **Commit Message Quality**: GitWise works best when you stage related changes together
-2. **Performance**: Use Ollama for the best balance of speed and quality
-3. **Privacy**: Use offline mode for sensitive codebases
-4. **Streamlined Workflow**: Use `gitwise add . -y` for a fully automated workflow (stage → commit → push → PR)
-5. **Advanced Features**: Use `gitwise commit --group` for complex changes
-6. **PR Enhancement**: Always use `--labels --checklist` for better PRs
+2. **Smart Merge**: Use `gitwise merge` instead of `git merge` for AI-powered conflict analysis and resolution guidance
+3. **Performance**: Use Ollama for the best balance of speed and quality
+4. **Privacy**: Use offline mode for sensitive codebases
+5. **Streamlined Workflow**: Use `gitwise add . -y` for a fully automated workflow (stage → commit → push → PR)
+6. **Advanced Features**: Use `gitwise commit --group` for complex changes
+7. **PR Enhancement**: Always use `--labels --checklist` for better PRs
 
 ## 🛠️ Development & Contributing
 
