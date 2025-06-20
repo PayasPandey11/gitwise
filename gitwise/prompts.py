@@ -50,3 +50,64 @@ Commits:
 
 {{guidance}}
 """
+
+# Smart Merge Prompts
+PROMPT_CONFLICT_EXPLANATION = """
+Analyze the following merge conflict and provide a clear explanation.
+
+Rules:
+- Explain what each side (ours vs theirs) is trying to accomplish
+- Identify the root cause of the conflict
+- Use non-technical language when possible
+- Be concise but comprehensive
+- Focus on the intent behind the changes
+
+File: {{file_path}}
+
+Our changes:
+{{our_content}}
+
+Their changes:
+{{their_content}}
+
+Context: {{context}}
+"""
+
+PROMPT_RESOLUTION_STRATEGY = """
+Suggest a strategy for resolving the following merge conflicts.
+
+Rules:
+- Provide specific, actionable steps
+- Suggest multiple approaches if applicable
+- Warn about potential risks
+- Prioritize preserving functionality
+- Be clear about the recommended approach
+
+Conflicts summary:
+{{conflicts_summary}}
+
+Files affected: {{files_list}}
+
+Branch context: {{branch_context}}
+"""
+
+PROMPT_MERGE_MESSAGE = """
+Generate a merge commit message for the following merge operation.
+
+Rules:
+- Use format: "Merge branch 'source' into target"
+- Add a descriptive body explaining what was merged
+- Include conflict resolution notes if applicable
+- Follow conventional commit style
+- Keep subject line ≤50 characters
+
+Source branch: {{source_branch}}
+Target branch: {{target_branch}}
+
+Changes summary:
+{{changes_summary}}
+
+Conflicts resolved: {{conflicts_resolved}}
+
+Context: {{context}}
+"""

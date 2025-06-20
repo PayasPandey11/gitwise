@@ -375,6 +375,125 @@ class GitManager:
                 return branch_name
         return None
 
+    # Smart merge related methods
+    def can_merge(self, source_branch: str, target_branch: Optional[str] = None) -> bool:
+        """Check if a merge is possible between branches."""
+        if not target_branch:
+            target_branch = self.get_current_branch()
+        if not target_branch:
+            return False
+        
+        try:
+            # Check if branches exist
+            self._run_git_command(["rev-parse", "--verify", source_branch], check=True)
+            self._run_git_command(["rev-parse", "--verify", target_branch], check=True)
+            return True
+        except RuntimeError:
+            return False
+
+    def get_merge_conflicts(self) -> List[str]:
+        """Get list of files with merge conflicts."""
+        result = self._run_git_command(["diff", "--name-only", "--diff-filter=U"], check=False)
+        if result.returncode == 0 and result.stdout:
+            return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        return []
+
+    def get_conflict_content(self, file_path: str) -> Optional[Dict[str, str]]:
+        """Get conflict markers content for a specific file."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            if '<<<<<<< HEAD' not in content:
+                return None
+            
+            # Parse conflict markers
+            lines = content.splitlines()
+            conflicts = []
+            in_conflict = False
+            current_conflict = {"ours": [], "theirs": [], "base": []}
+            
+            for line in lines:
+                if line.startswith('<<<<<<< '):
+                    in_conflict = True
+                    current_conflict = {"ours": [], "theirs": [], "base": []}
+                elif line.startswith('======='):
+                    # Switch from ours to theirs
+                    pass
+                elif line.startswith('>>>>>>> '):
+                    in_conflict = False
+                    conflicts.append(current_conflict.copy())
+                elif in_conflict:
+                    if '=======' not in [l for l in lines if l.startswith('=======')]:
+                        current_conflict["ours"].append(line)
+                    else:
+                        current_conflict["theirs"].append(line)
+            
+            return {
+                "our_content": "\n".join(sum([c["ours"] for c in conflicts], [])),
+                "their_content": "\n".join(sum([c["theirs"] for c in conflicts], [])),
+                "full_content": content
+            }
+        except Exception:
+            return None
+
+    def attempt_merge(self, source_branch: str, no_commit: bool = True) -> bool:
+        """Attempt to merge a branch. Returns True if successful, False if conflicts."""
+        cmd = ["merge"]
+        if no_commit:
+            cmd.append("--no-commit")
+        cmd.append(source_branch)
+        
+        result = self._run_git_command(cmd, check=False)
+        return result.returncode == 0
+
+    def abort_merge(self) -> bool:
+        """Abort an ongoing merge."""
+        result = self._run_git_command(["merge", "--abort"], check=False)
+        return result.returncode == 0
+
+    def continue_merge(self) -> bool:
+        """Continue merge after resolving conflicts."""
+        result = self._run_git_command(["merge", "--continue"], check=False)
+        return result.returncode == 0
+
+    def is_merge_in_progress(self) -> bool:
+        """Check if a merge is currently in progress."""
+        try:
+            result = self._run_git_command(["rev-parse", "--verify", "MERGE_HEAD"], check=False)
+            return result.returncode == 0
+        except RuntimeError:
+            return False
+
+    def get_branch_divergence(self, branch1: str, branch2: str) -> Optional[Dict[str, int]]:
+        """Get number of commits each branch is ahead/behind the other."""
+        try:
+            # Get commits in branch1 not in branch2
+            result1 = self._run_git_command(
+                ["rev-list", "--count", f"{branch2}..{branch1}"], check=True
+            )
+            ahead = int(result1.stdout.strip())
+            
+            # Get commits in branch2 not in branch1
+            result2 = self._run_git_command(
+                ["rev-list", "--count", f"{branch1}..{branch2}"], check=True
+            )
+            behind = int(result2.stdout.strip())
+            
+            return {"ahead": ahead, "behind": behind}
+        except (RuntimeError, ValueError):
+            return None
+
+    def can_fast_forward(self, source_branch: str, target_branch: Optional[str] = None) -> bool:
+        """Check if merge can be fast-forwarded."""
+        if not target_branch:
+            target_branch = self.get_current_branch()
+        if not target_branch:
+            return False
+        
+        divergence = self.get_branch_divergence(source_branch, target_branch)
+        return divergence is not None and divergence["behind"] == 0
+
 
 # Example usage (for testing purposes, normally not here)
 if __name__ == "__main__":
