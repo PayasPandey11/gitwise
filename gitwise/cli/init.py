@@ -109,8 +109,8 @@ def display_direct_provider_options() -> None:
     """Display direct provider options."""
     typer.echo("\nChoose your direct provider:")
     typer.echo("  1. Google Gemini")
-    typer.echo("     Google's latest AI models with multimodal capabilities")
-    typer.echo("     Great for coding, analysis, and image understanding")
+    typer.echo("     Google's latest Gemini 2.x AI models with enhanced capabilities")
+    typer.echo("     Excellent for coding, analysis, and multimodal understanding")
     typer.echo("")
     typer.echo("  2. OpenAI")
     typer.echo("     GPT models including GPT-4, GPT-4 Turbo")
@@ -169,17 +169,17 @@ def configure_gemini_provider(config: dict) -> None:
     
     # Model selection for Gemini
     typer.echo("\nChoose your Gemini model:")
-    typer.echo("  1. gemini-1.5-pro (Best Quality)")
-    typer.echo("  2. gemini-1.5-flash (Balanced - Recommended)")
-    typer.echo("  3. gemini-1.0-pro (Fast)")
+    typer.echo("  1. gemini-2.5-flash (Best Quality)")
+    typer.echo("  2. gemini-2.0-flash (Balanced - Recommended)")
+    typer.echo("  3. gemini-2.0-flash-lite (Fast)")
     
     model_choice = typer.prompt("Enter choice [1/2/3]", default="2")
     if model_choice == "1":
-        config["model"] = "gemini-1.5-pro"
+        config["model"] = "gemini-2.5-flash"
     elif model_choice == "3":
-        config["model"] = "gemini-1.0-pro"
+        config["model"] = "gemini-2.0-flash-lite"
     else:
-        config["model"] = "gemini-1.5-flash"
+        config["model"] = "gemini-2.0-flash"
     
     typer.echo(f"✓ Configured Google Gemini with model: {config['model']}")
 
