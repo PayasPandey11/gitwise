@@ -116,3 +116,44 @@ Conflicts resolved: {{conflicts_resolved}}
 
 Context: {{context}}
 """
+
+# Commit Grouping Prompt
+PROMPT_COMMIT_GROUPING = """You are a Git commit analysis expert. Analyze the provided staged changes and suggest how to group them into logical, cohesive commits.
+
+STAGED CHANGES:
+{{staged_changes}}
+
+INSTRUCTIONS:
+1. Analyze the actual code changes, not just file paths
+2. Group related functionality together (e.g., feature implementation + tests + docs)
+3. Separate unrelated changes into different commits
+4. Consider semantic relationships between changes
+5. Aim for commits that tell a clear story about what was accomplished
+6. Each group should represent a single logical unit of work
+
+RESPONSE FORMAT:
+Return a valid JSON object with this exact structure:
+
+{
+  "groups": [
+    {
+      "name": "Short descriptive name for the group",
+      "description": "What this group of changes accomplishes",
+      "files": ["file1.py", "file2.py"],
+      "suggested_commit_message": "feat: implement user authentication system",
+      "reasoning": "Brief explanation of why these files belong together"
+    }
+  ],
+  "recommendation": "single" or "multiple",
+  "overall_description": "High-level summary of all the changes"
+}
+
+RULES:
+- Only suggest multiple commits if the changes are truly unrelated
+- Prefer fewer, more cohesive commits over many small ones
+- Include all provided files in exactly one group
+- Use conventional commit prefixes (feat:, fix:, docs:, refactor:, etc.)
+- Keep commit messages under 50 characters for the subject line
+- If changes are closely related, recommend "single" commit
+- Return only the JSON, no additional text or explanation
+"""
