@@ -3,6 +3,7 @@
 import os
 import subprocess
 import tempfile
+import json
 from typing import Callable, Dict, List, Optional, Any
 
 import typer
@@ -11,7 +12,7 @@ from gitwise.config import ConfigError, get_llm_backend, load_config
 from gitwise.core.git_manager import GitManager
 from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
-from gitwise.prompts import PROMPT_COMMIT_MESSAGE
+from gitwise.prompts import PROMPT_COMMIT_MESSAGE, PROMPT_COMMIT_GROUPING
 from gitwise.ui import components
 from gitwise.llm.offline import ensure_offline_model_ready
 
@@ -114,8 +115,89 @@ def build_commit_message_interactive() -> str:
 
 def analyze_changes(changed_files: List[str]) -> List[Dict[str, Any]]:
     """
-    Analyze changed files to find patterns for grouping.
+    Analyze changed files using LLM to find semantic patterns for grouping.
+    Falls back to simple pattern matching if LLM analysis fails.
     Returns a list of suggested commit groups.
+    """
+    # Try LLM-based analysis first
+    try:
+        # Get staged diff content for each file
+        staged_changes = ""
+        
+        for file_path in changed_files:
+            try:
+                # Get diff for individual file
+                file_diff = git_manager.get_file_diff_staged(file_path)
+                if file_diff:
+                    staged_changes += f"\n=== FILE: {file_path} ===\n"
+                    staged_changes += file_diff
+                    staged_changes += "\n" + "="*50 + "\n"
+                else:
+                    # Handle new files or files with no diff
+                    staged_changes += f"\n=== FILE: {file_path} (new file or no changes) ===\n"
+                    staged_changes += f"File path: {file_path}\n"
+                    staged_changes += "="*50 + "\n"
+            except Exception:
+                # If we can't get diff for a file, just include the path
+                staged_changes += f"\n=== FILE: {file_path} (diff unavailable) ===\n"
+                staged_changes += f"File path: {file_path}\n"
+                staged_changes += "="*50 + "\n"
+        
+        if not staged_changes.strip():
+            raise Exception("No staged changes content available")
+        
+        # Call LLM with the grouping prompt
+        prompt = PROMPT_COMMIT_GROUPING.replace("{{staged_changes}}", staged_changes)
+        llm_response = get_llm_response(prompt)
+        
+        # Parse JSON response
+        try:
+            response_data = json.loads(llm_response.strip())
+            
+            # Validate response structure
+            if "groups" not in response_data or "recommendation" not in response_data:
+                raise ValueError("Invalid response structure")
+            
+            # Convert LLM response to our expected format
+            suggestions = []
+            for group in response_data["groups"]:
+                if len(group.get("files", [])) >= 1:  # At least 1 file per group
+                    suggestions.append({
+                        "type": "llm_semantic",
+                        "name": group.get("name", "LLM Suggested Group"),
+                        "description": group.get("description", ""),
+                        "files": group.get("files", []),
+                        "suggested_commit_message": group.get("suggested_commit_message", ""),
+                        "reasoning": group.get("reasoning", "")
+                    })
+            
+            # Only return LLM suggestions if we have meaningful groups and recommendation is "multiple"
+            if (suggestions and len(suggestions) >= 2 and 
+                response_data.get("recommendation") == "multiple"):
+                components.console.print("[dim cyan]✓ LLM analysis completed - semantic grouping suggested[/dim cyan]")
+                return suggestions
+            elif suggestions and len(suggestions) == 1:
+                # Single group suggested by LLM - don't split
+                components.console.print("[dim cyan]✓ LLM analysis completed - single commit recommended[/dim cyan]")
+                return []
+            else:
+                # Fall back to pattern matching
+                components.console.print("[dim yellow]⚠ LLM suggested no meaningful groups - using pattern matching[/dim yellow]")
+                
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            components.console.print(f"[dim yellow]⚠ LLM response parsing failed: {e} - using pattern matching[/dim yellow]")
+            
+    except Exception as e:
+        components.console.print(f"[dim yellow]⚠ LLM analysis failed: {e} - using pattern matching[/dim yellow]")
+    
+    # Fallback to original pattern-matching logic
+    return _analyze_changes_pattern_matching(changed_files)
+
+
+def _analyze_changes_pattern_matching(changed_files: List[str]) -> List[Dict[str, Any]]:
+    """
+    Original pattern-matching logic for grouping files.
+    Used as fallback when LLM analysis fails.
     """
     # Group files by directory
     dir_groups = {}
@@ -361,13 +443,24 @@ class CommitFeature:
                 if suggestions and len(suggestions) > 1:
                     components.show_section("Suggested Commit Groups")
                     for i, group_item in enumerate(suggestions, 1):
-                        components.console.print(f"\n[bold]Group {i}:[/bold]")
+                        components.console.print(f"\n[bold]Group {i}: {group_item['name']}[/bold]")
                         components.console.print(
                             f"Files: {', '.join(group_item['files'])}"
                         )
-                        components.console.print(
-                            f"Suggested commit: {group_item['type']}: {group_item['name']}"
-                        )
+                        
+                        # Show different info based on group type
+                        if group_item['type'] == 'llm_semantic':
+                            if group_item.get('description'):
+                                components.console.print(f"[dim]Description: {group_item['description']}[/dim]")
+                            if group_item.get('suggested_commit_message'):
+                                components.console.print(f"Suggested commit: [cyan]{group_item['suggested_commit_message']}[/cyan]")
+                            if group_item.get('reasoning'):
+                                components.console.print(f"[dim]Reasoning: {group_item['reasoning']}[/dim]")
+                        else:
+                            # Fallback display for pattern-matching groups
+                            components.console.print(
+                                f"Suggested commit: {group_item['type']}: {group_item['name']}"
+                            )
 
                     choice = safe_prompt(
                         "Commit these groups separately, or consolidate into a single commit?",
@@ -414,14 +507,20 @@ class CommitFeature:
                             try:
                                 self.git_manager.stage_files(group_item["files"])
                                 
-                                # Generate LLM commit message for the group instead of hardcoded message
-                                group_diff = self.git_manager.get_staged_diff()
-                                if group_diff:
-                                    guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
-                                    commit_message_for_group = generate_commit_message(group_diff, guidance)
+                                # Use LLM-suggested commit message if available, otherwise generate one
+                                if (group_item['type'] == 'llm_semantic' and 
+                                    group_item.get('suggested_commit_message')):
+                                    commit_message_for_group = group_item['suggested_commit_message']
+                                    components.console.print(f"[dim cyan]Using LLM-suggested commit message[/dim cyan]")
                                 else:
-                                    # Fallback to simple description if no diff
-                                    commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
+                                    # Generate LLM commit message for the group
+                                    group_diff = self.git_manager.get_staged_diff()
+                                    if group_diff:
+                                        guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
+                                        commit_message_for_group = generate_commit_message(group_diff, guidance)
+                                    else:
+                                        # Fallback to simple description if no diff
+                                        commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
                                 
                                 with components.show_spinner(
                                     f"Committing group - {len(group_item['files'])} files..."
