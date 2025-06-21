@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/pygitwise.svg)](https://pypi.org/project/pygitwise/)
 [![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/pygitwise/)
-[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0%20OR%20Commercial-blue)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
 [![codecov](https://codecov.io/gh/PayasPandey11/gitwise/branch/main/graph/badge.svg)](https://codecov.io/gh/PayasPandey11/gitwise)
 [![CI Status](https://github.com/PayasPandey11/gitwise/workflows/CI/badge.svg)](https://github.com/PayasPandey11/gitwise/actions)
 [![Documentation](https://img.shields.io/badge/docs-github%20pages-blue)](https://payaspandey11.github.io/gitwise/)
@@ -656,7 +656,33 @@ GitWise is actively developing! Here are some directions we're exploring:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+GitWise is available under a **dual license model**:
+
+### 🆓 Open Source (AGPL v3)
+- **Free** for open source projects and personal use
+- **Must share derivatives** under AGPL v3 terms
+- **Must disclose source** if you run modified versions on servers
+- Perfect for: Open source projects, learning, personal use
+
+### 💼 Commercial License
+- **Paid license** for commercial/proprietary use
+- **No sharing requirements** - keep your modifications private
+- **Commercial support** and custom terms available
+- Perfect for: Companies, proprietary products, commercial services
+
+**Need a commercial license?** Contact for pricing and terms.
+
+### 🤔 Which License Do I Need?
+
+| Use Case | License | Cost |
+|----------|---------|------|
+| Open source project | AGPL v3 | 🆓 Free |
+| Personal learning/use | AGPL v3 | 🆓 Free |
+| Internal company tools | Commercial | 💰 Paid |
+| Proprietary products | Commercial | 💰 Paid |
+| SaaS/hosted services | Commercial | 💰 Paid |
+
+See the [LICENSE](LICENSE) file for complete terms.
 
 ---
 
@@ -664,4 +690,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **[📖 Documentation](https://payaspandey11.github.io/gitwise/) • [🚀 Quick Start](https://payaspandey11.github.io/gitwise/quick-start.html) • [💬 Issues](https://github.com/PayasPandey11/gitwise/issues) • [🤝 Contributing](CONTRIBUTING.md)**
 </div>
-This project is licensed under the MIT License - see the `LICENSE` file for details.
