@@ -1,21 +1,65 @@
-MIT License
+DUAL LICENSE
 
-Copyright (c) 2024 Payas Pandey
+This software is available under two licenses:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+================================================================================
+OPEN SOURCE LICENSE (AGPL v3)
+================================================================================
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. 
+Copyright (C) 2024 Payas Pandey
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+ADDITIONAL TERMS:
+If you run a modified version of this software on a server and let other 
+users interact with it there, your server must also allow users to 
+download the source code corresponding to the modified version running there.
+
+================================================================================
+COMMERCIAL LICENSE
+================================================================================
+
+For commercial use, proprietary modifications, or to avoid AGPL requirements,
+a separate commercial license is available.
+
+Commercial licenses include:
+- Permission for proprietary/closed-source derivatives
+- No requirement to disclose source code
+- Commercial support and warranties
+- Custom licensing terms available
+
+To obtain a commercial license, contact:
+- Email: rpayaspandey@gmail.com
+- LinkedIn: https://www.linkedin.com/in/payaspandey/
+
+Commercial licensing fees apply. Contact for pricing.
+
+================================================================================
+LICENSE SELECTION
+================================================================================
+
+- If you comply with AGPL v3 terms → Use under AGPL v3 (free)
+- If you need proprietary use → Obtain commercial license (paid)
+- If uncertain about compliance → Contact for clarification
+
+This dual licensing model ensures:
+✓ Open source community can use freely under AGPL
+✓ Commercial users must obtain proper licensing
+✓ No proprietary forks without compensation
+✓ Maximum control over commercial usage
+
+Copyright (c) 2024 Payas Pandey. All rights reserved. 
