@@ -14,14 +14,15 @@ GitWise transforms your Git workflow with intelligent AI assistance - from perfe
 ```bash
 git add .
 git commit -m "fix stuff"  # 😬 Vague, unhelpful
+git push
 # Write PR description manually... takes 10+ minutes
 ```
 
-**After GitWise** (AI-powered):
+**After GitWise** (Interactive AI workflow):
 ```bash
 gitwise add .
-gitwise commit  # 🤖 "fix: resolve authentication timeout in user login"
-gitwise pr      # 🤖 Generates detailed PR with labels, checklist, description
+# 🤖 Interactive: Shows changes → Generates commit → Pushes → Creates PR
+# Complete workflow in one command with AI assistance at each step
 ```
 
 *Perfect commits and PRs in seconds, not minutes.*
@@ -36,19 +37,20 @@ pip install pygitwise
 gitwise init
 
 # 3. Use it like Git, but smarter
-gitwise add .       # Interactive file staging
-gitwise commit      # AI-generated commit messages
-gitwise push        # Push with PR creation
-gitwise pr          # Detailed PR descriptions
+gitwise add .       # 🔄 Interactive: stage → commit → push → PR (full workflow)
+gitwise commit      # 🤖 AI-generated Conventional Commits  
+gitwise merge       # 🧠 Smart merge with AI conflict resolution
+gitwise pr          # 📝 Detailed PR with auto-labels & checklists
 ```
 
 **That's it!** Your commits now follow Conventional Commits, your PRs have detailed descriptions, and everything is generated from your actual code changes.
 
 ## 🎯 Why GitWise?
 
-### ⚡ **Speed**: 2-second commits vs 2-minute manual writing
-### 🧠 **Quality**: Conventional Commits with detailed descriptions
-### 🔒 **Privacy**: Local AI models (Ollama) - your code never leaves your machine
+### 🔄 **Complete Workflow**: One command does stage → commit → push → PR
+### ⚡ **Lightning Fast**: 15-second full workflow vs 10+ minute manual process  
+### 🧠 **Intelligent**: Auto-groups commits, resolves conflicts, generates perfect PRs
+### 🔒 **Privacy-First**: Local AI models (Ollama) - your code never leaves your machine
 ### 🛠️ **Familiar**: Works exactly like Git, just smarter
 
 ## 🤖 AI Backend Options
@@ -89,9 +91,11 @@ gitwise init
 
 ## 🔥 Key Features
 
-- **🤖 AI Commit Messages**: Generate Conventional Commits from your staged changes
+- **🔄 Interactive Workflow**: `gitwise add` does everything - stage → commit → push → PR in one flow
+- **🤖 AI Commit Messages**: Generate perfect Conventional Commits from your changes
+- **🧠 Smart Auto-Grouping**: Automatically groups related changes into separate commits
+- **🔀 Intelligent Merges**: AI-powered conflict analysis and resolution assistance  
 - **📝 Smart PR Descriptions**: Detailed descriptions with automated labels and checklists  
-- **⚡ Streamlined Workflow**: `gitwise add` → `gitwise commit` → `gitwise push` → `gitwise pr`
 - **🔒 Privacy-First**: Local AI models (Ollama) keep your code on your machine
 - **⚙️ Git Compatible**: Use as a drop-in replacement for Git commands
 - **📊 Changelog Generation**: Automated changelog updates

@@ -45,11 +45,13 @@ cd your-project
 # Make some changes
 echo "console.log('Hello GitWise!');" > test.js
 
-# Use GitWise workflow
-gitwise add .       # Interactive staging
-gitwise commit      # AI generates: "feat: add hello world console output"
-gitwise push        # Push to remote
-gitwise pr          # Create PR with AI description
+# Use GitWise interactive workflow
+gitwise add .       # 🔄 Interactive: Shows changes → Commits → Pushes → Creates PR
+# OR step by step:
+gitwise commit      # 🤖 AI generates: "feat: add hello world console output"  
+gitwise commit --group  # 🧠 Auto-groups related changes into separate commits
+gitwise merge       # 🔀 Smart merge with AI conflict resolution
+gitwise pr          # 📝 Create PR with AI description
 ```
 
 That's it! You now have perfect commits and PRs.
@@ -88,10 +90,12 @@ Once setup is complete, these are your main commands:
 
 | Command | What It Does |
 |---------|--------------|
-| `gitwise add .` | Interactive file staging with AI insights |
-| `gitwise commit` | Generate perfect Conventional Commits |
+| `gitwise add .` | 🔄 Interactive workflow: stage → commit → push → PR |
+| `gitwise commit` | 🤖 Generate perfect Conventional Commits |
+| `gitwise commit --group` | 🧠 Auto-group related changes into separate commits |
+| `gitwise merge` | 🔀 Smart merge with AI conflict analysis |
 | `gitwise push` | Push with optional PR creation |
-| `gitwise pr` | Create detailed PRs with labels & checklists |
+| `gitwise pr` | 📝 Create detailed PRs with labels & checklists |
 | `gitwise init` | Change AI backend or reconfigure |
 
 ## 🎯 Pro Tips

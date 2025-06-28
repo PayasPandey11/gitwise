@@ -40,21 +40,42 @@ gitwise pr --labels --checklist
 - Context-specific checklists
 - Proper PR title formatting
 
-### ⚡ Streamlined Workflow
-Complete Git workflow automation:
+### ⚡ Interactive Complete Workflow
+One command does everything with AI assistance:
 
 ```bash
 # Traditional workflow (slow)
 git add .
 git commit -m "vague message"
 git push
-# Manually create PR...
+# Manually create PR... 10+ minutes
 
-# GitWise workflow (fast)
-gitwise add . --yes
-gitwise commit --yes  
-gitwise push --yes
-gitwise pr --labels --checklist
+# GitWise interactive workflow (15 seconds)
+gitwise add .
+# 🔄 Shows changes → AI commit → Push → Create PR
+# Complete workflow with AI assistance at each step
+```
+
+### 🧠 Smart Auto-Grouping
+Automatically groups related changes into logical commits:
+
+```bash
+gitwise commit --group
+# AI analyzes changes and creates separate commits for:
+# - "feat: add user authentication"  
+# - "docs: update API documentation"
+# - "test: add auth unit tests"
+```
+
+### 🔀 Intelligent Merge Resolution
+AI-powered conflict analysis and resolution:
+
+```bash
+gitwise merge feature-branch
+# 🤖 Analyzes conflicts with context
+# 🧠 Suggests resolutions
+# 📝 Explains merge strategy
+# ⚡ Guides you through resolution
 ```
 
 ### 🎯 Branch Context Management
