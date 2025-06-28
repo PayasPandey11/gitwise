@@ -202,7 +202,6 @@ gitwise init  # Reconfigure backend
 
 ### Custom Model Selection
 For Ollama users:
-
 ```bash
 # List available models
 ollama list

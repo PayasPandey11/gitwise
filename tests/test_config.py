@@ -146,20 +146,24 @@ def test_config_exists_none(mock_exists, mock_env):
 
 # --- Test validate_config ---
 def test_validate_config_valid():
+    assert validate_config({"llm_backend": "ollama"}) is True
     assert validate_config({"llm_backend": "ollama", "ollama_model": "llama3"}) is True
-    assert validate_config({"llm_backend": "offline"}) is True
     assert (
         validate_config({"llm_backend": "online", "openrouter_api_key": "key"}) is True
     )
+    # Test with new provider format
+    assert validate_config({"llm_backend": "online", "openai": {"api_key": "key"}}) is True
 
 
 def test_validate_config_invalid():
-    assert validate_config({}) is False  # Missing backend
+    # Empty config defaults to ollama, which is now valid
+    assert validate_config({}) is True  # Defaults to ollama backend
     assert validate_config({"llm_backend": "unknown"}) is False  # Invalid backend
-    assert validate_config({"llm_backend": "ollama"}) is False  # Missing ollama_model
+    # Removed offline backend, so this should fail
+    assert validate_config({"llm_backend": "offline"}) is False  # Offline removed
     assert (
         validate_config({"llm_backend": "online"}) is False
-    )  # Missing openrouter_api_key
+    )  # Missing API key
 
 
 # --- Test get_llm_backend ---
