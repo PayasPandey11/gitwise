@@ -5,160 +5,155 @@ title: "Quick Start - GitWise"
 
 # Quick Start Guide
 
-Get GitWise up and running in under 5 minutes.
+Get GitWise running in 2 minutes and transform your Git workflow immediately.
 
 ## 📦 Installation
 
+### Option 1: Quick Install (Fastest)
 ```bash
-# Install from PyPI
 pip install pygitwise
-
-# For offline model support (optional)
-pip install "pygitwise[offline]"
-```
-
-## 🚀 Initial Setup
-
-Run the interactive setup to configure your preferred AI backend:
-
-```bash
 gitwise init
 ```
 
-This will guide you through:
-1. Choosing your AI backend (Ollama, Offline, Online through OpenRouter, or Direct Providers like OpenAI, Anthropic, Google Gemini)
-2. Configuring API keys or model settings
-3. Testing your configuration
-4. Saving your preferences
-
-## 🦙 Recommended: Ollama Setup
-
-For the best balance of privacy, quality, and speed:
-
+### Option 2: Local AI (Recommended for Privacy)
 ```bash
-# 1. Install Ollama
+# Install Ollama for local AI
 curl -fsSL https://ollama.com/install.sh | sh
-
-# 2. Pull a model
 ollama pull llama3
 
-# 3. Configure GitWise (select Ollama when prompted)
+# Install GitWise
+pip install pygitwise
+gitwise init  # Select Ollama when prompted
+```
+
+### Option 3: Virtual Environment (Best Practice)
+```bash
+python3 -m venv gitwise-env
+source gitwise-env/bin/activate
+pip install pygitwise
 gitwise init
 ```
 
-## ⚡ Your First GitWise Workflow
+## 🚀 First Workflow
+
+After installation, try GitWise on any Git repository:
 
 ```bash
-# 1. Make some changes
-echo "print('Hello, GitWise!')" > hello.py
+# Navigate to your project
+cd your-project
 
-# 2. Stage changes with summary
-gitwise add .
-# Shows summary of changes and prompts for next action
+# Make some changes
+echo "console.log('Hello GitWise!');" > test.js
 
-# 3. Generate AI commit message
-gitwise commit
-# AI analyzes your diff and suggests: "feat: add hello world script"
+# Use GitWise workflow
+gitwise add .       # Interactive staging
+gitwise commit      # AI generates: "feat: add hello world console output"
+gitwise push        # Push to remote
+gitwise pr          # Create PR with AI description
+```
 
-# 4. Push to remote
-gitwise push
-# Offers to create a PR with AI-generated description
+That's it! You now have perfect commits and PRs.
 
-# 5. Create PR with enhancements
+## 🤖 Choose Your AI Backend
+
+During `gitwise init`, you'll choose an AI backend:
+
+### 🦙 Ollama (Local) - Recommended
+- **Privacy**: 🟢 Complete - Code never leaves your machine
+- **Speed**: 🟢 Fast after initial setup
+- **Quality**: 🟢 High
+- **Cost**: 🟢 Free
+
+**Setup:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3
+gitwise init  # Select Ollama
+```
+
+### 🌐 Online (GPT-4/Claude) - Latest AI
+- **Privacy**: 🟡 API calls to providers
+- **Speed**: 🟢 Instant
+- **Quality**: 🟢 Highest
+- **Cost**: 💰 Pay per use
+
+**Setup:**
+```bash
+gitwise init  # Select Online, enter API key
+```
+
+## ⚡ Essential Commands
+
+Once setup is complete, these are your main commands:
+
+| Command | What It Does |
+|---------|--------------|
+| `gitwise add .` | Interactive file staging with AI insights |
+| `gitwise commit` | Generate perfect Conventional Commits |
+| `gitwise push` | Push with optional PR creation |
+| `gitwise pr` | Create detailed PRs with labels & checklists |
+| `gitwise init` | Change AI backend or reconfigure |
+
+## 🎯 Pro Tips
+
+### Speed Up Your Workflow
+```bash
+# Auto-confirm mode for faster workflow
+gitwise add . --yes
+gitwise commit --yes
+gitwise push --yes
+```
+
+### Better PR Creation
+```bash
+# Create PR with labels and checklist automatically
 gitwise pr --labels --checklist
-# Adds relevant labels and context-aware checklist
+
+# Create draft PR for review
+gitwise pr --draft
 ```
 
-## 🔧 Alternative Backend Options
-
-### 🏠 Offline Mode (No Internet Required)
+### Context for Better AI
 ```bash
-pip install "pygitwise[offline]"
-gitwise init  # Select "Offline (built-in model)"
+# Set context for better commit messages
+gitwise set-context "Working on user authentication system"
 ```
 
-### 🌐 Online Mode (Latest AI Models)
+## 🔧 Troubleshooting
+
+### Command Not Found
+If `gitwise` command is not found, add to your PATH:
+
+**macOS/Linux:**
 ```bash
-# Get API key from https://openrouter.ai/
-export OPENROUTER_API_KEY="your_api_key"
-gitwise init  # Select "Online (OpenRouter API)"
+export PATH="$PATH:~/.local/bin"
+# Add to ~/.bashrc or ~/.zshrc
 ```
 
-### ✨ Direct LLM Providers (OpenAI, Anthropic, Gemini)
-For direct integration with your preferred LLM provider:
-
-**OpenAI:**
+**Or use virtual environment (recommended):**
 ```bash
-export GITWISE_LLM_BACKEND=openai
-export OPENAI_API_KEY="your_openai_api_key"
-gitwise init # Select "OpenAI"
+python3 -m venv gitwise-env
+source gitwise-env/bin/activate
+pip install pygitwise
 ```
 
-**Anthropic:**
-```bash
-export GITWISE_LLM_BACKEND=anthropic
-export ANTHROPIC_API_KEY="your_anthropic_api_key"
-gitwise init # Select "Anthropic"
-```
-
-**Google Gemini:**
-```bash
-export GITWISE_LLM_BACKEND=google_gemini
-export GOOGLE_API_KEY="your_google_api_key"
-gitwise init # Select "Google Gemini"
-```
-
-During `gitwise init`, you can select your specific provider and enter the API key when prompted.
-
-## 📋 Essential Commands
-
-| Command | Description |
-|---------|-------------|
-| `gitwise init` | Initial setup and configuration |
-| `gitwise add .` | Stage files with summary |
-| `gitwise commit` | AI-generated commit messages |
-| `gitwise commit --group` | Split complex changes into multiple commits |
-| `gitwise push` | Push with PR creation prompt |
-| `gitwise pr --labels --checklist` | Create enhanced PR |
-| `gitwise git <cmd>` | Use any git command through gitwise |
-
-## 🛠️ Quick Troubleshooting
-
-**Ollama not working?**
+### Ollama Issues
 ```bash
 # Check if Ollama is running
-curl http://localhost:11434/api/tags
+ollama list
 
 # Start Ollama if needed
 ollama serve
+
+# Pull models if missing
+ollama pull llama3
 ```
 
-**Want to switch backends?**
-```bash
-# Quick switch
-export GITWISE_LLM_BACKEND=offline
+## 🎉 You're Ready!
 
-# Or reconfigure
-gitwise init
-```
+Your Git workflow is now supercharged. Every commit will be meaningful, every PR will be detailed, and everything happens in seconds instead of minutes.
 
-**Need help?**
-```bash
-gitwise --help
-gitwise commit --help
-```
-
----
-
-## 🎯 Next Steps
-
-- **[Features Guide](features.html)** - Learn about advanced features and AI backends
-- **[Quick Reference](QUICK_REFERENCE.html)** - Handy command reference
-- **[API Documentation](api.html)** - For advanced usage and configuration
-
----
-
-<div class="success-box">
-  <h3>🎉 You're all set!</h3>
-  <p>GitWise is now ready to enhance your Git workflow. Start with <code>gitwise add .</code> and let AI help with your commits!</p>
-</div> 
+**Next Steps:**
+- [📖 View all features](features.html)
+- [⚡ Command reference](QUICK_REFERENCE.html)
+- [🔧 Advanced configuration](features.html#advanced-configuration)
