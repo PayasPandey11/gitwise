@@ -15,7 +15,6 @@ from ..ui import components
 import os
 import tempfile
 import typer
-from ..llm.offline import ensure_offline_model_ready
 from gitwise.config import get_llm_backend, load_config, ConfigError
 from ..core.git_manager import GitManager  # New import
 
@@ -349,7 +348,6 @@ def _backend_display_name(backend_str: str) -> str:
     else:
         return {
             "ollama": "Ollama (local server)",
-            "offline": "Offline (local model)",
         }.get(backend_str, backend_str)
 
 
@@ -455,12 +453,6 @@ class PrFeature:
                 f"[AI] LLM Backend: {_backend_display_name(backend)}"
             )
 
-            if backend == "offline":
-                try:
-                    ensure_offline_model_ready()
-                except Exception as e:
-                    components.show_error(f"Failed to load offline model: {e}")
-                    return False
 
             current_branch = self.git_manager.get_current_branch()
             if not current_branch:

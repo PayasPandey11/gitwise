@@ -1,6 +1,7 @@
 """Feature logic for the 'commit' command, including AI-assisted message generation and grouping."""
 
 import os
+import shlex
 import subprocess
 import tempfile
 import json
@@ -10,14 +11,36 @@ import typer
 
 from gitwise.config import ConfigError, get_llm_backend, load_config
 from gitwise.core.git_manager import GitManager
+from gitwise.exceptions import SecurityError
 from gitwise.features.context import ContextFeature
 from gitwise.llm.router import get_llm_response
 from gitwise.prompts import PROMPT_COMMIT_MESSAGE, PROMPT_COMMIT_GROUPING
 from gitwise.ui import components
-from gitwise.llm.offline import ensure_offline_model_ready
 
 # Initialize GitManager
 git_manager = GitManager()
+
+# Allowed editors for security
+ALLOWED_EDITORS = {
+    'vi', 'vim', 'nvim', 'nano', 'emacs', 'micro', 'code', 'subl', 
+    'atom', 'gedit', 'kate', 'notepad', 'notepad++', 'TextEdit'
+}
+
+
+def _get_safe_editor() -> str:
+    """Get a safe editor command, validating against known editors."""
+    editor = os.environ.get("EDITOR", "vi")
+    
+    # Extract just the command name (remove path and arguments)
+    editor_cmd = os.path.basename(editor.split()[0])
+    
+    if editor_cmd not in ALLOWED_EDITORS:
+        raise SecurityError(
+            f"Editor '{editor}' is not allowed for security reasons. "
+            f"Allowed editors: {', '.join(sorted(ALLOWED_EDITORS))}"
+        )
+    
+    return editor
 
 
 # Import push_command only when needed to avoid circular imports
@@ -359,17 +382,10 @@ class CommitFeature:
             else:
                 backend_display = {
                     "ollama": "Ollama (local server)",
-                    "offline": "Offline (local model)",
                 }.get(backend, backend)
                 
             components.show_section(f"[AI] LLM Backend: {backend_display}")
 
-            if backend == "offline":
-                try:
-                    ensure_offline_model_ready()
-                except Exception as e:
-                    components.show_error(f"Failed to load offline model: {e}")
-                    return
 
             current_staged_files_paths = (
                 self.git_manager.get_changed_file_paths_staged()
@@ -651,8 +667,8 @@ class CommitFeature:
                 ) as tf:
                     tf.write(message)
                     tf.flush()
-                editor = os.environ.get("EDITOR", "vi")
                 try:
+                    editor = _get_safe_editor()
                     subprocess.run([editor, tf.name], check=True)
                     with open(tf.name, "r", encoding="utf-8") as f_read:
                         message = f_read.read().strip()

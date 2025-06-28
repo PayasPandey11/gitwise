@@ -1,7 +1,11 @@
 """Core Git operations manager for GitWise, using subprocess."""
 
+import os
 import subprocess
+import logging
 from typing import Dict, List, Optional, Tuple
+
+from gitwise.exceptions import SecurityError, GitOperationError
 
 
 class GitManager:
@@ -17,11 +21,41 @@ class GitManager:
         Args:
             path: The path to the Git repository. Defaults to the current working directory.
         """
+        self.logger = logging.getLogger(__name__)
         self.repo_path = path or self._find_git_root()
         if not self.repo_path:
-            raise RuntimeError(
+            self.logger.error(f"Git repository not found at path: {path}")
+            raise GitOperationError(
                 "Not inside a Git repository or .git directory not found."
             )
+        
+        self.logger.info(f"GitManager initialized for repo: {self.repo_path}")
+
+    def _validate_file_path(self, file_path: str) -> str:
+        """
+        Validate that a file path is within the repository boundaries.
+        
+        Args:
+            file_path: The file path to validate
+            
+        Returns:
+            The absolute path if valid
+            
+        Raises:
+            SecurityError: If the path is outside the repository
+        """
+        # Convert to absolute paths for comparison
+        abs_file_path = os.path.abspath(file_path)
+        abs_repo_path = os.path.abspath(self.repo_path)
+        
+        # Check if the file path is within the repository
+        if not abs_file_path.startswith(abs_repo_path + os.sep) and abs_file_path != abs_repo_path:
+            raise SecurityError(
+                f"File path '{file_path}' is outside the repository boundaries. "
+                f"Only files within the repository are allowed."
+            )
+        
+        return abs_file_path
 
     def _run_git_command(
         self,
@@ -401,7 +435,10 @@ class GitManager:
     def get_conflict_content(self, file_path: str) -> Optional[Dict[str, str]]:
         """Get conflict markers content for a specific file with enhanced context."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            # Validate the file path for security
+            validated_path = self._validate_file_path(file_path)
+            
+            with open(validated_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             if '<<<<<<< HEAD' not in content:

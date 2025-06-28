@@ -62,6 +62,7 @@ setup(
         "requests>=2.0.0",
         "jinja2",
         "openai>=1.0.0",
+        "keyring>=24.0.0",  # Secure credential storage
     ],
     extras_require={
         "dev": [
@@ -72,18 +73,12 @@ setup(
             "isort",
             "mypy",
         ],
-        "offline": [
-            "transformers>=4.36.0",
-            "torch>=2.0.0",
-        ],
         "cloud_llms": [
             "google-generativeai>=0.3.0",
             "openai>=1.0.0",
             "anthropic>=0.20.0",
         ],
         "all_llms": [
-            "transformers>=4.36.0",
-            "torch>=2.0.0",
             "google-generativeai>=0.3.0",
             "anthropic>=0.20.0",
         ],
@@ -106,5 +101,5 @@ setup(
 # Minimal post-install message for user
 if os.environ.get("GITWISE_SETUP_MESSAGE", "1") == "1":
     print(
-        "\n[gitwise] All LLM backends (Ollama, Offline, Online) are now available! By default, GitWise uses Ollama. To change backends, run 'gitwise init' or set GITWISE_LLM_BACKEND environment variable. See README for details.\n"
+        "\n[gitwise] LLM backends (Ollama, Online) are now available! By default, GitWise uses Ollama for local AI. To change backends, run 'gitwise init' or set GITWISE_LLM_BACKEND environment variable. See README for details.\n"
     )
