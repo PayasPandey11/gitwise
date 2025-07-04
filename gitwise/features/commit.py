@@ -278,7 +278,7 @@ def suggest_commit_groups() -> Optional[List[Dict[str, Any]]]:
         return None
 
 
-def generate_commit_message(diff: str, guidance: str = "") -> str:
+def generate_commit_message(diff: str, guidance: str = "", force_style: str = None) -> str:
     """Generate a commit message using LLM prompt with context from ContextFeature."""
     # Get context for the current branch
     context_feature = ContextFeature()
@@ -326,9 +326,31 @@ def generate_commit_message(diff: str, guidance: str = "") -> str:
     else:
         guidance = file_info
     
-    prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
-        "{{guidance}}", guidance
-    )
+    # Use custom commit rules if configured
+    try:
+        from gitwise.features.commit_rules import CommitRulesFeature
+        rules_feature = CommitRulesFeature()
+        
+        # Determine which style to use (force_style overrides config)
+        if force_style:
+            use_style = force_style
+        else:
+            use_style = rules_feature.get_active_style()
+        
+        if use_style == "custom":
+            # Generate custom prompt
+            prompt = rules_feature.generate_prompt(diff, guidance)
+        else:
+            # Use conventional commit prompt
+            prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
+                "{{guidance}}", guidance
+            )
+    except Exception:
+        # Fallback to conventional if there's any issue with custom rules
+        prompt = PROMPT_COMMIT_MESSAGE.replace("{{diff}}", diff).replace(
+            "{{guidance}}", guidance
+        )
+    
     llm_output = get_llm_response(prompt)
     return llm_output.strip()
 
@@ -340,7 +362,7 @@ class CommitFeature:
         """Initializes the CommitFeature, using the module-level GitManager."""
         self.git_manager = git_manager
 
-    def execute_commit(self, group: bool = True, auto_confirm: bool = False) -> None:
+    def execute_commit(self, group: bool = True, auto_confirm: bool = False, force_style: str = None) -> None:
         """Create a commit, with an option for AI-assisted message generation and change grouping."""
         try:
             # Config check
@@ -533,7 +555,7 @@ class CommitFeature:
                                     group_diff = self.git_manager.get_staged_diff()
                                     if group_diff:
                                         guidance = f"This commit affects {len(group_item['files'])} files in the {group_item['name']} {group_item['type']}."
-                                        commit_message_for_group = generate_commit_message(group_diff, guidance)
+                                        commit_message_for_group = generate_commit_message(group_diff, guidance, force_style)
                                     else:
                                         # Fallback to simple description if no diff
                                         commit_message_for_group = f"feat: add {len(group_item['files'])} files to {group_item['name']} {group_item['type']}"
@@ -646,7 +668,7 @@ class CommitFeature:
 
             message = ""
             with components.show_spinner("Analyzing changes..."):
-                message = generate_commit_message(diff_for_message_generation)
+                message = generate_commit_message(diff_for_message_generation, "", force_style)
 
             components.show_section("Suggested Commit Message")
             components.console.print(message)
@@ -709,6 +731,7 @@ class CommitFeature:
                     message = generate_commit_message(
                         diff_for_message_generation,
                         "Please try a different style or focus for the commit message.",
+                        force_style
                     )
                 components.show_section("Newly Suggested Commit Message")
                 components.console.print(message)

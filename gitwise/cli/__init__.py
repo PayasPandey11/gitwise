@@ -7,6 +7,7 @@ from typing import List
 import typer
 
 from gitwise.cli.add import add_command_cli
+from gitwise.cli.commit_config import config_commit_command
 from gitwise.cli.init import init_command
 from gitwise.cli.merge import merge_command_cli
 from gitwise.features.branch import BranchFeature
@@ -82,11 +83,21 @@ def commit_cli_entrypoint(
         "--group",
         "-g",
         help="Enable automatic grouping of related changes into separate commits (can be slower).",
+    ),
+    conventional: bool = typer.Option(
+        False,
+        "--conventional",
+        help="Use conventional commits format for this commit only."
+    ),
+    custom: bool = typer.Option(
+        False,
+        "--custom",
+        help="Use custom rules format for this commit only."
     )
 ) -> None:
     """Create a commit with AI-generated message."""
     feature = CommitFeature()
-    feature.execute_commit(group=group)
+    feature.execute_commit(group=group, force_style="conventional" if conventional else ("custom" if custom else None))
 
 
 @app.command(name="push")
@@ -219,6 +230,24 @@ def git_cli_entrypoint(
 def setup_gitwise() -> None:
     """Interactively set up GitWise in this repo or globally."""
     init_command()
+
+
+@app.command(name="config-commit")
+def config_commit_cli_entrypoint(
+    show: bool = typer.Option(False, "--show", help="Show current commit rules"),
+    setup: bool = typer.Option(False, "--setup", help="Interactive setup of commit rules"),
+    style: str = typer.Option(None, "--style", help="Switch style: conventional or custom"),
+    format_str: str = typer.Option(None, "--format", help="Set custom format string"),
+    reset: bool = typer.Option(False, "--reset", help="Reset to conventional commits")
+) -> None:
+    """Configure commit message rules and templates."""
+    config_commit_command(
+        show=show,
+        setup=setup,
+        style=style,
+        format_str=format_str,
+        reset=reset
+    )
 
 
 @app.command(name="set-context", help="Set context for the current branch to improve AI suggestions")

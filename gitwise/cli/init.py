@@ -434,7 +434,31 @@ def init_command():
                 "[Warning] Offline model not found. Please download it before using offline mode."
             )
 
-    # 4. Local vs global config
+    # 4. Commit message style configuration
+    typer.echo("\nWhich commit message style would you like to use?")
+    typer.echo("  1. Conventional Commits (recommended)")
+    typer.echo("     Standard format: type(scope): description")
+    typer.echo("  2. Custom rules")
+    typer.echo("     Define your own commit message format")
+    
+    commit_style_choice = typer.prompt("Enter choice [1/2]", default="1")
+    
+    if commit_style_choice == "2":
+        # Set up custom commit rules
+        try:
+            from gitwise.features.commit_rules import CommitRulesFeature
+            rules_feature = CommitRulesFeature()
+            custom_rules = rules_feature.setup_interactive()
+            config["commit_rules"] = custom_rules
+        except Exception as e:
+            typer.echo(f"[Warning] Error setting up custom rules: {e}")
+            typer.echo("Defaulting to conventional commits.")
+            config["commit_rules"] = {"style": "conventional"}
+    else:
+        # Use conventional commits (default)
+        config["commit_rules"] = {"style": "conventional"}
+
+    # 5. Local vs global config
     if not check_git_repo():
         typer.echo("[Warning] You are not in a git repository.")
         if not typer.confirm("Continue and apply config globally?", default=True):
@@ -446,11 +470,11 @@ def init_command():
             "Apply config to this repo only?", default=True
         )
 
-    # 5. Write config
+    # 6. Write config
     path = write_config(config, global_config=global_config)
     typer.echo(f"\n[gitwise] Config written to: {path}")
 
-    # 6. Summary & next steps
+    # 7. Summary & next steps
     typer.echo("\n[gitwise] Setup complete! Config summary:")
     for k, v in config.items():
         if "key" in k:
