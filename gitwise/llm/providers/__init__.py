@@ -29,13 +29,12 @@ def _lazy_import_providers():
     except ImportError:
         pass  # Anthropic dependencies not available
     
-    # Import OpenRouter provider (when converted)
+    # Import OpenRouter provider
     try:
-        # use legacy online.py for now
-        from gitwise.llm.online import get_llm_response as legacy_online_llm
-        providers["openrouter"] = legacy_online_llm
+        from .openrouter_provider import OpenRouterProvider
+        providers["openrouter"] = OpenRouterProvider
     except ImportError:
-        pass  # Will be converted from existing online.py
+        pass  # OpenRouter dependencies not available
     
     return providers
 
