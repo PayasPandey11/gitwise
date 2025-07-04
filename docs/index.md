@@ -1,14 +1,14 @@
 ---
 layout: default
-title: "GitWise - Your AI-Powered Git Co-pilot"
+title: "GitWise - AI-Powered Git Workflow Assistant"
 ---
 
 <div class="hero">
   <h1>GitWise</h1>
-  <p class="hero-subtitle">Your AI-Powered Git Co-pilot</p>
+  <p class="hero-subtitle">AI-Powered Git Workflow Assistant</p>
   
   <p class="hero-description">
-    GitWise is a command-line tool designed for experienced developers to enhance their Git workflow with intelligent AI assistance. It focuses on speed, efficiency, and integrating seamlessly with your existing habits.
+    Stop writing commit messages and PR descriptions by hand. GitWise generates perfect Conventional Commits and detailed PR descriptions from your code changes, all while keeping your code private with local AI.
   </p>
 
   <div class="hero-buttons">
@@ -17,68 +17,85 @@ title: "GitWise - Your AI-Powered Git Co-pilot"
   </div>
 </div>
 
-## ✨ Key Features
+## ✨ See the Difference
+
+**Before GitWise:**
+```bash
+git add .
+git commit -m "fix stuff"  # 😬 Vague, unhelpful
+# Manually write PR description... 10+ minutes
+```
+
+**After GitWise:**
+```bash
+gitwise add .
+gitwise commit  # 🤖 "fix: resolve authentication timeout in user login"
+gitwise pr      # 🤖 Detailed PR with labels and checklist
+```
+
+*Perfect commits and PRs in seconds, not minutes.*
+
+## 🎯 Why Choose GitWise?
 
 <div class="feature-grid">
   <div class="feature">
-    <h3>🚀 Blazing Fast</h3>
-    <p>Standard Git commands run at native speed. AI features are opt-in enhancements.</p>
+    <h3>⚡ Lightning Fast</h3>
+    <p>2-second commits vs 2-minute manual writing. Transform your workflow speed.</p>
   </div>
   
   <div class="feature">
-    <h3>🧠 Smart Commits</h3>
-    <p>AI-generated Conventional Commit messages from your staged diffs in seconds.</p>
+    <h3>🧠 Smart & Accurate</h3>
+    <p>Conventional Commits with detailed descriptions generated from actual code changes.</p>
   </div>
   
   <div class="feature">
-    <h3>✍️ Intelligent PRs</h3>
-    <p>Automated PR titles, descriptions, labels, and context-aware checklists.</p>
+    <h3>🔒 Privacy First</h3>
+    <p>Local AI models (Ollama) keep your code on your machine. No data leaves your computer.</p>
   </div>
   
   <div class="feature">
-    <h3>🔒 Privacy-First</h3>
-    <p>Choose between local (Ollama/Offline) or cloud-based AI backends (OpenRouter, OpenAI, Anthropic, Gemini).</p>
+    <h3>🛠️ Familiar</h3>
+    <p>Works exactly like Git commands you know. Drop-in replacement with AI superpowers.</p>
   </div>
 </div>
 
-## 🎯 Perfect for Experienced Developers
-
-GitWise doesn't replace your Git knowledge—it augments it. Built for developers who:
-
-- ✅ Love Git's power but want some parts to be faster
-- ✅ Write meaningful commit messages and want AI assistance
-- ✅ Create detailed PR descriptions and want them generated intelligently
-- ✅ Maintain changelogs and want automation without losing control
-- ✅ Value privacy and want local AI options
-
-## 🚀 Quick Example
+## 🚀 Quick Start
 
 ```bash
-# Install GitWise
+# 1. Install
 pip install pygitwise
 
-# Make your changes
-echo "print('Hello, GitWise!')" > hello.py
+# 2. Initialize (one-time setup)
+gitwise init
 
-# AI-powered workflow
-gitwise add .
-gitwise commit  # AI suggests: "feat: add hello world script"
-gitwise push
-gitwise pr --labels --checklist  # AI generates PR with context
+# 3. Use it like Git, but smarter
+gitwise add .       # Interactive file staging
+gitwise commit      # AI-generated commit messages
+gitwise pr          # Detailed PR descriptions
 ```
 
-## 🤖 Three AI Modes, One Tool
+## 🤖 AI Backend Options
 
-| Mode | Best For | Privacy | Internet |
-|------|----------|---------|----------|
-| **🦙 Ollama** | High-quality local AI | 🟢 Full | 🟡 Setup only |
-| **🏠 Offline** | Air-gapped environments | 🟢 Full | 🟢 Never |
-| **🌐 Online (OpenRouter)** | Access to many models (GPT-4, Claude) | 🔴 API calls | 🔴 Always |
-| **⚡ Direct LLM (OpenAI, Anthropic, Gemini)** | Preferred provider access | 🔴 API calls | 🔴 Always |
+| Backend | Privacy | Quality | Speed | Best For |
+|---------|---------|---------|-------|----------|
+| **Ollama** (Local) | 🟢 Complete | 🟢 High | 🟢 Fast | Privacy-focused developers |
+| **Online** (GPT-4/Claude) | 🟡 API calls | 🟢 Highest | 🟢 Instant | Latest AI capabilities |
+
+Choose local for privacy, online for cutting-edge AI. Switch anytime.
+
+## 🔥 Core Features
+
+- **🤖 AI Commit Messages** - Generate perfect Conventional Commits from staged changes
+- **📝 Smart PR Descriptions** - Detailed descriptions with automated labels and checklists  
+- **⚡ Streamlined Workflow** - Complete Git workflow automation
+- **🔒 Privacy-First Design** - Local AI keeps your code private
+- **⚙️ Git Compatible** - Drop-in replacement for Git commands
+- **📊 Changelog Generation** - Automated changelog maintenance
 
 ---
 
 <div class="cta-section">
-  <h2>Ready to enhance your Git workflow?</h2>
-  <a href="quick-start.html" class="btn btn-primary btn-large">Get Started in 5 Minutes</a>
-</div> 
+  <h2>Ready to transform your Git workflow?</h2>
+  <p>Join thousands of developers using GitWise for better commits and PRs.</p>
+  <a href="quick-start.html" class="btn btn-primary btn-large">Get Started in 2 Minutes</a>
+</div>

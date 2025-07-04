@@ -1,148 +1,179 @@
-import time
+"""
+LLM routing for GitWise - Routes between Ollama (local) and online providers.
 
-from gitwise.config import get_llm_backend, load_config, ConfigError
+Simplified architecture without offline mode for better maintainability.
+Enhanced with structured logging and proper exception handling.
+"""
+
+import time
+import logging
+from gitwise.config import get_llm_backend, get_secure_config, ConfigError
+from gitwise.exceptions import LLMError, NetworkError, ConfigurationError
 from gitwise.llm.ollama import OllamaError
 from gitwise.ui import components
+
+logger = logging.getLogger(__name__)
 
 
 def get_llm_response(*args, **kwargs):
     """
-    Route LLM calls to the selected backend.
-    Priority: GITWISE_LLM_BACKEND (ollama|offline|online). Default: ollama.
-    Fallback to offline, then online, with warnings if needed.
-    If Ollama is selected, try up to 3 times before falling back.
+    Route LLM calls to the selected backend with enhanced logging and error handling.
+    
+    Supports two backends:
+    - ollama (default): Local Ollama server
+    - online: Cloud-based LLM providers
+    
+    Args:
+        *args: Arguments to pass to the LLM backend
+        **kwargs: Keyword arguments to pass to the LLM backend
+        
+    Returns:
+        str: Response from the LLM
+        
+    Raises:
+        LLMError: If all backends fail
+        NetworkError: If network-related issues occur
+        ConfigurationError: If configuration is invalid
     """
     backend = get_llm_backend()
+    
+    # Log the request
+    prompt_text = args[0] if args else str(kwargs.get('prompt', ''))
+    prompt_length = len(prompt_text)
+    
+    logger.info(f"LLM request initiated for backend: {backend}, prompt length: {prompt_length}")
+    
+    try:
+        if backend == "online":
+            response = _get_online_llm_response(*args, **kwargs)
+        elif backend == "ollama":
+            response = _get_ollama_llm_response(*args, **kwargs)
+        else:
+            logger.warning(f"Unknown backend '{backend}', defaulting to Ollama")
+            components.show_warning(f"Unknown backend '{backend}', defaulting to Ollama")
+            response = _get_ollama_llm_response(*args, **kwargs)
+        
+        logger.info(f"LLM request completed, response length: {len(response) if response else 0}")
+        return response
+            
+    except LLMError:
+        # Re-raise LLM errors as-is
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in LLM routing: {e}")
+        raise LLMError(f"Unexpected error in LLM routing: {e}") from e
 
-    if backend == "online":
+
+def _get_ollama_llm_response(*args, **kwargs):
+    """
+    Get response from Ollama with retry logic.
+    
+    Returns:
+        str: Response from Ollama
+        
+    Raises:
+        LLMError: If Ollama is unavailable after retries
+    """
+    max_retries = 3
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
         try:
-            return _get_online_llm_response(*args, **kwargs)
-        except ImportError as e:
-            raise RuntimeError(
-                f"Online backend dependencies missing. {str(e)}"
-            ) from e
-    elif backend == "offline":
-        try:
-            from gitwise.llm.offline import get_llm_response as offline_llm
-
-            return offline_llm(*args, **kwargs)
-        except ImportError as e:
-            raise RuntimeError(
-                f"Offline backend requires 'transformers' and 'torch'. Install with: pip install transformers torch"
-            ) from e
-    elif backend == "ollama":
-        ollama_max_retries = 3
-        ollama_retry_delay = 2  # seconds
-        for attempt in range(ollama_max_retries):
-            try:
-                from gitwise.llm.ollama import get_llm_response as ollama_llm
-
-                return ollama_llm(*args, **kwargs)
-            except OllamaError as e_ollama:
-                components.show_warning(
-                    f"Ollama connection attempt {attempt + 1}/{ollama_max_retries} failed: {e_ollama}"
-                )
-                if attempt < ollama_max_retries - 1:
-                    time.sleep(ollama_retry_delay)
-                else:
-                    components.show_warning(
-                        "Ollama failed after multiple retries. Attempting to fall back to offline model."
-                    )
-                    break  # Break from retry loop to fall through to offline
-            except ImportError as e_import_ollama:
-                components.show_warning(
-                    f"Could not import Ollama backend: {e_import_ollama}. Attempting to fall back to offline model."
-                )
-                break  # Break to fall through to offline
-            except (
-                Exception
-            ) as e_unexpected_ollama:  # Catch any other unexpected error during ollama attempt
-                components.show_warning(
-                    f"Unexpected error with Ollama backend (attempt {attempt + 1}/{ollama_max_retries}): {e_unexpected_ollama}"
-                )
-                if attempt < ollama_max_retries - 1:
-                    time.sleep(ollama_retry_delay)
-                else:
-                    components.show_warning(
-                        "Ollama failed due to unexpected error after multiple retries. Attempting to fall back to offline model."
-                    )
-                    break  # Break from retry loop
-        else:  # This else belongs to the for loop, executed if loop completed without break (i.e., ollama_llm call was successful)
-            pass  # Ollama succeeded, result already returned
-
-        # Fallback to offline if Ollama fails (either by retries exhausting, import error, or unexpected error)
-        try:
-            # Message already shown if Ollama failed after retries or import
-            # components.show_warning("Falling back to offline LLM model due to Ollama issues.") # This might be redundant if specific error was already shown
-            from gitwise.llm.offline import get_llm_response as offline_llm
-
+            from gitwise.llm.ollama import get_llm_response as ollama_llm
+            return ollama_llm(*args, **kwargs)
+            
+        except OllamaError as e:
             components.show_warning(
-                "Attempting to use offline model as fallback..."
-            )  # Add this for clarity
-            return offline_llm(*args, **kwargs)
-        except ImportError as e_import_offline:
-            raise RuntimeError(
-                f"Ollama backend failed AND offline fallback also failed (requires 'transformers' and 'torch'): {e_import_offline}"
-            ) from e_import_offline
-        except (
-            Exception
-        ) as e_offline_fallback:  # Catch errors during offline fallback itself
-            raise RuntimeError(
-                f"Ollama backend failed AND offline fallback also failed with an error: {e_offline_fallback}"
-            ) from e_offline_fallback
-
-    else:
-        # Fallback to offline if unknown backend
-        try:
-            from gitwise.llm.offline import get_llm_response as offline_llm
-
-            return offline_llm(*args, **kwargs)
+                f"Ollama connection attempt {attempt + 1}/{max_retries} failed: {e}"
+            )
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"Ollama failed after {max_retries} attempts")
+                raise LLMError(
+                    f"Ollama failed after {max_retries} attempts. "
+                    "Please ensure Ollama is running: 'ollama serve'"
+                ) from e
+                
         except ImportError as e:
-            raise RuntimeError(
-                f"Unknown backend '{backend}' and offline fallback requires 'transformers' and 'torch'"
+            logger.error("Ollama backend not available")
+            raise LLMError(
+                "Ollama backend not available. Please install Ollama: "
+                "https://ollama.ai/"
             ) from e
+            
+        except Exception as e:
+            logger.warning(f"Unexpected Ollama error (attempt {attempt + 1}/{max_retries}): {e}")
+            components.show_warning(
+                f"Unexpected Ollama error (attempt {attempt + 1}/{max_retries}): {e}"
+            )
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"Ollama failed with unexpected error: {e}")
+                raise LLMError(f"Ollama failed with unexpected error: {e}") from e
 
 
 def _get_online_llm_response(*args, **kwargs):
-    """Handle online LLM requests using the new provider system.
+    """
+    Handle online LLM requests using the provider system.
     
-    This function supports both the new provider system and backward compatibility
-    with the existing OpenRouter implementation.
+    Returns:
+        str: Response from online provider
+        
+    Raises:
+        LLMError: If online providers fail
     """
     try:
-        # Try new provider system first
+        # Use new provider system
         from gitwise.llm.providers import get_provider_with_fallback
         
-        config = load_config()
+        # Use secure config that retrieves API keys from keychain
+        config = get_secure_config()
         provider = get_provider_with_fallback(config)
         return provider.get_response(*args, **kwargs)
         
     except ImportError as e:
         # Fallback to legacy OpenRouter implementation
+        logger.warning(f"Provider system unavailable: {e}")
         components.show_warning(
             f"Provider system unavailable ({e}), falling back to OpenRouter..."
         )
-        from gitwise.llm.online import get_llm_response as legacy_online_llm
-        return legacy_online_llm(*args, **kwargs)
+        return _get_legacy_online_response(*args, **kwargs)
         
     except ConfigError as e:
-        # No config file, try legacy implementation
+        # No valid config, try legacy implementation
+        logger.warning(f"Config error: {e}")
         components.show_warning(
             f"Config error ({e}), falling back to OpenRouter..."
         )
-        from gitwise.llm.online import get_llm_response as legacy_online_llm
-        return legacy_online_llm(*args, **kwargs)
+        return _get_legacy_online_response(*args, **kwargs)
         
     except Exception as e:
         # If provider system fails, try legacy as final fallback
+        logger.warning(f"Provider system error: {e}")
         components.show_warning(
             f"Provider system error ({str(e)}), trying OpenRouter fallback..."
         )
-        try:
-            from gitwise.llm.online import get_llm_response as legacy_online_llm
-            return legacy_online_llm(*args, **kwargs)
-        except Exception as fallback_error:
-            raise RuntimeError(
-                f"Both provider system and OpenRouter fallback failed. "
-                f"Provider error: {str(e)}. Fallback error: {str(fallback_error)}"
-            ) from e
+        return _get_legacy_online_response(*args, **kwargs)
+
+
+def _get_legacy_online_response(*args, **kwargs):
+    """
+    Fallback to legacy OpenRouter implementation.
+    
+    Returns:
+        str: Response from OpenRouter
+        
+    Raises:
+        LLMError: If legacy implementation fails
+    """
+    try:
+        from gitwise.llm.online import get_llm_response as legacy_online_llm
+        return legacy_online_llm(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"All online providers failed: {e}")
+        raise LLMError(
+            f"All online providers failed: {str(e)}. "
+            "Please check your API keys and network connection."
+        ) from e

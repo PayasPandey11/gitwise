@@ -5,379 +5,266 @@ title: "Features - GitWise"
 
 # Features & Advanced Usage
 
-GitWise offers powerful features designed to enhance your Git workflow without getting in your way.
+GitWise transforms your Git workflow with AI-powered automation while keeping you in control.
 
-## 🤖 Three AI Backend Modes
+## 🤖 Core Features
 
-GitWise gives you complete control over your AI backend, balancing privacy, quality, and convenience.
-
-### 🦙 Ollama Mode (Recommended)
-**Best for**: Privacy-conscious developers who want high-quality local AI
+### 🎯 AI-Powered Commit Messages
+Transform your staged changes into perfect Conventional Commits:
 
 ```bash
-# Setup once
+# Before
+git commit -m "fix stuff"
+
+# After
+gitwise commit
+# Output: "fix: resolve authentication timeout in user login flow"
+```
+
+**Features:**
+- Analyzes your actual code changes
+- Generates Conventional Commit format
+- Includes detailed descriptions
+- Respects your coding context
+
+### 📝 Intelligent PR Descriptions
+Create comprehensive PRs with zero manual writing:
+
+```bash
+gitwise pr --labels --checklist
+```
+
+**Automatically generates:**
+- Detailed description from commit history
+- Relevant labels based on changes
+- Context-specific checklists
+- Proper PR title formatting
+
+### ⚡ Interactive Complete Workflow
+One command does everything with AI assistance:
+
+```bash
+# Traditional workflow (slow)
+git add .
+git commit -m "vague message"
+git push
+# Manually create PR... 10+ minutes
+
+# GitWise interactive workflow (15 seconds)
+gitwise add .
+# 🔄 Shows changes → AI commit → Push → Create PR
+# Complete workflow with AI assistance at each step
+```
+
+### 🧠 Smart Auto-Grouping
+Automatically groups related changes into logical commits:
+
+```bash
+gitwise commit --group
+# AI analyzes changes and creates separate commits for:
+# - "feat: add user authentication"  
+# - "docs: update API documentation"
+# - "test: add auth unit tests"
+```
+
+### 🔀 Intelligent Merge Resolution
+AI-powered conflict analysis and resolution:
+
+```bash
+gitwise merge feature-branch
+# 🤖 Analyzes conflicts with context
+# 🧠 Suggests resolutions
+# 📝 Explains merge strategy
+# ⚡ Guides you through resolution
+```
+
+### 🎯 Branch Context Management
+Help AI understand your work:
+
+```bash
+# Set context for better suggestions
+gitwise set-context "Implementing OAuth2 authentication system"
+
+# View current context
+gitwise get-context
+```
+
+## 🤖 AI Backend Options
+
+### 🦙 Ollama (Local) - Recommended
+**Perfect for privacy-focused developers**
+
+```bash
+# One-time setup
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3
 gitwise init  # Select Ollama
 ```
 
-**Features**:
-- 🔒 100% local, no data leaves your machine
-- 🚀 High-quality models (Llama 3, CodeLlama, Mistral)
-- 💰 Zero cost after initial setup
-- 🔄 Easy model switching
+**Benefits:**
+- 🔒 **Complete Privacy** - Code never leaves your machine
+- 💰 **Zero Cost** - No API fees
+- 🚀 **Fast** - Local processing
+- 🔄 **Flexible** - Switch models easily
 
-### 🏠 Offline Mode
-**Best for**: Air-gapped environments, maximum privacy
+**Available Models:**
+- `llama3` - Best overall quality
+- `codellama` - Optimized for code
+- `mistral` - Fast and efficient
+
+### 🌐 Online (GPT-4/Claude) - Latest AI
+**For cutting-edge AI capabilities**
 
 ```bash
-pip install "pygitwise[offline]"
-gitwise init  # Select Offline
+gitwise init  # Select Online, enter API key
 ```
 
-**Features**:
-- 🔐 No internet connection required
-- 📦 Bundled model included
-- ⚡ Fast, lightweight models
-- 🛡️ Perfect for sensitive codebases
+**Benefits:**
+- 🎯 **Highest Quality** - Latest AI models
+- ⚡ **Instant** - No local processing
+- 🔄 **Always Updated** - Latest model versions
 
-### 🌐 Online Mode
-**Best for**: Access to cutting-edge models (GPT-4, Claude)
+**Supported Providers:**
+- OpenAI (GPT-4, GPT-3.5)
+- Anthropic (Claude 3)
+- Google (Gemini Pro)
+- OpenRouter (Access to multiple models)
+
+## 🔥 Advanced Features
+
+### 🔄 Auto-Confirm Mode
+Speed up your workflow with automatic confirmations:
 
 ```bash
-export OPENROUTER_API_KEY="your_key"
-gitwise init  # Select Online
+# Skip all prompts
+gitwise add . --yes
+gitwise commit --yes
+gitwise push --yes
+gitwise pr --yes --labels --checklist
 ```
 
-**Features**:
-- 🧠 Latest AI models (GPT-4, Claude 3, etc.)
-- 🎯 Highest quality outputs
-- 💻 No local GPU required
-- 🌍 Always up-to-date
-
-### ⚡ Direct LLM Provider Mode
-**Best for**: Using your preferred LLM provider (OpenAI, Anthropic, Google Gemini) directly with your own API keys.
-
-GitWise now offers direct integration with major LLM providers:
-
-- **OpenAI**: Models like GPT-4, GPT-3.5-turbo.
-- **Anthropic**: Claude models (Opus, Sonnet, Haiku).
-- **Google Gemini**: Gemini Pro and other models.
-
-**Configuration Examples:**
-
-**OpenAI:**
-```bash
-export GITWISE_LLM_BACKEND=openai
-export OPENAI_API_KEY="your_openai_api_key"
-# Optional: export GITWISE_OPENAI_MODEL="gpt-4"
-```
-
-**Anthropic:**
-```bash
-export GITWISE_LLM_BACKEND=anthropic
-export ANTHROPIC_API_KEY="your_anthropic_api_key"
-# Optional: export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
-```
-
-**Google Gemini:**
-```bash
-export GITWISE_LLM_BACKEND=google_gemini
-export GOOGLE_API_KEY="your_google_api_key"
-# Optional: export GITWISE_GEMINI_MODEL="gemini-2.0-flash"
-```
-
-Select your provider during `gitwise init` or by setting environment variables.
-
-**Features**:
-- Direct use of your provider accounts and API keys.
-- Access to the full range of models offered by each provider.
-- Often the most current model versions available.
-- Requires an internet connection.
-
-## 🧠 Smart Commit Messages
-
-### Basic Commit Generation
-GitWise analyzes your staged changes and generates Conventional Commit messages:
+### 🏷️ Smart PR Labels
+Automatically add relevant labels based on your changes:
 
 ```bash
-# Stage your changes
-gitwise add src/auth.py tests/test_auth.py
-
-# AI generates contextual commit message
-gitwise commit
-# Suggests: "feat(auth): implement JWT-based user authentication
-# 
-# - Add User model with password hashing
-# - Implement JWT token generation and validation
-# - Add comprehensive test coverage"
-```
-
-### Advanced: Grouped Commits
-For complex changes, GitWise can suggest splitting into multiple logical commits:
-
-```bash
-gitwise commit --group
-# AI suggests 3 commits:
-# 1. "refactor: extract user validation logic"
-# 2. "feat: add email verification"  
-# 3. "test: add user validation tests"
-```
-
-## ✍️ Intelligent PR Creation
-
-### Auto-Generated PR Descriptions
-```bash
-gitwise pr
-# Creates PR with:
-# - Smart title based on commits
-# - Detailed description with context
-# - Summary of changes
-```
-
-### Enhanced PRs with Labels & Checklists
-```bash
-gitwise pr --labels --checklist
-# Adds:
-# - Relevant labels (enhancement, bug, docs, etc.)
-# - File-type specific checklists
-# - Context-aware reminders
-```
-
-**Example Generated Checklist**:
-- ✅ Tests added for new functionality
-- ✅ Documentation updated
-- ✅ Breaking changes noted in commit message
-- ✅ Security implications reviewed
-
-## 📜 Changelog Management
-
-### Automated Changelog Updates
-```bash
-# Generate version-specific changelog
-gitwise changelog
-# AI suggests semantic version (e.g., v1.2.0)
-# Generates categorized entries:
-# - Features
-# - Bug Fixes  
-# - Breaking Changes
-```
-
-### Continuous Changelog Updates
-```bash
-# Setup automatic changelog updates
-gitwise setup-hooks
-# Installs pre-commit hook that updates [Unreleased] section
-```
-
-## 🧩 Context Management
-
-### Setting Context for Better AI Suggestions
-```bash
-# Set context for the current branch
-gitwise set-context "Working on user authentication with JWT implementation"
-# This context will be used to improve AI-generated commit messages and PR descriptions
-```
-
-### Viewing Current Context
-```bash
-# Check the current context for this branch
-gitwise get-context
-# Shows:
-# - User-set context
-# - Automatically parsed ticket IDs from branch names
-# - Keywords extracted from branch names
-```
-
-### How Context Works
-GitWise stores context information per branch in `.git/gitwise/context/` files. This context provides the AI with:
-- The "why" behind your changes
-- Project-specific terminology
-- Ticket/issue references
-- Feature goals and requirements
-
-This leads to more relevant and accurate commit messages and PR descriptions that better align with your actual development intent.
-
-## 🚀 Real-World Workflows
-
-### Feature Development
-```bash
-# Create feature branch
-gitwise checkout -b feature/user-auth
-
-# Set context for better AI understanding
-gitwise set-context "Implementing JWT authentication for user login"
-
-# Make changes to multiple files
-vim src/auth.py src/models.py tests/test_auth.py
-
-# Smart staging and commit
-gitwise add .
-gitwise commit --group
-# Results in clean, logical commit history with context-aware messages
-
-# Push and create enhanced PR
-gitwise push
-gitwise pr --labels --checklist
-# PR description incorporates the context about JWT authentication
-```
-
-### Bug Fix Workflow
-```bash
-# Fix the issue
-vim src/cache.py src/utils.py
-
-# Group related changes
-gitwise commit --group
-# AI suggests:
-# 1. "fix: prevent race condition in cache invalidation"
-# 2. "refactor: extract cache logic for better testability"
-# 3. "test: add concurrent access tests"
-
-# Update changelog and create PR
-gitwise changelog --auto-update
 gitwise pr --labels
 ```
 
-### Release Preparation
-```bash
-# Generate comprehensive changelog
-gitwise changelog
-# Reviews all commits since last release
-# Suggests appropriate version bump
-# Creates organized release notes
+**Auto-detects:**
+- `bug` - Bug fixes
+- `feature` - New features  
+- `docs` - Documentation changes
+- `refactor` - Code refactoring
+- `test` - Test additions
 
-# Create release PR
-gitwise pr --base main --title "Release v2.1.0"
+### ✅ Context-Aware Checklists
+Generate checklists based on your file types:
+
+```bash
+gitwise pr --checklist
 ```
 
-## ⚙️ Git Command Passthrough
+**Examples:**
+- **Frontend changes**: Browser testing, accessibility
+- **Backend changes**: API documentation, security review  
+- **Database changes**: Migration testing, backup verification
 
-Use GitWise as a drop-in replacement for Git:
+### 📊 Changelog Management
+Keep your changelog up-to-date automatically:
+
+```bash
+# Generate changelog for current version
+gitwise changelog
+
+# Update for specific version
+gitwise changelog --version 1.2.0
+```
+
+### 🎮 Git Command Passthrough
+Use GitWise as a drop-in Git replacement:
 
 ```bash
 # All standard Git commands work
 gitwise status
-gitwise log --oneline -5
+gitwise log --oneline
 gitwise branch -a
-gitwise stash list
-gitwise rebase -i HEAD~3
-
-# Same speed as native Git
-gitwise git <any_git_command>
+gitwise diff HEAD~1
 ```
 
-## 🔧 Advanced Configuration
+## ⚙️ Advanced Configuration
 
-### Environment Variables
+### Switching AI Backends
+Change backends anytime:
+
 ```bash
-# Backend selection
-export GITWISE_LLM_BACKEND=ollama  # ollama, offline, online
-
-# Ollama configuration
-export OLLAMA_MODEL=codellama
-export OLLAMA_URL=http://localhost:11434
-
-# Offline configuration  
-export GITWISE_OFFLINE_MODEL="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-
-# Online configuration
-export OPENROUTER_API_KEY="your_key"
-export OPENROUTER_MODEL="anthropic/claude-3-haiku"
-
-# Direct Provider Settings
-# OpenAI
-export GITWISE_LLM_BACKEND=openai
-export OPENAI_API_KEY="your_openai_api_key"
-export GITWISE_OPENAI_MODEL="gpt-4"
-# Anthropic
-export GITWISE_LLM_BACKEND=anthropic
-export ANTHROPIC_API_KEY="your_anthropic_api_key"
-export GITWISE_ANTHROPIC_MODEL="claude-3-opus-20240229"
-# Google Gemini
-export GITWISE_LLM_BACKEND=google_gemini
-export GOOGLE_API_KEY="your_google_api_key"
-export GITWISE_GEMINI_MODEL="gemini-pro"
+gitwise init  # Reconfigure backend
 ```
 
-### Configuration File
-Located at `~/.gitwise/config.json`:
-
-```json
-{
-  "llm_backend": "ollama",
-  "ollama": {
-    "model": "llama3",
-    "url": "http://localhost:11434"
-  },
-  "offline": {
-    "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-  },
-  "online": {
-    "api_key": "your_key",
-    "model": "anthropic/claude-3-haiku"
-  },
-  "openai": {
-    "api_key": "your_openai_api_key",
-    "model": "gpt-4"
-  },
-  "anthropic": {
-    "api_key": "your_anthropic_api_key",
-    "model": "claude-3-opus-20240229"
-  },
-  "google_gemini": {
-    "api_key": "your_google_api_key",
-    "model": "gemini-2.0-flash"
-  }
-}
-```
-
-## 💡 Performance Tips
-
-1. **For Speed**: Use Ollama with smaller models (`llama3`, `codellama`)
-2. **For Quality**: Use online mode with Claude or GPT-4
-3. **For Privacy**: Use offline mode with bundled models
-4. **For Balance**: Ollama with `llama3` (recommended default)
-
-## 🛠️ Troubleshooting
-
-### Backend Issues
-```bash
-# Check current backend
-gitwise config show
-
-# Test configuration
-gitwise init  # Re-run setup
-
-# Quick backend switch
-export GITWISE_LLM_BACKEND=offline
-```
-
-### Model Management (Ollama)
+### Custom Model Selection
+For Ollama users:
 ```bash
 # List available models
 ollama list
 
-# Pull new model
+# Pull new models
 ollama pull codellama
+ollama pull mistral
 
-# Check Ollama status
-curl http://localhost:11434/api/tags
+# GitWise will detect and offer them
 ```
 
----
+### Configuration Files
+GitWise stores config in:
+- **Local**: `.gitwise/config.json` (per repository)
+- **Global**: `~/.gitwise/config.json` (all repositories)
 
 ## 🎯 Best Practices
 
-1. **Commit Often**: GitWise works best with focused, related changes
-2. **Use Conventional Commits**: Enables better changelog generation
-3. **Stage Selectively**: Use `gitwise add -p` for partial staging
-4. **Review AI Suggestions**: Always review and edit generated content
-5. **Maintain Privacy**: Choose local backends for sensitive work
+### For Teams
+- Use consistent AI backend across team
+- Set up branch context templates
+- Standardize on Conventional Commits
 
----
+### For Privacy
+- Use Ollama for sensitive projects
+- Keep API keys secure
+- Review generated content before committing
 
-<div class="tip-box">
-  <h3>💡 Pro Tip</h3>
-  <p>Start with <code>gitwise init</code> to configure your preferences, then use <code>gitwise add .</code> and <code>gitwise commit</code> for your daily workflow. The AI learns from your codebase patterns!</p>
-</div> 
+### For Performance  
+- Use auto-confirm mode for repetitive tasks
+- Set branch context early
+- Cache Ollama models locally
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Ollama not responding:**
+```bash
+ollama serve  # Start Ollama server
+ollama list   # Check available models
+```
+
+**API key issues:**
+```bash
+gitwise init  # Reconfigure API keys
+```
+
+**Performance slow:**
+```bash
+# For Ollama: ensure model is pulled locally
+ollama pull llama3
+
+# For Online: check internet connection
+```
+
+## 🚀 What's Next?
+
+GitWise is actively developed with new features added regularly:
+
+- **Smart merge conflict resolution** - AI-powered merge assistance
+- **Code review suggestions** - Automated code quality checks  
+- **Team collaboration** - Shared contexts and templates
+- **IDE integrations** - VS Code, IntelliJ plugins
+
+Stay updated at [github.com/PayasPandey11/gitwise](https://github.com/PayasPandey11/gitwise)

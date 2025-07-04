@@ -50,9 +50,7 @@ def mock_dependencies_commit_feature():
     with patch(
         "gitwise.features.commit.load_config", MagicMock(return_value={})
     ), patch(
-        "gitwise.features.commit.get_llm_backend", MagicMock(return_value="offline")
-    ), patch(
-        "gitwise.features.commit.ensure_offline_model_ready", MagicMock()
+        "gitwise.features.commit.get_llm_backend", MagicMock(return_value="ollama")
     ), patch(
         "gitwise.features.commit.typer.confirm"
     ) as mock_confirm, patch(

@@ -10,6 +10,7 @@ GLOBAL_CONFIG_DIR = os.path.expanduser("~/.gitwise")
 
 
 class ConfigError(Exception):
+    """Configuration error - will be replaced with gitwise.exceptions.ConfigurationError"""
     pass
 
 
@@ -65,13 +66,25 @@ def config_exists(local_only: bool = False) -> bool:
 
 def validate_config(config: Dict[str, Any]) -> bool:
     """Basic validation for required keys based on backend."""
-    backend = config.get("llm_backend")
-    if backend not in {"ollama", "offline", "online"}:
+    backend = config.get("llm_backend", "ollama")
+    
+    # Only support ollama and online backends
+    if backend not in {"ollama", "online"}:
         return False
-    if backend == "online" and not config.get("openrouter_api_key"):
-        return False
-    if backend == "ollama" and not config.get("ollama_model"):
-        return False
+    
+    # Validate backend-specific requirements
+    if backend == "online":
+        # Check for any online provider API key
+        has_online_key = any([
+            config.get("openrouter_api_key"),
+            config.get("openai", {}).get("api_key"),
+            config.get("anthropic", {}).get("api_key"),
+            config.get("google_gemini", {}).get("api_key"),
+        ])
+        if not has_online_key:
+            return False
+    
+    # Ollama backend is valid if it exists (model will use defaults)
     return True
 
 
@@ -82,3 +95,50 @@ def get_llm_backend() -> str:
         return config.get("llm_backend", "ollama").lower()
     except ConfigError:
         return os.environ.get("GITWISE_LLM_BACKEND", "ollama").lower()
+
+
+def get_secure_config() -> Dict[str, Any]:
+    """
+    Get configuration with secure API key retrieval.
+    
+    Loads standard config but retrieves API keys from secure storage.
+    
+    Returns:
+        Dict with configuration including securely retrieved API keys
+    """
+    try:
+        config = load_config()
+    except ConfigError:
+        config = {"llm_backend": "ollama"}
+    
+    # Import here to avoid circular imports
+    from gitwise.security import get_api_key
+    
+    # Retrieve API keys from secure storage
+    secure_keys = {}
+    providers = ["openai", "anthropic", "google_gemini", "openrouter"]
+    
+    for provider in providers:
+        api_key = get_api_key(provider)
+        if api_key:
+            if provider == "openrouter":
+                secure_keys["openrouter_api_key"] = api_key
+            else:
+                if provider not in config:
+                    config[provider] = {}
+                config[provider]["api_key"] = api_key
+    
+    # Add legacy OpenRouter support
+    if secure_keys:
+        config.update(secure_keys)
+    
+    return config
+
+
+def should_use_secure_storage() -> bool:
+    """Check if secure storage should be used for new API keys."""
+    try:
+        from gitwise.security import credential_manager
+        return credential_manager.keyring_available
+    except ImportError:
+        return False

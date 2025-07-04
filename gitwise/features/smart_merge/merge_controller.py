@@ -9,7 +9,6 @@ from gitwise.config import ConfigError, get_llm_backend, load_config
 from gitwise.core.git_manager import GitManager
 from gitwise.features.context import ContextFeature
 from gitwise.ui import components
-from gitwise.llm.offline import ensure_offline_model_ready
 
 from .analyzer import MergeAnalyzer
 from .explainer import ConflictExplainer

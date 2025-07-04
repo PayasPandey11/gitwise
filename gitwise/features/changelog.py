@@ -12,7 +12,6 @@ import typer
 
 from ..config import ConfigError, get_llm_backend, load_config
 from ..core.git_manager import GitManager
-from ..llm.offline import ensure_offline_model_ready
 from ..llm.router import get_llm_response
 from ..prompts import CHANGELOG_SYSTEM_PROMPT_TEMPLATE, CHANGELOG_USER_PROMPT_TEMPLATE
 from ..ui import components
@@ -704,12 +703,6 @@ class ChangelogFeature:
                 init_command()
             return
 
-        if get_llm_backend() != "online":
-            try:
-                ensure_offline_model_ready()
-            except Exception as e:
-                components.show_error(f"Failed to load/prepare offline model: {e}")
-                return
 
         try:
             if auto_update and not version:

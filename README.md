@@ -1,160 +1,92 @@
-# GitWise: Your AI-Powered Git Co-pilot
+# GitWise: AI-Powered Git Workflow Assistant
 
 [![PyPI version](https://img.shields.io/pypi/v/pygitwise.svg)](https://pypi.org/project/pygitwise/)
 [![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/pygitwise/)
-[![License](https://img.shields.io/badge/license-AGPL--3.0%20OR%20Commercial-blue)](https://github.com/PayasPandey11/gitwise/blob/main/LICENSE)
-[![codecov](https://codecov.io/gh/PayasPandey11/gitwise/branch/main/graph/badge.svg)](https://codecov.io/gh/PayasPandey11/gitwise)
-[![CI Status](https://github.com/PayasPandey11/gitwise/workflows/CI/badge.svg)](https://github.com/PayasPandey11/gitwise/actions)
 [![Documentation](https://img.shields.io/badge/docs-github%20pages-blue)](https://payaspandey11.github.io/gitwise/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-**GitWise is a command-line tool designed for experienced developers to enhance their Git workflow with intelligent AI assistance. It focuses on speed, efficiency, and integrating seamlessly with your existing habits, while upholding industry best practices.**
+**Stop writing commit messages and PR descriptions by hand. Let AI do it for you.**
 
-> 📖 **[Complete Documentation & Getting Started Guide →](https://payaspandey11.github.io/gitwise/)**
+GitWise transforms your Git workflow with intelligent AI assistance - from perfect commit messages to comprehensive PR descriptions, all while keeping your code private with local AI models.
 
-Are you a seasoned developer who loves the power of Git but wishes some parts were faster or smarter? GitWise is built for you. We don't replace your Git knowledge; we augment it. GitWise helps you:
+## ✨ See the Difference
 
-- **Craft Perfect Commits, Instantly**: Generate Conventional Commit messages from your staged diffs in seconds.
-- **Smart Merge with AI Conflict Analysis**: AI explains conflicts in human terms, suggests resolution strategies, and generates intelligent merge commit messages.
-- **Streamline PR Creation**: Get AI-generated PR titles and descriptions, plus automated label and checklist suggestions.
-- **Maintain Changelogs Effortlessly**: Keep your `CHANGELOG.md` up-to-date with minimal fuss.
-- **Retain Full Git Control**: Use any standard Git command via `gitwise git ...` with the speed you expect. AI features are opt-in enhancements.
+**Before GitWise** (Manual workflow):
+```bash
+git add .
+git commit -m "fix stuff"  # 😬 Vague, unhelpful
+git push
+# Write PR description manually... takes 10+ minutes
+```
+
+**After GitWise** (Interactive AI workflow):
+```bash
+gitwise add .
+# 🤖 Interactive: Shows changes → Generates commit → Pushes → Creates PR
+# Complete workflow in one command with AI assistance at each step
+```
+
+*Perfect commits and PRs in seconds, not minutes.*
 
 ## 🚀 Quick Start
 
-### Installation
-
 ```bash
-# Install from PyPI
+# 1. Install
 pip install pygitwise
 
-# For offline model support
-pip install "pygitwise[offline]"
-```
-
-📌 **[Quick Reference Guide →](https://payaspandey11.github.io/gitwise/QUICK_REFERENCE.html)** - Keep this handy for all commands and options!
-
-### Your First GitWise Workflow
-
-```bash
-# 1. Initialize GitWise (first time only)
+# 2. Initialize (one-time setup)
 gitwise init
 
-# 2. Make your code changes
-echo "print('Hello, GitWise!')" > hello.py
-
-# 3. Stage changes interactively
-gitwise add .
-# Shows summary of changes and prompts for next action
-
-# 4. Generate AI-powered commit message
-gitwise commit
-# AI analyzes your diff and suggests: "feat: add hello world script"
-
-# 5. Push and create PR
-gitwise push
-gitwise pr --labels --checklist
+# 3. Use it like Git, but smarter
+gitwise add .       # 🔄 Interactive: stage → commit → push → PR (full workflow)
+gitwise commit      # 🤖 AI-generated Conventional Commits  
+gitwise merge       # 🧠 Smart merge with AI conflict resolution
+gitwise pr          # 📝 Detailed PR with auto-labels & checklists
 ```
 
-## 🤖 Three AI Backend Modes
+**That's it!** Your commits now follow Conventional Commits, your PRs have detailed descriptions, and everything is generated from your actual code changes.
 
-| Mode | Best For | Privacy | Internet |
-|------|----------|---------|----------|
-| **🦙 Ollama** | High-quality local AI | 🟢 Full | 🟡 Setup only |
-| **🏠 Offline** | Air-gapped environments | 🟢 Full | 🟢 Never |
-| **🌐 Online** | Latest AI models (GPT-4, Claude) | 🔴 API calls | 🔴 Always |
+## 🎯 Why GitWise?
 
-**[→ Learn more about AI backends](https://payaspandey11.github.io/gitwise/features.html#three-ai-backend-modes)**
+### 🔄 **Complete Workflow**: One command does stage → commit → push → PR
+### ⚡ **Lightning Fast**: 15-second full workflow vs 10+ minute manual process  
+### 🧠 **Intelligent**: Auto-groups commits, resolves conflicts, generates perfect PRs
+### 🔒 **Privacy-First**: Local AI models (Ollama) - your code never leaves your machine
+### 🛠️ **Familiar**: Works exactly like Git, just smarter
 
-## Key Features
+## 🤖 AI Backend Options
 
-- **🚀 Blazing Fast Core**: Standard Git commands passed through `gitwise git ...` run at native Git speed.
-- **🧠 Smart Commit Messages**: AI-generated Conventional Commits (opt-in grouping for complex changes via `gitwise commit --group`).
-- **🔀 AI-Powered Smart Merge**: Intelligent conflict analysis with human-readable explanations and resolution strategies.
-- **⚡ Streamlined Workflow**: Auto-confirm mode (`gitwise add -y`) for fully automated stage → commit → push → PR workflow.
-- **✍️ Intelligent PR Descriptions**: AI-generated PR titles and descriptions.
-- **🏷️ Automated PR Enhancements**: Optional label suggestions based on commit types and file-specific checklists for PRs.
-- **🧩 Context Management**: Store and use contextual information per branch to improve AI suggestions.
-- **📜 Changelog Management**: Automated updates for unreleased changes and easy generation for new versions.
-- **⚙️ Git Command Passthrough**: Use `gitwise` as a wrapper for any `git` command (e.g., `gitwise status`, `gitwise log`).
-- **🔒 Privacy-First**: Choose between local (Ollama/Offline) or cloud-based AI backends.
+| Backend | Privacy | Quality | Speed | Best For |
+|---------|---------|---------|-------|----------|
+| **Ollama** (Local) | 🟢 Complete | 🟢 High | 🟢 Fast | Privacy-focused developers |
+| **Online** (GPT-4/Claude) | 🟡 API calls | 🟢 Highest | 🟢 Instant | Latest AI capabilities |
 
-## 📖 Documentation
+Choose local for privacy, online for cutting-edge AI. Switch anytime with `gitwise init`.
 
-For comprehensive documentation, advanced features, troubleshooting, and real-world examples:
+## 📦 Installation
 
-- **[🌐 GitWise Documentation](https://payaspandey11.github.io/gitwise/)** - Complete documentation site
-- **[🚀 Quick Start Guide](https://payaspandey11.github.io/gitwise/quick-start.html)** - Get up and running in 5 minutes
-- **[⚡ Features & Advanced Usage](https://payaspandey11.github.io/gitwise/features.html)** - Deep dive into all capabilities
-- **[📋 Quick Reference](https://payaspandey11.github.io/gitwise/QUICK_REFERENCE.html)** - Handy command reference
-- **[🔧 API Documentation](https://payaspandey11.github.io/gitwise/api.html)** - For developers and contributors
-
-
-#### ⚠️ Command Not Found? (PATH issues)
-If you see a warning like:
-
-```
-WARNING: The script gitwise is installed in '/Users/yourname/Library/Python/3.x/bin' which is not on PATH.
-```
-
-This means the `gitwise` command is not available in your terminal by default. To fix this, add the following to your shell config (replace `3.x` with your Python version):
-
-```sh
-export PATH="$PATH:/Users/$(whoami)/Library/Python/3.x/bin"
-```
-
-Add this line to your `~/.zshrc` or `~/.bash_profile` and restart your terminal, or run it directly in your current session.
-
-- On Linux, the user base bin is usually `~/.local/bin`.
-- On Windows, add the Scripts directory to your PATH (see Python docs).
-
----
-
-#### ✅ Recommended: Use a Virtual Environment
-For the best experience, use a [virtual environment](https://docs.python.org/3/tutorial/venv.html):
-
-```sh
-python3 -m venv venv
-source venv/bin/activate
+### Option 1: Quick Install
+```bash
 pip install pygitwise
+gitwise init
 ```
 
-This ensures the `gitwise` command is always available when the venv is activated.
-
-📌 **[Quick Reference Guide](docs/QUICK_REFERENCE.md)** - Keep this handy for all commands and options!
-
+### Option 2: Local AI (Recommended)
 ```bash
-# Install Ollama first
+# Install Ollama for local AI
 curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model
 ollama pull llama3
 
-# Configure GitWise to use Ollama
-gitwise init
-# Select: Ollama (local server)
+# Install GitWise
+pip install pygitwise
+gitwise init  # Select Ollama when prompted
 ```
 
-**[→ Complete setup guide for all backends](https://payaspandey11.github.io/gitwise/quick-start.html)**
-
-## 🤖 AI Backend Modes
-
-GitWise supports three distinct AI backends, each with unique advantages:
-
-### 1. 🦙 Ollama Mode (Default - Recommended)
-
-**Best for**: Privacy-conscious developers who want high-quality local AI with easy model management.
-
+### Option 3: Virtual Environment (Best Practice)
 ```bash
-# Install Ollama first
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model
-ollama pull llama3
-
-# Configure GitWise to use Ollama
+python3 -m venv gitwise-env
+source gitwise-env/bin/activate
+pip install pygitwise
 gitwise init
-# Select: Ollama (local server)
 ```
 
 **Features**:
@@ -465,228 +397,45 @@ ollama pull codellama
 
 ```bash
 # Quick switch via environment variable
-export GITWISE_LLM_BACKEND=offline
-gitwise commit  # Now using offline mode
+export GITWISE_LLM_BACKEND=ollama
+gitwise commit  # Now using Ollama mode
 
 # Or reconfigure
 gitwise init
 ```
 
-### Performance Tips
+## 🔥 Key Features
 
-1. **For faster responses**: Use Ollama with smaller models like `llama3` or `codellama`
-2. **For best quality**: Use online mode with Claude or GPT-4
-3. **For air-gapped environments**: Use offline mode with the bundled model
+- **🔄 Interactive Workflow**: `gitwise add` does everything - stage → commit → push → PR in one flow
+- **🤖 AI Commit Messages**: Generate perfect Conventional Commits from your changes
+- **🧠 Smart Auto-Grouping**: Automatically groups related changes into separate commits
+- **🔀 Intelligent Merges**: AI-powered conflict analysis and resolution assistance  
+- **📝 Smart PR Descriptions**: Detailed descriptions with automated labels and checklists  
+- **🔒 Privacy-First**: Local AI models (Ollama) keep your code on your machine
+- **⚙️ Git Compatible**: Use as a drop-in replacement for Git commands
+- **📊 Changelog Generation**: Automated changelog updates
+- **🎯 Context Aware**: Remembers branch context for better suggestions
 
-## 📊 Detailed Command Reference
+## 📚 Learn More
 
-GitWise commands are designed to be intuitive. Here are the main ones:
+- **[📖 Complete Documentation](https://payaspandey11.github.io/gitwise/)** - Full guides and examples
+- **[⚡ Quick Reference](https://payaspandey11.github.io/gitwise/QUICK_REFERENCE.html)** - All commands at a glance
+- **[🚀 Advanced Features](https://payaspandey11.github.io/gitwise/features.html)** - Power user capabilities
 
-### `gitwise add [files...] [--yes]`
-- Interactively stage files. 
-- Shows a summary of staged files and offers to commit or view the full diff.
-- `--yes` (or `-y`): **Auto-confirm mode** - Automatically answers "yes" to all prompts for a streamlined, non-interactive workflow:
-  - ✅ Enables automatic commit grouping 
-  - ✅ Auto-pushes changes after commit
-  - ✅ Auto-creates PR with labels and checklist (skipped if on main/master branch)
-  - 🛡️ **Special behavior**: When on main/master branch, skips PR creation entirely
-- Example: `gitwise add .` (interactive mode)
-- Example: `gitwise add . --yes` (auto-confirm mode - perfect for CI/CD or rapid development)
-- Example: `gitwise add file1.py file2.md -y` (auto-confirm with specific files)
+## 🤝 Contributing
 
-### `gitwise commit [--group]`
-- Generates an AI-powered Conventional Commit message for your staged changes.
-- You can review, edit, or regenerate the message before committing.
-- Use `--group` (or `-g`) for GitWise to analyze changes and suggest breaking them into multiple logical commits. This is powerful for refactoring or large feature work but can be slower due to more LLM calls.
-- Example: `gitwise commit` (for a single smart commit)
-- Example: `gitwise commit --group` (to try grouping)
+Found a bug? Have a feature request? Contributions welcome!
 
-### `gitwise set-context "<context_string>"`
-- Sets contextual information for the current branch to improve AI suggestions.
-- This context is used when generating commit messages and PR descriptions.
-- Helps the AI understand the "why" behind your changes for more relevant outputs.
-- Example: `gitwise set-context "Working on login authentication feature"`
-
-### `gitwise get-context`
-- Displays the current context information for the active branch.
-- Shows user-set context, automatically parsed ticket IDs from branch names, and keywords.
-- Example: `gitwise get-context`
-
-### `gitwise push`
-- Pushes your committed changes to the remote repository.
-- Prompts to create a Pull Request after a successful push.
-
-### `gitwise pr [--labels] [--checklist] [--base <branch>] [--title <title>] [--draft]`
-- Creates a Pull Request on GitHub (requires `gh` CLI to be installed and authenticated).
-- AI generates the PR title (if not provided) and a descriptive body based on your commits.
-- `--labels`: Suggests relevant labels (e.g., bug, feature) based on commit types.
-- `--checklist`: Adds a context-aware checklist to the PR body based on changed file types (e.g., reminders for tests, docs for Python files).
-- Example: `gitwise pr --labels --checklist --base develop`
-
-### `gitwise merge <branch> [--strategy <strategy>] [--continue] [--abort] [--yes]`
-- **AI-powered merge with intelligent conflict analysis and resolution assistance**.
-- Analyzes merge scenarios, detects conflicts, and provides human-readable explanations.
-- **Conflict Analysis**: AI explains what each side is trying to accomplish and suggests resolution strategies.
-- **Smart Merge Messages**: Generates intelligent merge commit messages based on the changes.
-- **Safe by Design**: Never auto-resolves conflicts - always requires user confirmation.
-- `--strategy`: Merge strategy (`auto`, `manual`, `ours`, `theirs`) - defaults to `auto`
-- `--continue`: Continue merge after manually resolving conflicts
-- `--abort`: Abort an ongoing merge operation  
-- `--yes` or `-y`: Skip interactive prompts for automated workflows
-- `--no-commit`: Don't create merge commit automatically
-- `--no-ff`: Create merge commit even for fast-forward merges
-- `--squash`: Squash commits from source branch
-- Example: `gitwise merge feature/auth` (basic merge with AI analysis)
-- Example: `gitwise merge feature/payment --strategy manual` (manual strategy)
-- Example: `gitwise merge --continue` (continue after resolving conflicts)
-- Example: `gitwise merge --abort` (abort ongoing merge)
-
-### `gitwise changelog [--version <version>] [--output-file <file>]`
-- Generates or updates your `CHANGELOG.md`.
-- **For New Releases**: Run `gitwise changelog`. It will suggest a semantic version based on your recent commits. Confirm or provide a version (e.g., `v1.2.3`). The AI will generate entries for this version. The command will also offer to create a git tag for the version.
-- **Automatic Unreleased Section**: To automatically update an `[Unreleased]` section in your `CHANGELOG.md` before each commit, run `gitwise setup-hooks`. This installs a Git pre-commit hook script that calls `gitwise changelog --auto-update` and stages `CHANGELOG.md` if it was modified. 
-    - **Note for `pre-commit` framework users**: If you use the [pre-commit](https://pre-commit.com/) framework, you should integrate `gitwise changelog --auto-update` into your existing `.pre-commit-config.yaml` instead of using `gitwise setup-hooks`.
-- **Best Practice**: Use [Conventional Commit](https://www.conventionalcommits.org/) messages (e.g., `feat: ...`, `fix: ...`) for the best changelog results.
-
-### `gitwise setup-hooks`
-- Installs a Git pre-commit script (`.git/hooks/pre-commit`) that attempts to run `gitwise changelog --auto-update` before each commit. 
-- This helps maintain an up-to-date pending changelog. 
-- If you use the `pre-commit` framework, manage GitWise through your `.pre-commit-config.yaml` instead.
-
-### `gitwise git <git_command_and_args...>`
-- A direct passthrough to any standard `git` command.
-- Useful if you want to stay within the `gitwise` CLI but need a specific Git command.
-- Output is streamed directly from Git. If you are using a command that pages (e.g., `git log`, `git diff`) and need script-friendly output, you should pipe it manually (e.g., `gitwise git log | cat`). If running `gitwise` via a GitHub CLI alias (`gh alias set gw --shell 'gitwise $1'`), `gh` may handle paging for you.
-- Example: `gitwise git status -sb`, `gitwise git log --oneline -n 5`
-
-## 🌟 Real-World Examples
-
-### Feature Development Workflow
-
-```bash
-# Start a new feature
-gitwise checkout -b feature/user-authentication
-
-# Make changes to multiple files
-vim src/auth.py src/models/user.py tests/test_auth.py
-
-# Stage and commit with AI assistance
-gitwise add .
-gitwise commit
-# AI suggests: "feat: implement JWT-based user authentication"
-
-# Push and create PR with context
-gitwise push
-gitwise pr --labels --checklist
-```
-
-### Bug Fix with Grouped Commits
-
-```bash
-# Use grouped commits for clarity
-gitwise commit --group
-# AI suggests 3 commits:
-# 1. "fix: prevent race condition in cache invalidation"
-# 2. "refactor: extract cache logic to separate module"  
-# 3. "test: add integration tests for concurrent cache access"
-```
-
-### Smart Merge with Conflict Resolution
-
-```bash
-# Merge a feature branch with potential conflicts
-gitwise merge feature/database-migration
-
-# GitWise analyzes the merge:
-# 🔍 Analyzing merge: feature/database-migration
-# 📊 3-way merge required
-# ⚠️ 2 conflict(s) detected
-
-# AI explains conflicts in human terms:
-# 📁 src/models.py
-# "Both branches modified the User model. Your branch added 
-#  email validation while the feature branch added password hashing."
-
-# 💡 Resolution Strategy: "Combine both features by keeping both 
-#     the email validation and password hashing changes"
-
-# Resolve conflicts manually, then:
-gitwise merge --continue
-# ✅ Generates intelligent merge commit message
-```
-
-**[→ More examples and advanced workflows](https://payaspandey11.github.io/gitwise/features.html#real-world-workflows)**
-
-## 💡 Quick Tips
-
-1. **Commit Message Quality**: GitWise works best when you stage related changes together
-2. **Smart Merge**: Use `gitwise merge` instead of `git merge` for AI-powered conflict analysis and resolution guidance
-3. **Performance**: Use Ollama for the best balance of speed and quality
-4. **Privacy**: Use offline mode for sensitive codebases
-5. **Streamlined Workflow**: Use `gitwise add . -y` for a fully automated workflow (stage → commit → push → PR)
-6. **Advanced Features**: Use `gitwise commit --group` for complex changes
-7. **PR Enhancement**: Always use `--labels --checklist` for better PRs
-
-## 🛠️ Development & Contributing
-
-If you want to contribute to GitWise:
-
-```bash
-git clone https://github.com/PayasPandey11/gitwise.git
-cd gitwise
-python3 -m venv .venv
-source .venv/bin/activate
-pip3 install -e ".[dev]"
-make test
-```
-
-**[→ Full development setup guide](https://payaspandey11.github.io/gitwise/api.html)**
-
-## 🚀 Roadmap
-
-GitWise is actively developing! Here are some directions we're exploring:
-
-- **Enhanced AI Capabilities**: AI-assisted interactive rebase, smart stash messages
-- **More Local Models**: Support for LlamaCPP, GPT4All backends  
-- **Model Fine-tuning**: Custom models trained on your codebase patterns
-- **IDE Integration**: Tighter coupling with VS Code and other editors
-- **Team Workflows**: Features to support team conventions and automation
-
-**[→ Complete roadmap and feature requests](https://github.com/PayasPandey11/gitwise/issues)**
+- **Issues**: [GitHub Issues](https://github.com/PayasPandey11/gitwise/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/PayasPandey11/gitwise/discussions)
 
 ## 📄 License
 
-GitWise is available under a **dual license model**:
-
-### 🆓 Open Source (AGPL v3)
-- **Free** for open source projects and personal use
-- **Must share derivatives** under AGPL v3 terms
-- **Must disclose source** if you run modified versions on servers
-- Perfect for: Open source projects, learning, personal use
-
-### 💼 Commercial License
-- **Paid license** for commercial/proprietary use
-- **No sharing requirements** - keep your modifications private
-- **Commercial support** and custom terms available
-- Perfect for: Companies, proprietary products, commercial services
-
-**Need a commercial license?** Contact for pricing and terms.
-
-### 🤔 Which License Do I Need?
-
-| Use Case | License | Cost |
-|----------|---------|------|
-| Open source project | AGPL v3 | 🆓 Free |
-| Personal learning/use | AGPL v3 | 🆓 Free |
-| Internal company tools | Commercial | 💰 Paid |
-| Proprietary products | Commercial | 💰 Paid |
-| SaaS/hosted services | Commercial | 💰 Paid |
-
-See the [LICENSE](LICENSE) file for complete terms.
+Dual licensed: AGPL-3.0 for open source projects, Commercial license available for proprietary use.
 
 ---
 
-<div align="center">
-
-**[📖 Documentation](https://payaspandey11.github.io/gitwise/) • [🚀 Quick Start](https://payaspandey11.github.io/gitwise/quick-start.html) • [💬 Issues](https://github.com/PayasPandey11/gitwise/issues) • [🤝 Contributing](CONTRIBUTING.md)**
-</div>
+**Ready to transform your Git workflow?** 
+```bash
+pip install pygitwise && gitwise init
+```

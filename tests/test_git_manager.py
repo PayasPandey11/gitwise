@@ -81,7 +81,8 @@ def test_find_git_root_success(mock_run_global):
 @patch("gitwise.core.git_manager.subprocess.run")
 def test_find_git_root_failure(mock_run_global):
     mock_run_global.side_effect = subprocess.CalledProcessError(1, "git rev-parse")
-    with pytest.raises(RuntimeError, match="Not inside a Git repository"):
+    from gitwise.exceptions import GitOperationError
+    with pytest.raises(GitOperationError, match="Not inside a Git repository"):
         GitManager()
 
 
@@ -97,7 +98,8 @@ def test_is_git_repo_true(mock_subprocess_run):
     # Test when no git repo is found
     with patch.object(GitManager, "_find_git_root", return_value=None):
         # GitManager raises RuntimeError when no git repo is found
-        with pytest.raises(RuntimeError, match="Not inside a Git repository"):
+        from gitwise.exceptions import GitOperationError
+        with pytest.raises(GitOperationError, match="Not inside a Git repository"):
             gm = GitManager(path=None)
 
 

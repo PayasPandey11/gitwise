@@ -157,8 +157,7 @@ def test_suggest_next_version_fix_only(mock_git_manager):
 
 
 @patch("gitwise.features.changelog.load_config", MagicMock(return_value={}))
-@patch("gitwise.features.changelog.get_llm_backend", MagicMock(return_value="offline"))
-@patch("gitwise.features.changelog.ensure_offline_model_ready", MagicMock())
+@patch("gitwise.features.changelog.get_llm_backend", MagicMock(return_value="ollama"))
 class TestChangelogFeature:
 
     def test_execute_changelog_new_version(

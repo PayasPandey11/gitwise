@@ -56,8 +56,8 @@ def mock_git_manager_pr():  # Renamed to avoid conflict if used in same test ses
 @pytest.fixture
 def mock_pr_dependencies():  # Mocks for PrFeature execution
     with patch("gitwise.features.pr.load_config", MagicMock(return_value={})), patch(
-        "gitwise.features.pr.get_llm_backend", MagicMock(return_value="offline")
-    ), patch("gitwise.features.pr.ensure_offline_model_ready", MagicMock()), patch(
+        "gitwise.features.pr.get_llm_backend", MagicMock(return_value="ollama")
+    ), patch(
         "gitwise.features.pr.typer.confirm"
     ) as mock_confirm, patch(
         "gitwise.features.pr.typer.prompt"

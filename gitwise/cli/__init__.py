@@ -35,48 +35,7 @@ app = typer.Typer(
 )
 
 
-def check_and_install_offline_deps() -> bool:
-    missing = []
-    packages_to_check = {"transformers": False, "torch": False}
-    try:
-        import transformers
-
-        packages_to_check["transformers"] = True
-    except ImportError:
-        missing.append("transformers")
-    try:
-        import torch
-
-        packages_to_check["torch"] = True
-    except ImportError:
-        missing.append("torch")
-
-    if missing:
-        print(
-            f"[gitwise] Optional dependencies for offline mode ({', '.join(missing)}) are missing."
-        )
-        print("You can install them with: pip install gitwise[offline]")
-        auto = (
-            input(
-                "Would you like to install them now (pip install gitwise[offline])? [Y/n]: "
-            )
-            .strip()
-            .lower()
-        )
-        if auto in ("", "y", "yes"):
-            cmd = [sys.executable, "-m", "pip", "install", "gitwise[offline]"]
-            print(f"[gitwise] Running: {', '.join(cmd)}")
-            subprocess.run(cmd)
-            print("[gitwise] Dependencies installed! Please re-run your command.")
-            return False
-        else:
-            print("[gitwise] Cannot proceed without required dependencies. Exiting.")
-            return False
-    return True
-
-
-# Remove automatic dependency check at import time
-# check_and_install_offline_deps()
+# Offline mode removed - Ollama provides better local AI capabilities
 
 
 # Add commands
@@ -234,19 +193,6 @@ def git_cli_entrypoint(
         components.show_error(str(e))
         raise typer.Exit(code=1)
 
-
-@app.command(
-    "offline-model", help="Check and download the offline LLM model for offline mode."
-)
-def offline_model_cmd():
-    """Check/download the offline LLM model (microsoft/phi-2 by default)."""
-    # Only check dependencies when user explicitly requests offline model
-    if not check_and_install_offline_deps():
-        raise typer.Exit(code=1)
-
-    from gitwise.llm.download import download_offline_model
-
-    download_offline_model()
 
 
 @app.command(name="init")
