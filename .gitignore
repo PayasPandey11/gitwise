@@ -181,3 +181,6 @@ cython_debug/
 .gitwise/
 .gitwise/config.json
 .cursor/
+
+# Internal documentation files for AI assistants - not for public repo
+.internal/
