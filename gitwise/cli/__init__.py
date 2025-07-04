@@ -9,6 +9,7 @@ import typer
 from gitwise.cli.add import add_command_cli
 from gitwise.cli.init import init_command
 from gitwise.cli.merge import merge_command_cli
+from gitwise.features.branch import BranchFeature
 from gitwise.features.changelog import ChangelogFeature
 from gitwise.features.commit import CommitFeature
 from gitwise.features.context import ContextFeature
@@ -53,6 +54,25 @@ def add_cli_entrypoint(
 ) -> None:
     """Stage files with interactive selection."""
     add_command_cli(files, auto_confirm=yes)
+
+
+@app.command(name="branch")
+def branch_cli_entrypoint(
+    branch_name: str = typer.Argument(..., help="Name of the branch to create"),
+    context: str = typer.Option(None, "--context", "-c", help="Description of what you're working on"),
+    ticket: str = typer.Option(None, "--ticket", "-t", help="Ticket/Issue ID"),
+    checkout: bool = typer.Option(False, "--checkout", "-C", help="Switch to the new branch after creating"),
+    from_branch: str = typer.Option(None, "--from", "-f", help="Base branch (default: main/master)")
+) -> None:
+    """Create a new branch with context for better AI assistance."""
+    feature = BranchFeature()
+    feature.execute_branch(
+        branch_name=branch_name,
+        context=context,
+        ticket=ticket,
+        checkout=checkout,
+        from_branch=from_branch
+    )
 
 
 @app.command(name="commit", help="Create a commit with AI-generated message")

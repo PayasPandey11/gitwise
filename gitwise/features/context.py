@@ -113,6 +113,34 @@ class ContextFeature:
         # Write updated context
         return self._write_context(context, branch_name)
     
+    def extract_keywords(self, text: str) -> list:
+        """Extract meaningful keywords from text (branch name, context, etc)."""
+        # Extract words from text
+        keywords = re.findall(r'[a-zA-Z]+', text)
+        
+        # Common words to filter out
+        common_words = {'the', 'and', 'for', 'bug', 'fix', 'feat', 'feature', 
+                       'chore', 'docs', 'test', 'refactor', 'to', 'of', 'in', 
+                       'on', 'at', 'from', 'with', 'by', 'is', 'are', 'was', 'were'}
+        
+        # Filter out common words, short words, and ticket IDs
+        filtered_keywords = [
+            kw.lower() for kw in keywords 
+            if len(kw) > 2 
+            and kw.lower() not in common_words
+            and not re.match(r'^[A-Z]+-\d+$', kw.upper())  # Skip ticket IDs
+        ]
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_keywords = []
+        for kw in filtered_keywords:
+            if kw not in seen:
+                seen.add(kw)
+                unique_keywords.append(kw)
+        
+        return unique_keywords
+    
     def prompt_for_context_if_needed(self, branch_name: Optional[str] = None) -> Optional[str]:
         """Check if context is missing and prompt user for context if needed.
         
