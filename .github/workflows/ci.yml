@@ -57,39 +57,88 @@ jobs:
         files: ./coverage.xml
         fail_ci_if_error: false
 
-  test-deploy:
+  bump-version:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/test-v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: Install dependencies.
+    - name: Configure git
       run: |
-        python -m pip install --upgrade pip
-        pip install build twine
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
     
-    - name: Build and publish to TestPyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+    - name: Bump version
+      id: bump
       run: |
-        python -m build
-        twine upload --repository testpypi dist/* --verbose 
+        # Get current version
+        CURRENT_VERSION=$(python -c "exec(open('gitwise/__init__.py').read()); print(__version__)")
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Split version into parts
+        IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+        
+        # Get commit messages since last version bump
+        COMMIT_MESSAGES=$(git log --oneline --grep="chore: bump version" --invert-grep --since="1 day ago" | head -10)
+        echo "Recent commits:"
+        echo "$COMMIT_MESSAGES"
+        
+        # Determine version bump type based on commit messages
+        BUMP_TYPE="patch"  # Default to patch
+        
+        # Check for new features (minor bump)
+        if echo "$COMMIT_MESSAGES" | grep -qE "(feat|feature|add|new)"; then
+          BUMP_TYPE="minor"
+        # Check for fixes, docs, chores (patch bump)
+        elif echo "$COMMIT_MESSAGES" | grep -qE "(fix|bug|doc|chore|refactor|perf|test)"; then
+          BUMP_TYPE="patch"
+        fi
+        
+        echo "Detected bump type: $BUMP_TYPE"
+        
+        # Calculate new version based on bump type
+        if [ "$BUMP_TYPE" = "minor" ]; then
+          NEW_MINOR=$((minor + 1))
+          NEW_VERSION="$major.$NEW_MINOR.0"
+        else
+          NEW_PATCH=$((patch + 1))
+          NEW_VERSION="$major.$minor.$NEW_PATCH"
+        fi
+        
+        echo "Version bump: $CURRENT_VERSION → $NEW_VERSION ($BUMP_TYPE)"
+        
+        # Update version in __init__.py
+        sed -i "s/__version__ = \"$CURRENT_VERSION\"/__version__ = \"$NEW_VERSION\"/" gitwise/__init__.py
+        
+        # Commit version bump
+        git add gitwise/__init__.py
+        git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+        git push
+        
+        # Set output for other jobs
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-  deploy:
-    needs: test
+  test-deploy:
+    needs: bump-version
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        ref: main  # Get the latest commit with version bump
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -101,10 +150,40 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine
     
-    - name: Build and publish
+    - name: Build and publish to TestPyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      run: |
+        echo "Publishing version ${{ needs.bump-version.outputs.new_version }} to TestPyPI"
+        python -m build
+        twine upload --repository testpypi dist/* --verbose 
+
+  deploy:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: main  # Get the latest commit with version bump
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build and publish to PyPI
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
+        echo "Publishing version ${{ needs.bump-version.outputs.new_version }} to PyPI"
         python -m build
         twine upload dist/* --verbose 
