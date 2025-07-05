@@ -98,11 +98,8 @@ jobs:
         # Determine version bump type based on commit messages
         BUMP_TYPE="patch"  # Default to patch
         
-        # Check for breaking changes (major bump)
-        if echo "$COMMIT_MESSAGES" | grep -qE "(BREAKING|breaking|!:|feat!|fix!|^[a-z]+!:)"; then
-          BUMP_TYPE="major"
         # Check for new features (minor bump)
-        elif echo "$COMMIT_MESSAGES" | grep -qE "(feat|feature|add|new)"; then
+        if echo "$COMMIT_MESSAGES" | grep -qE "(feat|feature|add|new)"; then
           BUMP_TYPE="minor"
         # Check for fixes, docs, chores (patch bump)
         elif echo "$COMMIT_MESSAGES" | grep -qE "(fix|bug|doc|chore|refactor|perf|test)"; then
@@ -112,10 +109,7 @@ jobs:
         echo "Detected bump type: $BUMP_TYPE"
         
         # Calculate new version based on bump type
-        if [ "$BUMP_TYPE" = "major" ]; then
-          NEW_MAJOR=$((major + 1))
-          NEW_VERSION="$NEW_MAJOR.0.0"
-        elif [ "$BUMP_TYPE" = "minor" ]; then
+        if [ "$BUMP_TYPE" = "minor" ]; then
           NEW_MINOR=$((minor + 1))
           NEW_VERSION="$major.$NEW_MINOR.0"
         else

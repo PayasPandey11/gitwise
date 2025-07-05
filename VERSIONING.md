@@ -4,19 +4,13 @@ This project uses **Semantic Versioning (SemVer)** with intelligent automatic ve
 
 ## Version Format: `MAJOR.MINOR.PATCH`
 
-### 🔴 MAJOR Version (Breaking Changes)
+### 🔴 MAJOR Version (Breaking Changes) - **MANUAL ONLY**
 **Triggers:** `1.0.0` → `2.0.0`
 - Breaking changes to existing functionality
 - Incompatible API changes
 - Major feature overhauls
 
-**Commit Message Patterns:**
-```bash
-feat!: remove deprecated --old-flag option
-fix!: change function signature for process_commit()
-BREAKING: restructure configuration format
-chore!: drop support for Python 3.7
-```
+**⚠️ Note:** Major version bumps are **not automated** and must be done manually to ensure careful consideration of breaking changes.
 
 ### 🟡 MINOR Version (New Features)
 **Triggers:** `1.0.0` → `1.1.0`
@@ -60,18 +54,18 @@ The CI workflow analyzes recent commit messages to determine the appropriate ver
 git log --oneline --since="1 day ago" | head -10
 
 # Analyze patterns:
-# - BREAKING/!: → Major bump
 # - feat/feature/add/new → Minor bump  
 # - fix/bug/doc/chore/refactor/perf/test → Patch bump
+# - Major bumps are manual only
 ```
 
 ### 2. **Version Bump Logic**
 ```bash
 # Current: 0.1.4
 
-# Major bump: 0.1.4 → 1.0.0
 # Minor bump: 0.1.4 → 0.2.0  
 # Patch bump: 0.1.4 → 0.1.5
+# Major bump: 0.1.4 → 1.0.0 (manual only)
 ```
 
 ### 3. **Automatic Release Process**
@@ -102,10 +96,12 @@ wip
 ```
 
 ### 🔥 Breaking Changes
-Always use `!` or `BREAKING` for incompatible changes:
+For incompatible changes, manually update the version:
 ```bash
-feat!: remove deprecated --format option
-BREAKING: change default behavior for merge command
+# Manual process for major version bumps
+# 1. Edit gitwise/__init__.py
+# 2. Update version to next major (e.g., 0.2.5 → 1.0.0)
+# 3. Commit with [skip ci] to avoid auto-bump
 ```
 
 ## Manual Version Control
@@ -140,21 +136,21 @@ git commit -m "chore: manual version bump to 1.2.3 [skip ci]"
 # Result: 0.1.4 → 0.2.0 (minor - feature takes precedence)
 ```
 
-### Scenario 3: Breaking Change
+### Scenario 3: Manual Major Version
 ```bash
-# Commits:
-# feat!: restructure CLI command interface
-# fix: update documentation
-
-# Result: 0.1.4 → 1.0.0 (major - breaking change takes precedence)
+# When you need breaking changes:
+# 1. Edit gitwise/__init__.py: __version__ = "1.0.0"
+# 2. Commit: git commit -m "chore: release v1.0.0 with breaking changes [skip ci]"
+# 3. Push to trigger deployment of the manually set version
 ```
 
 ## Version Precedence
 
 When multiple types of changes are present:
-1. **Major** (breaking) > **Minor** (feature) > **Patch** (fix)
-2. The highest precedence change determines the version bump
-3. Default fallback is **patch** if no patterns match
+1. **Minor** (feature) > **Patch** (fix)
+2. **Major** version bumps are manual only
+3. The highest precedence change determines the version bump
+4. Default fallback is **patch** if no patterns match
 
 ---
 
