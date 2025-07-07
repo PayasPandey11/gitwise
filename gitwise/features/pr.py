@@ -188,7 +188,7 @@ def _generate_pr_description_llm(
     # Check if using custom PR rules
     if active_style == "custom":
         # Show that custom rules are being used
-        components.show_info("Using custom PR rules for description generation")
+        components.console.print("\n[dim]Using custom PR rules for description generation[/dim]")
         
         # Build context for PR rules
         pr_context = {

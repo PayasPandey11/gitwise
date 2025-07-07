@@ -369,35 +369,46 @@ Template Requirements:"""
         """Interactive setup for custom PR rules."""
         components.show_section("PR Rules Configuration")
         
-        # Choose style
-        style_choice = typer.prompt(
-            "Choose PR description style",
-            type=typer.Choice(["github", "custom"]),
-            default="github"
-        )
+        # Choose style - use simple prompt like commit rules
+        components.console.print("\n1. Choose your PR description style:")
+        components.console.print("   a) GitHub (default) - Standard GitHub PR format")
+        components.console.print("   b) Custom - Define your own format")
+        
+        style_input = typer.prompt("\nSelect style (a/b)", default="a")
+        
+        if style_input.lower() == "b":
+            style_choice = "custom"
+        else:
+            style_choice = "github"
         
         if style_choice == "github":
             rules = self._get_default_rules()
             
             # Optional GitHub customizations
-            if typer.confirm("Would you like to customize GitHub style settings?", default=False):
-                # Tone
-                tone = typer.prompt(
-                    "Select tone",
-                    type=typer.Choice(["professional", "casual", "technical"]),
-                    default="professional"
-                )
-                rules['ai_settings']['tone'] = tone
+            if typer.confirm("\nWould you like to customize GitHub style settings?", default=False):
+                # Tone - use simple prompt
+                components.console.print("\nSelect tone:")
+                components.console.print("   1) Professional (default)")
+                components.console.print("   2) Casual")
+                components.console.print("   3) Technical")
+                
+                tone_choice = typer.prompt("Select tone (1/2/3)", default="1")
+                if tone_choice == "2":
+                    rules['ai_settings']['tone'] = "casual"
+                elif tone_choice == "3":
+                    rules['ai_settings']['tone'] = "technical"
+                else:
+                    rules['ai_settings']['tone'] = "professional"
                 
                 # Emoji
                 rules['ai_settings']['include_emoji'] = typer.confirm(
-                    "Include emoji in section headers?",
+                    "\nInclude emoji in section headers?",
                     default=False
                 )
                 
                 # Issue references
                 rules['validation']['require_issue_reference'] = typer.confirm(
-                    "Require issue references in PRs?",
+                    "\nRequire issue references in PRs?",
                     default=False
                 )
                 
@@ -412,7 +423,7 @@ Template Requirements:"""
             rules = self._setup_custom_rules()
         
         # Auto-labeling
-        if typer.confirm("Enable automatic label detection?", default=False):
+        if typer.confirm("\nEnable automatic label detection?", default=False):
             rules['auto_labels']['enabled'] = True
             rules['auto_labels']['rules'] = self._setup_auto_labels()
         
@@ -424,13 +435,13 @@ Template Requirements:"""
         rules['style'] = 'custom'
         
         # Template format
-        components.show_info("Choose template format:")
+        components.console.print("\nChoose template format:")
         components.console.print("1. Sections-based (recommended)")
         components.console.print("2. Custom markdown template")
         
-        format_choice = typer.prompt("Select format", type=int, default=1)
+        format_choice = typer.prompt("\nSelect format (1/2)", default="1")
         
-        if format_choice == 1:
+        if format_choice == "1":
             rules['template'] = self._setup_sections_template()
         else:
             rules['template'] = self._setup_markdown_template()
@@ -439,7 +450,7 @@ Template Requirements:"""
         components.show_section("Validation Rules")
         
         rules['validation']['min_description_length'] = typer.prompt(
-            "Minimum description length",
+            "\nMinimum description length",
             type=int,
             default=50
         )
@@ -451,7 +462,7 @@ Template Requirements:"""
         )
         
         rules['validation']['require_issue_reference'] = typer.confirm(
-            "Require issue references?",
+            "\nRequire issue references?",
             default=False
         )
         
@@ -464,26 +475,51 @@ Template Requirements:"""
         # AI settings
         components.show_section("AI Settings")
         
-        tone = typer.prompt(
-            "Select tone",
-            type=typer.Choice(["professional", "casual", "technical"]),
-            default="professional"
-        )
-        rules['ai_settings']['tone'] = tone
+        # Use simple prompt for tone
+        components.console.print("\nSelect tone:")
+        components.console.print("   1) Professional (default)")
+        components.console.print("   2) Casual")
+        components.console.print("   3) Technical")
+        
+        tone_choice = typer.prompt("Select tone (1/2/3)", default="1")
+        if tone_choice == "2":
+            rules['ai_settings']['tone'] = "casual"
+        elif tone_choice == "3":
+            rules['ai_settings']['tone'] = "technical"
+        else:
+            rules['ai_settings']['tone'] = "professional"
         
         rules['ai_settings']['include_emoji'] = typer.confirm(
-            "Include emoji?",
+            "\nInclude emoji?",
             default=False
         )
         
         custom_instructions = typer.prompt(
-            "Additional AI instructions (optional)",
+            "\nAdditional AI instructions (optional)",
             default=""
         )
         if custom_instructions:
             rules['ai_settings']['custom_instructions'] = custom_instructions
         
         return rules
+    
+    def setup_non_interactive(self, style: str = "github") -> Dict[str, Any]:
+        """Non-interactive setup with basic configuration."""
+        if style == "custom":
+            rules = self._get_default_rules()
+            rules['style'] = 'custom'
+            # Provide a basic custom template
+            rules['template'] = {
+                'format': 'sections',
+                'sections': [
+                    {'title': 'Summary', 'required': True},
+                    {'title': 'Changes', 'required': True, 'type': 'list'},
+                    {'title': 'Testing', 'required': False}
+                ]
+            }
+            return rules
+        else:
+            return self._get_default_rules()
     
     def _setup_sections_template(self) -> Dict[str, Any]:
         """Setup sections-based template."""
@@ -513,7 +549,7 @@ Template Requirements:"""
             ]
         }
         
-        components.show_info("Choose a template preset or create custom:")
+        components.console.print("\nChoose a template preset or create custom:")
         components.console.print("1. Minimal (What/Why)")
         components.console.print("2. Standard")
         components.console.print("3. Comprehensive")
@@ -543,7 +579,7 @@ Template Requirements:"""
                     
                     if section['type'] == 'checklist':
                         options = []
-                        components.show_info("Enter checklist options (empty to finish):")
+                        components.console.print("Enter checklist options (empty to finish):")
                         while True:
                             option = typer.prompt("Option", default="")
                             if not option:
@@ -565,8 +601,8 @@ Template Requirements:"""
             'custom_template': ''
         }
         
-        components.show_info("Enter your markdown template.")
-        components.show_info("Use placeholders like {title}, {summary}, {changes}, etc.")
+        components.console.print("\nEnter your markdown template.")
+        components.console.print("Use placeholders like {title}, {summary}, {changes}, etc.")
         components.console.print("\nExample:")
         components.console.print("# {title}\n\n## Summary\n{summary}\n\n## Changes\n{changes}")
         
