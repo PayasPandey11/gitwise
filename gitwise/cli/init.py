@@ -470,11 +470,37 @@ def init_command():
             "Apply config to this repo only?", default=True
         )
 
-    # 6. Write config
+    # 6. Configure message formatting (optional)
+    typer.echo("\n[Optional] Configure custom message formats:")
+    typer.echo("GitWise can customize commit and PR message formats for your team.")
+    
+    if typer.confirm("Configure custom formats?", default=False):
+        # Configure commit rules
+        if typer.confirm("  Configure commit message format?", default=True):
+            try:
+                from gitwise.features.commit_rules import CommitRulesFeature
+                
+                commit_rules_feature = CommitRulesFeature()
+                commit_rules = commit_rules_feature.setup_interactive()
+                config["commit_rules"] = commit_rules
+                typer.echo("  ✓ Commit rules configured")
+            except ImportError:
+                typer.echo("  ⚠️ Commit rules feature not available")
+        
+        # Configure PR rules  
+        if typer.confirm("  Configure PR description format?", default=True):
+            from gitwise.features.pr_rules import PrRulesFeature
+            
+            pr_rules_feature = PrRulesFeature()
+            pr_rules = pr_rules_feature.setup_interactive()
+            config["pr_rules"] = pr_rules
+            typer.echo("  ✓ PR rules configured")
+
+    # 7. Write config
     path = write_config(config, global_config=global_config)
     typer.echo(f"\n[gitwise] Config written to: {path}")
 
-    # 7. Summary & next steps
+    # 8. Summary & next steps
     typer.echo("\n[gitwise] Setup complete! Config summary:")
     for k, v in config.items():
         if "key" in k:

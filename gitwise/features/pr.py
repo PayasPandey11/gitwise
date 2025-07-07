@@ -7,6 +7,7 @@ import re
 from typing import List, Dict, Optional, Tuple
 
 from gitwise.features.context import ContextFeature
+from gitwise.features.pr_rules import PrRulesFeature
 from gitwise.llm.router import get_llm_response
 from ..prompts import PROMPT_PR_DESCRIPTION
 from .pr_enhancements import enhance_pr_description, get_pr_labels
@@ -107,9 +108,20 @@ def _generate_pr_title(commits: List[Dict]) -> str:
 
 
 def _generate_pr_description_llm(
-    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = ""
+    commits: List[Dict], repo_url: str, repo_name: str, guidance: str = "", style_override: Optional[str] = None
 ) -> str:
-    """Generate a PR description using LLM prompt with context from ContextFeature."""
+    """Generate a PR description using LLM prompt with context from ContextFeature and PR rules."""
+    # Initialize PR rules
+    pr_rules = PrRulesFeature()
+    
+    # Handle style override
+    active_style = pr_rules.get_active_style()
+    if style_override:
+        if style_override in ['github', 'custom']:
+            active_style = style_override
+        else:
+            components.show_warning(f"Invalid style override '{style_override}', using configured style")
+    
     # Get context for the current branch
     context_feature = ContextFeature()
     # First try to parse branch name for context if we don't have it already
@@ -156,7 +168,8 @@ def _generate_pr_description_llm(
             except:
                 pass  # Silently fail if we can't get the file list
     
-    # Add file information to guidance
+    # Format file information
+    file_info = ""
     if changed_files:
         file_info = "\nFiles changed in this PR:\n"
         for file_path in sorted(changed_files):
@@ -171,22 +184,48 @@ def _generate_pr_description_llm(
                 file_type = "Documentation"
             
             file_info += f"- {file_path} ({file_type})\n"
-        
-        # Add file information to guidance
-        if guidance:
-            guidance = f"{guidance}\n\n{file_info}"
-        else:
-            guidance = file_info
     
-    # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
-    formatted_commits = "\n".join(
-        [f"- {commit['message']}" for commit in commits]
-    )
-    prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace(
-        "{{guidance}}", guidance
-    )
-    llm_output = get_llm_response(prompt)
-    return llm_output.strip()
+    # Check if using custom PR rules
+    if active_style == "custom":
+        # Show that custom rules are being used
+        components.console.print("\n[dim]Using custom PR rules for description generation[/dim]")
+        
+        # Build context for PR rules
+        pr_context = {
+            'repo_url': repo_url,
+            'repo_name': repo_name,
+            'guidance': guidance,
+            'changed_files': file_info
+        }
+        
+        # Generate prompt using PR rules
+        prompt = pr_rules.generate_pr_prompt(commits, pr_context)
+        
+        # Get AI response
+        llm_output = get_llm_response(prompt)
+        
+        # Format according to template rules
+        formatted_output = pr_rules.format_pr_description(llm_output.strip(), {})
+        
+        return formatted_output
+    
+    else:
+        # Use existing GitHub-style generation
+        # Add file information to guidance
+        if guidance and file_info:
+            guidance = f"{guidance}\n\n{file_info}"
+        elif file_info:
+            guidance = file_info
+        
+        # Remove author names to avoid LLM confusion (was causing "payas module" hallucinations)
+        formatted_commits = "\n".join(
+            [f"- {commit['message']}" for commit in commits]
+        )
+        prompt = PROMPT_PR_DESCRIPTION.replace("{{commits}}", formatted_commits).replace(
+            "{{guidance}}", guidance
+        )
+        llm_output = get_llm_response(prompt)
+        return llm_output.strip()
 
 
 def _create_gh_pr(
@@ -365,6 +404,7 @@ class PrFeature:
         draft: bool = False,
         skip_prompts: bool = False,
         auto_confirm: bool = False,
+        style: Optional[str] = None,
     ) -> bool:
         """Create a pull request with AI-generated description.
         Orchestrates commit collection, title/description generation, and PR creation.
@@ -480,7 +520,7 @@ class PrFeature:
             components.show_section("Generating PR Description")
             repo_info = _get_repository_info(self.git_manager)
             pr_body = self._generate_and_clean_pr_body(
-                commits, repo_info["url"], repo_info["name"], skip_prompts, auto_confirm
+                commits, repo_info["url"], repo_info["name"], skip_prompts, auto_confirm, style
             )
             if pr_body is None:
                 return False
@@ -491,6 +531,16 @@ class PrFeature:
                     final_labels = get_pr_labels(
                         commits
                     )  # Module level helper from pr_enhancements
+            
+            # Apply auto-labeling from PR rules
+            pr_rules = PrRulesFeature()
+            auto_labels = pr_rules.apply_auto_labels(pr_body)
+            if auto_labels:
+                components.show_info(f"Auto-detected labels: {', '.join(auto_labels)}")
+                # Merge with existing labels, avoiding duplicates
+                for label in auto_labels:
+                    if label not in final_labels:
+                        final_labels.append(label)
 
             if use_checklist:
                 with components.show_spinner("Generating checklist..."):
@@ -505,6 +555,21 @@ class PrFeature:
                     )
 
             self._display_pr_preview(pr_generated_title, final_labels, pr_body)
+            
+            # Validate PR description against rules
+            pr_rules = PrRulesFeature()
+            is_valid, validation_errors = pr_rules.validate_pr_description(pr_body)
+            if not is_valid:
+                components.show_warning("PR description validation issues:")
+                for error in validation_errors:
+                    components.console.print(f"  [yellow]•[/yellow] {error}")
+                
+                if not skip_prompts and not typer.confirm(
+                    "Proceed with PR creation despite validation issues?",
+                    default=False
+                ):
+                    components.show_warning("PR creation cancelled due to validation issues")
+                    return False
 
             if skip_prompts:
                 _create_gh_pr(
@@ -588,14 +653,14 @@ class PrFeature:
             )
 
     def _generate_and_clean_pr_body(
-        self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool, auto_confirm: bool
+        self, commits: List[Dict], repo_url: str, repo_name: str, skip_prompts: bool, auto_confirm: bool, style: Optional[str] = None
     ) -> Optional[str]:
         """Generate a PR body using LLM and clean it for use in PR."""
         try:
             with components.show_spinner("Generating PR description..."):
                 # Generate PR description using the LLM
                 pr_body = _generate_pr_description_llm(
-                    commits, repo_url, repo_name
+                    commits, repo_url, repo_name, style_override=style
                 )
             if not pr_body:
                 # Fallback if LLM fails

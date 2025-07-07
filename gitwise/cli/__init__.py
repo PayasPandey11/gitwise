@@ -10,6 +10,7 @@ from gitwise.cli.add import add_command_cli
 from gitwise.cli.commit_config import config_commit_command
 from gitwise.cli.init import init_command
 from gitwise.cli.merge import merge_command_cli
+from gitwise.cli.pr_config import config_pr_command
 from gitwise.features.branch import BranchFeature
 from gitwise.features.changelog import ChangelogFeature
 from gitwise.features.commit import CommitFeature
@@ -124,6 +125,7 @@ def pr_cli_entrypoint(
     skip_prompts: bool = typer.Option(
         False, "--skip-prompts", help="Skip all interactive prompts and use defaults."
     ),
+    style: str = typer.Option(None, "--style", help="Override PR style (github or custom)"),
 ) -> None:
     """Create a pull request with AI-generated description."""
     feature = PrFeature()
@@ -135,6 +137,7 @@ def pr_cli_entrypoint(
         base=base,
         draft=draft,
         skip_prompts=skip_prompts,
+        style=style,
     )
 
 
@@ -323,6 +326,26 @@ def merge_cli_entrypoint(
         continue_merge=continue_merge,
         abort_merge=abort_merge,
         auto_confirm=auto_confirm
+    )
+
+
+@app.command(name="config-pr")
+def config_pr_cli_entrypoint(
+    show: bool = typer.Option(False, "--show", help="Show current PR rules"),
+    setup: bool = typer.Option(False, "--setup", help="Interactive setup for PR rules"),
+    style: str = typer.Option(None, "--style", help="Set PR style (github or custom)"),
+    reset: bool = typer.Option(False, "--reset", help="Reset to default GitHub style"),
+    export_file: str = typer.Option(None, "--export", help="Export PR rules to file"),
+    import_file: str = typer.Option(None, "--import", help="Import PR rules from file"),
+) -> None:
+    """Configure PR description rules and templates."""
+    config_pr_command(
+        show=show,
+        setup=setup,
+        style=style,
+        reset=reset,
+        export_file=export_file,
+        import_file=import_file
     )
 
 
