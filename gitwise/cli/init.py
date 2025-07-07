@@ -453,9 +453,9 @@ def init_command():
     if typer.confirm("Configure custom formats?", default=False):
         # Configure commit rules
         if typer.confirm("  Configure commit message format?", default=True):
-            from gitwise.features.commit_rules import CommitRulesFeature
-            
             try:
+                from gitwise.features.commit_rules import CommitRulesFeature
+                
                 commit_rules_feature = CommitRulesFeature()
                 commit_rules = commit_rules_feature.setup_interactive()
                 config["commit_rules"] = commit_rules
