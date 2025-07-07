@@ -84,6 +84,30 @@ def validate_config(config: Dict[str, Any]) -> bool:
         if not has_online_key:
             return False
     
+    # Validate PR rules if present
+    if "pr_rules" in config:
+        pr_rules = config["pr_rules"]
+        
+        # Validate style
+        if pr_rules.get("style") not in ["github", "custom", None]:
+            return False
+        
+        # Validate template if custom style
+        if pr_rules.get("style") == "custom":
+            template = pr_rules.get("template", {})
+            if not template:
+                return False
+            
+            # Validate template format
+            if template.get("format") not in ["sections", "markdown"]:
+                return False
+            
+            # Validate sections or custom_template exists
+            if template.get("format") == "sections" and not template.get("sections"):
+                return False
+            elif template.get("format") == "markdown" and not template.get("custom_template"):
+                return False
+    
     # Ollama backend is valid if it exists (model will use defaults)
     return True
 
@@ -133,6 +157,11 @@ def get_secure_config() -> Dict[str, Any]:
         config.update(secure_keys)
     
     return config
+
+
+def save_config(config: Dict[str, Any], global_config: bool = False) -> None:
+    """Save configuration to file."""
+    write_config(config, global_config)
 
 
 def should_use_secure_storage() -> bool:
