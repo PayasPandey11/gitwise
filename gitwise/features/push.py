@@ -192,7 +192,7 @@ class PushFeature:
                     pr_feature_instance = PrFeature()  # Create instance
                     pr_created = pr_feature_instance.execute_pr(  # Call method
                         use_labels=include_extras,
-                        use_checklist=include_extras,
+                        use_checklist=False,
                         skip_general_checklist=not include_extras,
                         skip_prompts=auto_confirm,
                         auto_confirm=auto_confirm,
