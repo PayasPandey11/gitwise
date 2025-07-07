@@ -64,6 +64,11 @@ def config_exists(local_only: bool = False) -> bool:
     return False
 
 
+def save_config(config: Dict[str, Any], global_config: bool = False) -> None:
+    """Save config to local or global configuration file."""
+    write_config(config, global_config)
+
+
 def validate_config(config: Dict[str, Any]) -> bool:
     """Basic validation for required keys based on backend."""
     backend = config.get("llm_backend", "ollama")
@@ -107,8 +112,33 @@ def validate_config(config: Dict[str, Any]) -> bool:
                 return False
             elif template.get("format") == "markdown" and not template.get("custom_template"):
                 return False
+    # Validate commit rules if present
+    if "commit_rules" in config:
+        if not _validate_commit_rules(config["commit_rules"]):
+            return False
     
     # Ollama backend is valid if it exists (model will use defaults)
+    return True
+
+
+def _validate_commit_rules(rules: Dict[str, Any]) -> bool:
+    """Validate commit rules configuration."""
+    # Check required fields
+    if "style" not in rules or rules["style"] not in ["conventional", "custom"]:
+        return False
+    
+    # Validate custom rules
+    if rules["style"] == "custom":
+        # Format is required for custom rules
+        format_str = rules.get("format", "")
+        if not format_str or "{description}" not in format_str:
+            return False
+        
+        # Validate numeric limits
+        subject_max = rules.get("subject_max_length", 50)
+        if not isinstance(subject_max, int) or subject_max < 20 or subject_max > 200:
+            return False
+    
     return True
 
 
